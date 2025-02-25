@@ -1,0 +1,30 @@
+body {
+    margin: 0;
+    overflow: hidden;
+}
+
+#markers-container {
+    width: 100vw;
+    height: 100vh;
+    background: url("background-map.jpg") no-repeat center center;
+    background-size: cover;
+    position: relative;
+}
+
+.marker {
+    position: absolute;
+    cursor: pointer;
+}
+
+.marker img {
+    display: block;
+}
+
+#marker-form {
+    position: absolute;
+    display: none;
+    background: white;
+    padding: 10px;
+    border: 1px solid black;
+    z-index: 1000;
+}

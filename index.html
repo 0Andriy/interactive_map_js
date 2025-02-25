@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Інтерактивна карта</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="markers-container"></div>
+
+    <!-- Форма для додавання/редагування мітки -->
+    <div id="marker-form">
+        <label>Тип:</label>
+        <select id="marker-type">
+            <option value="fire">Пожежа</option>
+            <option value="police">Поліція</option>
+            <option value="hospital">Лікарня</option>
+        </select>
+
+        <label>Примітка:</label>
+        <input type="text" id="marker-note">
+
+        <label>Розмір:</label>
+        <input type="number" id="marker-size" value="30">
+
+        <button id="save-marker">Зберегти</button>
+        <button id="cancel-marker">Скасувати</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
