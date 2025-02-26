@@ -1,3 +1,64 @@
 {
+    // **Індентація**
+    "editor.tabSize": 4, // Визначає ширину табуляції у пробілах (у цьому випадку 4 пробіли).
+    "editor.insertSpaces": true, // Вставляти пробіли замість табуляції.
+    "editor.detectIndentation": false, // Вимкнути автоматичне визначення відступів (завжди використовувати задані).
+
+    // **Автозбереження**
+    "files.autoSave": "afterDelay", // Автоматично зберігати зміни після невеликої затримки.
+    "files.autoSaveDelay": 1000, // Затримка в мілісекундах для автозбереження (1000 мс = 1 секунда).
+
+    // **Форматування**
+    "editor.formatOnSave": true, // Автоматичне форматування коду під час збереження файлу.
+    "editor.formatOnPaste": true, // Автоматичне форматування під час вставки тексту.
+
+    //   // **Перевірка синтаксису**
+    //   "editor.codeActionsOnSave": {
+    //     "source.fixAll": true // Автоматично виправляти всі помилки (де це можливо) під час збереження.
+    //   },
+
+    // **Підсвітка та зручність редагування**
+    //   "editor.cursorSmoothCaretAnimation": true, // Плавна анімація для курсору.
+    "editor.minimap.enabled": false, // Відображення мінікарти праворуч.
+    "editor.lineNumbers": "on", // Включити відображення номерів рядків.
+    "editor.renderWhitespace": "selection", // Відображення пробілів, табуляцій і перенесень рядків.
+
+    //   // **Інтеграція з гіт**
+    //   "git.enableSmartCommit": true, // Дозволити "розумний" коміт (коміт без вибору файлів).
+    //   "git.confirmSync": false, // Не запитувати підтвердження перед синхронізацією.
+
+    //   // **Автодоповнення**
+    //   "editor.quickSuggestions": {
+    //     "other": true,
+    //     "comments": false, // Вимкнути автодоповнення в коментарях.
+    //     "strings": true
+    //   },
+    //   "editor.suggestSelection": "recentlyUsed", // Пропонувати останні використані підказки першими.
+
+    // **Продуктивність**
+    //   "workbench.startupEditor": "newUntitledFile", // Відкривати новий файл замість стартової сторінки.
+    "files.trimTrailingWhitespace": true, // Автоматично видаляти пробіли в кінці рядків.
+    "files.insertFinalNewline": true, // Додавати порожній рядок у кінець файлу.
+    "files.trimFinalNewlines": true, // Видаляти зайві порожні рядки в кінці файлу.
+
+    // **Темна тема та вигляд**
+    //   "workbench.colorTheme": "Default Dark+", // Вибір теми оформлення (у цьому випадку темна тема).
+    "editor.fontSize": 14, // Розмір шрифту в редакторі.
+    "editor.fontFamily": "Fira Code, Consolas, 'Courier New', monospace", // Шрифт (підтримка "лігатур", якщо шрифт це дозволяє).
+    "editor.fontLigatures": true, // Увімкнути лігатури для спеціальних символів (наприклад, `=>`).
+
+    // **Панель терміналу**
+    "terminal.integrated.fontSize": 14, // Розмір шрифту в терміналі.
+    "terminal.integrated.defaultProfile.windows": "Git Bash", // Профіль термінала за замовчуванням у Windows.
+    "terminal.integrated.defaultProfile.linux": "bash", // Профіль термінала за замовчуванням у Linux.
+
+    // **Мови**
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode" // Вибір форматувальника для JavaScript (Prettier).
+    },
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.python", // Форматувальник для Python.
+        "editor.formatOnSave": true // Завжди форматувати Python під час збереження.
+    },
     "liveServer.settings.port": 5501
 }

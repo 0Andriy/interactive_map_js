@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кастомна карта з маркерами</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            width: 100%;
+            height: 600px;
+        }
+
+        #controls {
+            margin: 10px;
+        }
+
+        button {
+            margin-right: 10px;
+        }
+
+        /* Стиль контекстного меню */
+        #context-menu {
+            position: absolute;
+            display: none;
+            background: white;
+            border: 1px solid #ccc;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            padding: 5px;
+            z-index: 1000;
+        }
+
+        #context-menu button {
+            display: block;
+            width: 100%;
+            border: none;
+            background: none;
+            padding: 5px;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        #context-menu button:hover {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="controls">
+        <button onclick="filterMarkers('type1')">Показати тільки Тип 1</button>
+        <button onclick="filterMarkers('type2')">Показати тільки Тип 2</button>
+        <button onclick="filterMarkers('all')">Показати всі</button>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Контекстне меню -->
+    <div id="context-menu">
+        <button onclick="editMarker()">Редагувати примітку</button>
+        <button onclick="changeMarkerType()">Змінити тип</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Розміри зображення (ширина, висота)
+        const imageWidth = 2000;
+        const imageHeight = 2000;
+
+        // Ініціалізація карти
+        const map = L.map('map', {
+            crs: L.CRS.Simple,
+            minZoom: -2,
+        });
+
+        // Діапазон зображення
+        const bounds = [[0, 0], [imageHeight, imageWidth]];
+        L.imageOverlay('../background-map.jpg', bounds).addTo(map);
+        map.fitBounds(bounds);
+
+        // Набір маркерів
+        let markers = [];
+        let selectedMarker = null; // Вибраний маркер для редагування
+
+        // Іконки для маркерів
+        const icons = {
+            type1: L.icon({ iconUrl: '../icons/prickly-pear-svgrepo-com.svg', iconSize: [32, 32] }),
+            type2: L.icon({ iconUrl: '../icons/apple-svgrepo-com.svg', iconSize: [32, 32] })
+        };
+
+        // Вибір типу маркера
+        function chooseMarkerType() {
+            return new Promise((resolve) => {
+                let type = prompt("Виберіть тип (type1 або type2):");
+                if (type === "type1" || type === "type2") {
+                    resolve(type);
+                } else {
+                    alert("Невірний тип. Спробуйте ще раз.");
+                    resolve(null);
+                }
+            });
+        }
+
+        // Додавання маркерів при кліці
+        map.on('click', async function (e) {
+            const { lat, lng } = e.latlng;
+
+            let type = await chooseMarkerType();
+            if (!type) return;
+
+            let note = prompt('Введіть примітку:', '');
+            if (note === null) return;
+
+            let marker = L.marker([lat, lng], { icon: icons[type], draggable: true }).addTo(map);
+            marker.bindPopup(`<b>${type}</b><br>${note}`).openPopup();
+
+            markers.push({ marker, type, note });
+
+            // Контекстне меню при правому кліку
+            marker.on("contextmenu", function (event) {
+                selectedMarker = marker;
+                showContextMenu(event.originalEvent);
+            });
+        });
+
+        // Фільтрація маркерів
+        function filterMarkers(type) {
+            markers.forEach(({ marker, type: markerType }) => {
+                if (type === 'all' || type === markerType) {
+                    marker.addTo(map);
+                } else {
+                    map.removeLayer(marker);
+                }
+            });
+        }
+
+        // Функція для показу контекстного меню
+        function showContextMenu(event) {
+            event.preventDefault();
+            let menu = document.getElementById("context-menu");
+            menu.style.display = "block";
+            menu.style.left = `${event.pageX}px`;
+            menu.style.top = `${event.pageY}px`;
+
+            document.addEventListener("click", hideContextMenu);
+        }
+
+        // Функція для приховування контекстного меню
+        function hideContextMenu() {
+            let menu = document.getElementById("context-menu");
+            menu.style.display = "none";
+            document.removeEventListener("click", hideContextMenu);
+        }
+
+        // Функція редагування примітки
+        function editMarker() {
+            if (!selectedMarker) return;
+            let newNote = prompt("Редагуйте примітку:", getMarkerData(selectedMarker).note);
+            if (newNote === null) return;
+
+            selectedMarker.bindPopup(`<b>${getMarkerData(selectedMarker).type}</b><br>${newNote}`).openPopup();
+            getMarkerData(selectedMarker).note = newNote;
+        }
+
+        // Функція зміни типу маркера
+        async function changeMarkerType() {
+            if (!selectedMarker) return;
+            let newType = await chooseMarkerType();
+            if (!newType) return;
+
+            selectedMarker.setIcon(icons[newType]);
+            selectedMarker.bindPopup(`<b>${newType}</b><br>${getMarkerData(selectedMarker).note}`).openPopup();
+            getMarkerData(selectedMarker).type = newType;
+        }
+
+        // Пошук маркера у масиві
+        function getMarkerData(marker) {
+            return markers.find(m => m.marker === marker);
+        }
+    </script>
+
+</body>
+
+</html>

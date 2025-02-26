@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Карта з маркерами</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            width: 100%;
+            height: 600px;
+        }
+
+        #controls {
+            margin: 10px;
+        }
+
+        /* Фон для модального вікна */
+        .modal-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        /* Стилізація модального вікна */
+        .modal {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            width: 300px;
+        }
+
+        .marker-type {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .marker-type button {
+            border: none;
+            background: none;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .marker-type button img {
+            width: 40px;
+            height: 40px;
+            border: 2px solid transparent;
+            border-radius: 50%;
+        }
+
+        .marker-type button.selected img {
+            border-color: blue;
+        }
+
+        .modal input {
+            width: 90%;
+            padding: 5px;
+            margin: 10px 0;
+        }
+
+        .modal button {
+            padding: 8px 12px;
+            margin-top: 10px;
+            cursor: pointer;
+            border: none;
+            background: #007bff;
+            color: white;
+            border-radius: 4px;
+        }
+
+        /* Стилі для контекстного меню */
+        #context-menu {
+            position: absolute;
+            display: none;
+            background: white;
+            border: 1px solid #ccc;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            padding: 5px;
+            z-index: 1000;
+        }
+
+        #context-menu button {
+            display: block;
+            width: 100%;
+            border: none;
+            background: none;
+            padding: 5px;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        #context-menu button:hover {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="controls">
+        <button onclick="filterMarkers('type1')">Показати тільки Тип 1</button>
+        <button onclick="filterMarkers('type2')">Показати тільки Тип 2</button>
+        <button onclick="filterMarkers('all')">Показати всі</button>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Модальне вікно -->
+    <div class="modal-bg" id="marker-modal">
+        <div class="modal">
+            <h3>Додати маркер</h3>
+            <div class="marker-type">
+                <button onclick="selectMarkerType('type1')">
+                    <img id="icon-type1" src="../icons/prickly-pear-svgrepo-com.svg">
+                </button>
+                <button onclick="selectMarkerType('type2')">
+                    <img id="icon-type2" src="../icons/apple-svgrepo-com.svg">
+                </button>
+            </div>
+            <input type="text" id="marker-note" placeholder="Введіть примітку">
+            <button onclick="confirmMarker()">Додати</button>
+        </div>
+    </div>
+
+    <!-- Контекстне меню -->
+    <div id="context-menu">
+        <button onclick="editMarker()">Редагувати примітку</button>
+        <button onclick="changeMarkerType()">Змінити тип</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const imageWidth = 2000, imageHeight = 2000;
+        const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2 });
+        const bounds = [[0, 0], [imageHeight, imageWidth]];
+        L.imageOverlay('../background-map.jpg', bounds).addTo(map);
+        map.fitBounds(bounds);
+
+        let markers = [];
+        let selectedMarker = null;
+        let tempMarkerPosition = null;
+        let selectedType = null;
+
+        const icons = {
+            type1: L.icon({ iconUrl: '../icons/prickly-pear-svgrepo-com.svg', iconSize: [32, 32] }),
+            type2: L.icon({ iconUrl: '../icons/apple-svgrepo-com.svg', iconSize: [32, 32] })
+        };
+
+        // Відкриття модального вікна
+        function openModal(lat, lng) {
+            tempMarkerPosition = { lat, lng };
+            document.getElementById('marker-modal').style.display = 'flex';
+        }
+
+        // Закриття модального вікна
+        function closeModal() {
+            document.getElementById('marker-modal').style.display = 'none';
+        }
+
+        // Вибір типу маркера
+        function selectMarkerType(type) {
+            selectedType = type;
+            document.querySelectorAll('.marker-type button').forEach(btn => btn.classList.remove('selected'));
+            document.querySelector(`#icon-${type}`).parentElement.classList.add('selected');
+        }
+
+        // Підтвердження додавання маркера
+        function confirmMarker() {
+            if (!selectedType) {
+                alert("Оберіть тип маркера!");
+                return;
+            }
+            let note = document.getElementById('marker-note').value;
+            let { lat, lng } = tempMarkerPosition;
+
+            let marker = L.marker([lat, lng], { icon: icons[selectedType], draggable: true }).addTo(map);
+            marker.bindPopup(`<b>${selectedType}</b><br>${note}`).openPopup();
+
+            markers.push({ marker, type: selectedType, note });
+
+            marker.on("contextmenu", (event) => {
+                selectedMarker = marker;
+                showContextMenu(event.originalEvent);
+            });
+
+            closeModal();
+        }
+
+        // Відображення контекстного меню
+        function showContextMenu(event) {
+            event.preventDefault();
+            let menu = document.getElementById("context-menu");
+            menu.style.display = "block";
+            menu.style.left = `${event.pageX}px`;
+            menu.style.top = `${event.pageY}px`;
+            document.addEventListener("click", hideContextMenu);
+        }
+
+        function hideContextMenu() {
+            document.getElementById("context-menu").style.display = "none";
+            document.removeEventListener("click", hideContextMenu);
+        }
+
+        function editMarker() {
+            if (!selectedMarker) return;
+            let newNote = prompt("Редагуйте примітку:", getMarkerData(selectedMarker).note);
+            if (newNote !== null) {
+                selectedMarker.bindPopup(`<b>${getMarkerData(selectedMarker).type}</b><br>${newNote}`).openPopup();
+                getMarkerData(selectedMarker).note = newNote;
+            }
+        }
+
+        function filterMarkers(type) {
+            markers.forEach(({ marker, type: markerType }) => {
+                if (type === 'all' || type === markerType) marker.addTo(map);
+                else map.removeLayer(marker);
+            });
+        }
+
+        function getMarkerData(marker) {
+            return markers.find(m => m.marker === marker);
+        }
+
+        map.on('click', function (e) {
+            openModal(e.latlng.lat, e.latlng.lng);
+        });
+    </script>
+
+</body>
+
+</html>
