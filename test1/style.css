@@ -6,7 +6,7 @@ body {
 #markers-container {
     width: 100vw;
     height: 100vh;
-    background: url("background-map.jpg") no-repeat center center;
+    background: url("../background-map.jpg") no-repeat center center;
     background-size: cover;
     position: relative;
 }

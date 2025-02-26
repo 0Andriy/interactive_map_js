@@ -1,1 +1,0 @@
-https://uk.javascript.info/event-details
