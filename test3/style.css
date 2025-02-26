@@ -5,16 +5,23 @@ body {
     align-items: center;
     height: 100vh;
     background-color: #f0f0f0;
+    overflow: hidden;
+    /* Сховати прокрутку */
+    background-color: red;
 }
 
 .map-container {
-    position: relative;
-    width: 600px;
+    position: absolute;
+    /* Змінено на absolute для переміщення */
+    width: 80vw;
     /* Ширина карти */
-    height: 400px;
+    height: 80vh;
     /* Висота карти */
     overflow: hidden;
     border: 2px solid #333;
+    cursor: grab;
+    /* Курсор при натисканні */
+    background-color: green;
 }
 
 .map-image {

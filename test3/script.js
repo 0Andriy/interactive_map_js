@@ -1,5 +1,36 @@
 const mapContainer = document.getElementById('mapContainer')
 
+// Додаткові змінні для перетягування
+let isDragging = false
+let startX, startY, initialX, initialY
+
+// Додати обробник подій для початку перетягування
+mapContainer.addEventListener('mousedown', (event) => {
+    event.stopPropagation() // Зупинити подію, щоб не перетягувати карту
+    isDragging = true
+    startX = event.clientX
+    startY = event.clientY
+    initialX = mapContainer.offsetLeft // Початкова позиція X
+    initialY = mapContainer.offsetTop // Початкова позиція Y
+    mapContainer.style.cursor = 'grabbing' // Змінюємо курсор
+})
+
+// Додати обробник подій для руху миші
+document.addEventListener('mousemove', (event) => {
+    if (isDragging) {
+        const dx = event.clientX - startX // Різниця по X
+        const dy = event.clientY - startY // Різниця по Y
+        mapContainer.style.left = `${initialX + dx}px`
+        mapContainer.style.top = `${initialY + dy}px`
+    }
+})
+
+// Додати обробник подій для закінчення перетягування
+document.addEventListener('mouseup', () => {
+    isDragging = false
+    mapContainer.style.cursor = 'grab' // Повертаємо курсор
+})
+
 // Функція для створення маркера
 function createMarker(x, y) {
     const marker = document.createElement('div')
@@ -19,17 +50,6 @@ function createMarker(x, y) {
     marker.addEventListener('click', (event) => {
         event.stopPropagation() // Зупинити подію, щоб не закривати вікно
         infoWindow.style.display = infoWindow.style.display === 'block' ? 'none' : 'block'
-    })
-
-    // Додати обробник події для перетягування маркера
-    marker.draggable = true
-    marker.addEventListener('dragstart', (event) => {
-        event.dataTransfer.setData('text/plain', null) // Для Chrome
-        marker.classList.add('dragging')
-    })
-
-    marker.addEventListener('dragend', () => {
-        marker.classList.remove('dragging')
     })
 
     mapContainer.appendChild(marker)
