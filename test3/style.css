@@ -31,6 +31,14 @@ body {
     border-radius: 50%;
     transform: translate(-50%, -50%);
     /* Центрування маркера */
+    cursor: pointer;
+}
+
+.info-window {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #333;
+    padding: 5px;
     display: none;
-    /* Сховати маркер за замовчуванням */
+    z-index: 10;
 }
