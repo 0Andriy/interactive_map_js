@@ -4,14 +4,10 @@ const mapImage = document.createElement('img')
 
 mapImage.src = '../background-map.jpg' // Шлях до вашого зображення
 mapImage.id = 'mapImage' // Додати ID для стилізації
-mapImage.style.width = '120%' // Збільшити ширину зображення
-mapImage.style.height = 'auto' // Автоматична висота, щоб зберегти пропорції
-mapImage.style.left = '0' // Початкова позиція X
-mapImage.style.top = '0' // Початкова позиція Y
-mapImage.style.position = 'absolute' // Встановити абсолютне позиціювання
 
 // Додати картинку до контейнера
 mapContainer.appendChild(mapImage)
+
 
 // Змінні для перетягування
 let isDragging = false
