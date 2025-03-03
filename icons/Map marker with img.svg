@@ -1,12 +1,12 @@
 <svg width="50" height="70" viewBox="0 0 50 70" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    .marker { fill: #ff5733; } /* Колір маркера */
-  </style>
-  
-  <!-- Фон маркера -->
-  <path class="marker" d="M25 0C11.2 0 0 11.2 0 25C0 37.5 14.5 55.2 21.7 64.2C23 65.9 26.9 65.9 28.3 64.2C35.5 55.2 50 37.5 50 25C50 11.2 38.8 0 25 0Z"/>
-  
-  <!-- Вставка PNG-іконки -->
-  <image href="https://upload.wikimedia.org/wikipedia/commons/8/8e/Font_Awesome_5_solid_map-marker-alt.svg" 
-         x="12" y="12" width="26" height="26"/>
+    <style>
+        .marker { fill: #ff5733; } /* Колір маркера */
+    </style>
+
+    <!-- Фон маркера -->
+    <path class="marker" d="M25 0C11.2 0 0 11.2 0 25C0 37.5 14.5 55.2 21.7 64.2C23 65.9 26.9 65.9 28.3 64.2C35.5 55.2 50 37.5 50 25C50 11.2 38.8 0 25 0Z"/>
+
+    <!-- Вставка PNG-іконки -->
+    <image href="https://upload.wikimedia.org/wikipedia/commons/8/8e/Font_Awesome_5_solid_map-marker-alt.svg"
+            x="12" y="12" width="26" height="26"/>
 </svg>
