@@ -1,0 +1,9 @@
+<svg width="50" height="70" viewBox="0 0 50 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .marker { fill: #2ecc71; } /* Зелений */
+    .icon { fill: white; font-size: 20px; font-family: Arial, sans-serif; text-anchor: middle; }
+  </style>
+  <path class="marker" d="M25 0C11.2 0 0 11.2 0 25C0 37.5 14.5 55.2 21.7 64.2C23 65.9 26.9 65.9 28.3 64.2C35.5 55.2 50 37.5 50 25C50 11.2 38.8 0 25 0Z"/>
+  
+  <text x="25" y="32" class="icon">⛽</text>
+</svg>
