@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: Apache. Made by googlefonts: https://github.com/googlefonts/noto-emoji -->
+<svg width="50" height="70" viewBox="0 0 365 560" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" preserveAspectRatio="xMidYMid meet">
+    <!-- Title and Description for better accessibility -->
+    <title>Map Marker Icon with House</title>
+    <desc>A map marker with a blue color, circular center, and a house image centered on top.</desc>
+
+    <!-- Фон маркера -->
+    <path fill="#00AEEF" d="M182.9,551.7c0,0.1,0.2,0.3,0.2,0.3S358.3,283,358.3,194.6c0-130.1-88.8-186.7-175.4-186.9
+        C96.3,7.9,7.5,64.5,7.5,194.6c0,88.4,175.3,357.4,175.3,357.4S182.9,551.7,182.9,551.7z M122.2,187.2c0-33.6,27.2-60.8,60.8-60.8
+        c33.6,0,60.8,27.2,60.8,60.8S216.5,248,182.9,248C149.4,248,122.2,220.8,122.2,187.2z"/>
+
+    <!-- Додаємо коло для закриття дірки -->
+    <circle cx="182.9" cy="187.2" r="64.8" fill="#00AEEF"/>
+
+    <!-- Додаємо зображення, центруючи його на дірці -->
+    <!-- <image x="82.9" y="87.2" width="200" height="200"
+        href="data:image/png;base64,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" /> -->
+
+
+    <!-- Додаємо SVG замість картинки доміка, центруючи його на дірці -->
+    <g transform="translate(32.9, 37.2)"> <!-- Переміщаємо SVG до центру кола -->
+        <svg width="300" height="300" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" preserveAspectRatio="xMidYMid meet">
+            <radialGradient id="IconifyId17ecdb2904d178eab8626" cx="68.884" cy="124.296" r="70.587" gradientTransform="matrix(-1 -.00434 -.00713 1.6408 131.986 -79.345)" gradientUnits="userSpaceOnUse">
+                <stop offset=".314" stop-color="#ff9800"/>
+                <stop offset=".662" stop-color="#ff6d00"/>
+                <stop offset=".972" stop-color="#f44336"/>
+            </radialGradient>
+            <path d="M35.56 40.73c-.57 6.08-.97 16.84 2.62 21.42c0 0-1.69-11.82 13.46-26.65c6.1-5.97 7.51-14.09 5.38-20.18c-1.21-3.45-3.42-6.3-5.34-8.29c-1.12-1.17-.26-3.1 1.37-3.03c9.86.44 25.84 3.18 32.63 20.22c2.98 7.48 3.2 15.21 1.78 23.07c-.9 5.02-4.1 16.18 3.2 17.55c5.21.98 7.73-3.16 8.86-6.14c.47-1.24 2.1-1.55 2.98-.56c8.8 10.01 9.55 21.8 7.73 31.95c-3.52 19.62-23.39 33.9-43.13 33.9c-24.66 0-44.29-14.11-49.38-39.65c-2.05-10.31-1.01-30.71 14.89-45.11c1.18-1.08 3.11-.12 2.95 1.5z" fill="url(#IconifyId17ecdb2904d178eab8626)"/>
+            <radialGradient id="IconifyId17ecdb2904d178eab8627" cx="64.921" cy="54.062" r="73.86" gradientTransform="matrix(-.0101 .9999 .7525 .0076 26.154 -11.267)" gradientUnits="userSpaceOnUse">
+                <stop offset=".214" stop-color="#fff176"/>
+                <stop offset=".328" stop-color="#fff27d"/>
+                <stop offset=".487" stop-color="#fff48f"/>
+                <stop offset=".672" stop-color="#fff7ad"/>
+                <stop offset=".793" stop-color="#fff9c4"/>
+                <stop offset=".822" stop-color="#fff8bd" stop-opacity=".804"/>
+                <stop offset=".863" stop-color="#fff6ab" stop-opacity=".529"/>
+                <stop offset=".91" stop-color="#fff38d" stop-opacity=".209"/>
+                <stop offset=".941" stop-color="#fff176" stop-opacity="0"/>
+            </radialGradient>
+            <path d="M76.11 77.42c-9.09-11.7-5.02-25.05-2.79-30.37c.3-.7-.5-1.36-1.13-.93c-3.91 2.66-11.92 8.92-15.65 17.73c-5.05 11.91-4.69 17.74-1.7 24.86c1.8 4.29-.29 5.2-1.34 5.36c-1.02.16-1.96-.52-2.71-1.23a16.09 16.09 0 0 1-4.44-7.6c-.16-.62-.97-.79-1.34-.28c-2.8 3.87-4.25 10.08-4.32 14.47C40.47 113 51.68 124 65.24 124c17.09 0 29.54-18.9 19.72-34.7c-2.85-4.6-5.53-7.61-8.85-11.88z" fill="url(#IconifyId17ecdb2904d178eab8627)"/>
+        </svg>
+    </g>
+
+</svg>
