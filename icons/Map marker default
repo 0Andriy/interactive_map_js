@@ -1,0 +1,11 @@
+<svg width="50" height="70" viewBox="0 0 50 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .marker { fill: #ff5733; } /* Основний колір */
+    .icon { fill: white; }
+  </style>
+  <!-- Фон маркера -->
+  <path class="marker" d="M25 0C11.2 0 0 11.2 0 25C0 37.5 14.5 55.2 21.7 64.2C23 65.9 26.9 65.9 28.3 64.2C35.5 55.2 50 37.5 50 25C50 11.2 38.8 0 25 0Z"/>
+  
+  <!-- Іконка (можна замінити на свою) -->
+  <circle class="icon" cx="25" cy="25" r="10"/>
+</svg>
