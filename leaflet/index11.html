@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кастомна карта з маркерами</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            width: 100%;
+            height: 600px;
+        }
+
+        #layer-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+
+        .backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+    <div id="layer-controls">
+        <h4>Відобразити маркери</h4>
+        <label><input type="checkbox" id="toggle-type1" checked> Тип 1</label><br>
+        <label><input type="checkbox" id="toggle-type2" checked> Тип 2</label><br>
+    </div>
+
+    <div id="modal" class="modal hidden">
+        <h3>Додати/Редагувати маркер</h3>
+        <label>Тип:
+            <select id="marker-type">
+                <option value="type1">Тип 1</option>
+                <option value="type2">Тип 2</option>
+            </select>
+        </label>
+        <br>
+        <label>Примітка:
+            <input type="text" id="marker-note">
+        </label>
+        <br>
+        <button id="save-marker">Зберегти</button>
+        <button id="cancel-modal">Скасувати</button>
+    </div>
+    <div id="backdrop" class="backdrop hidden"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const imageWidth = 2000;
+        const imageHeight = 2000;
+        const map = L.map('map', { crs: L.CRS.Simple, minZoom: -2 });
+
+        const bounds = [[0, 0], [imageHeight, imageWidth]];
+        L.imageOverlay('../background-map.jpg', bounds).addTo(map);
+        map.fitBounds(bounds);
+
+        const icons = {
+            type1: L.icon({ iconUrl: '../icons/prickly-pear-svgrepo-com.svg', iconSize: [32, 32] }),
+            type2: L.icon({ iconUrl: '../icons/apple-svgrepo-com.svg', iconSize: [32, 32] })
+        };
+
+        let markerLayers = {
+            type1: L.layerGroup().addTo(map),
+            type2: L.layerGroup().addTo(map)
+        };
+
+        let markers = JSON.parse(localStorage.getItem('markers')) || [];
+        markers.forEach(({ id, lat, lng, type, note }) => {
+            addMarker(lat, lng, type, note, id);
+        });
+
+        map.on('click', function (e) {
+            openModal(e.latlng);
+        });
+
+        function openModal(latlng, existingMarker = null) {
+            document.getElementById('marker-type').value = existingMarker ? existingMarker.type : 'type1';
+            document.getElementById('marker-note').value = existingMarker ? existingMarker.note : '';
+            document.getElementById('modal').dataset.latlng = JSON.stringify(latlng);
+            document.getElementById('modal').dataset.markerId = existingMarker ? existingMarker.id : null;
+
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('backdrop').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            document.getElementById('backdrop').classList.add('hidden');
+        }
+
+        document.getElementById('save-marker').addEventListener('click', () => {
+            const latlng = JSON.parse(document.getElementById('modal').dataset.latlng);
+            const type = document.getElementById('marker-type').value;
+            const note = document.getElementById('marker-note').value;
+            const id = document.getElementById('modal').dataset.markerId || Date.now();
+
+            if (!note.trim()) {
+                alert('Примітка не може бути порожньою!');
+                return;
+            }
+
+            const existingMarkerIndex = markers.findIndex(m => m.id == id);
+            if (existingMarkerIndex !== -1) {
+                markers[existingMarkerIndex] = { id, lat: latlng.lat, lng: latlng.lng, type, note };
+            } else {
+                markers.push({ id, lat: latlng.lat, lng: latlng.lng, type, note });
+            }
+
+            saveMarkers();
+            closeModal();
+            reloadMarkers();
+        });
+
+        document.getElementById('cancel-modal').addEventListener('click', closeModal);
+
+        function addMarker(lat, lng, type, note, id) {
+            let marker = L.marker([lat, lng], { icon: icons[type], draggable: true }).addTo(markerLayers[type]);
+            marker.bindPopup(`<b>${type}</b><br>${note}`);
+
+            marker.on('contextmenu', function () {
+                let action = confirm('Редагувати (OK) чи видалити (Скасувати)?');
+                if (action) {
+                    openModal({ lat, lng }, { id, type, note });
+                } else {
+                    deleteMarker(id);
+                }
+            });
+
+            markers.push({ id, lat, lng, type, note });
+        }
+
+        function deleteMarker(id) {
+            markers = markers.filter(m => m.id !== id);
+            saveMarkers();
+            reloadMarkers();
+        }
+
+        function saveMarkers() {
+            localStorage.setItem('markers', JSON.stringify(markers));
+        }
+
+        function reloadMarkers() {
+            markerLayers.type1.clearLayers();
+            markerLayers.type2.clearLayers();
+            markers.forEach(({ lat, lng, type, note, id }) => addMarker(lat, lng, type, note, id));
+        }
+
+        document.getElementById('toggle-type1').addEventListener('change', function () {
+            toggleLayer('type1', this.checked);
+        });
+
+        document.getElementById('toggle-type2').addEventListener('change', function () {
+            toggleLayer('type2', this.checked);
+        });
+
+        function toggleLayer(type, visible) {
+            if (visible) {
+                map.addLayer(markerLayers[type]);
+            } else {
+                map.removeLayer(markerLayers[type]);
+            }
+        }
+    </script>
+
+</body>
+
+</html>
