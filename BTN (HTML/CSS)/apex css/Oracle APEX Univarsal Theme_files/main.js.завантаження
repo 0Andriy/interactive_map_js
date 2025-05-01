@@ -1,0 +1,233 @@
+// Close the modal dialog when clicked outside in oracle apex.
+// https://medium.com/@Radwan.salameh/close-the-modal-dialog-when-clicked-outside-in-oracle-apex-38f9e8611c99
+function closeDialogOnClickOutside(dialogElement){
+	$('.ui-widget-overlay').click(function(){
+		$(dialogElement).dialog('close');
+	});
+}
+
+// <=====================================================================================================>
+
+
+// Перевірка прав можливості показувати сповіщення
+async function requestPushNotificationPermission() {
+	if (!("Notification" in window)){
+		throw new Error("Ваш браузер не підтримує сповіщення")
+	}
+
+	if (Notification.permission === "granted") {
+		return true
+	}
+
+	if (Notification.permission !== "denied") {
+		const permission = await Notification.requestPermission()
+		return permission === "granted"
+	}
+
+	throw new Error("Користувач заблокував сповіщення")
+}
+
+
+// Показ повідомлення
+async function showPushNotification (title, options = {}, onClick = null, onClose = null, soundUrl = null,) {
+	try	{
+		const hasPermission = await requestPushNotificationPermission()
+
+		if (hasPermission) {
+			const notification  = new Notification(title, options)
+
+			// Обробка кліку по сповіщеню
+			if (onClick) {
+				notification.onclick = (event) => {
+					onClick(notification)
+				}
+			}
+
+			// Обробка закриття сповіщення
+			if (onClose) {
+				notification.onclose = (event) => {
+					onClose(notification)
+				}
+			}
+
+
+			// Відтворюємо звук, якщо переданий soundUrl (може не відтворюватися якщо користувач не взаємодіяв із сторінкою)
+			if (soundUrl) {
+				const audio = new Audio(soundUrl)
+				audio.play().catch((error) => {
+					console.error("Помилка відтворення звуку:", error)
+				})
+			}
+
+			return notification
+		}
+
+	} catch (error) {
+		console.log("Не вдалося показати сповіщення:", error)
+	}
+}
+
+
+
+
+// <===================================================================================================================>
+
+
+
+// Шаблон для IG, яке дозволяє через його API змінювати поведінку IG
+// Змінюємо (задаємо налаштування IG) 
+function ss (config) { 
+	let colName = null;
+	let gridColumns = config.columns;
+
+	for (let i = 0; i < gridColumns.length; i++) {
+		// Отримуємо назви колонок в IG
+		colName = gridColumns[i].name;
+		// Встановлюємо дефолтні налаштування колонок в IG
+		gridColumns[i].defaultGridColumnOptions = {
+			// // Робимо щоб текст в cell міг переноситися
+			// cellTemplate:'<div class="wrap-cell">&' + colName + '.</div>',
+			// headingCssClasses: 'wrap-cell',
+		}
+
+
+		// // Дістаємо хедерси колонки
+		// colHeading = gridColumns[i].heading
+		// // Дістаємо назву колонки
+		// conHeadingName = colHeading.heading
+		// if (conHeadingName) {
+		// 	// Встановлюємо нову назву колонки з додатковою розміткою
+		// 	colHeading.heading = '<div class="wrap-cell">' + conHeadingName + '</div>'
+		// }
+	}
+
+	// disable column reorder (виключаємо можливість міняти колонки місцями)
+	config.views.grid.features.reorderColumns = false;
+
+	// Вертаємо оновлені (зміненні налаштування)
+	return config;
+}
+
+
+// <==================================================================>
+
+
+// Генерація підказок меню в лівій панелі меню навігація (за допомогою jQuery) --- ???????
+function $menuTooltip() {
+	$(document).tooltip({
+		tooltipClass: "side-menu-tooltip",
+		items: ".tooltip-label-side, [label], [title]",
+		position: {
+			// my: "right top-20",
+			at: "right+10 top-23"
+		},
+		content: function() {
+			let element = $( this );
+			console.log(element)
+			let liMenuItem = element.closest( ".a-TreeView-node" );
+			let labelMenuItem = liMenuItem.find('.a-TreeView-label');
+			let labelMenuText;
+			if(labelMenuItem) {
+				labelMenuText = labelMenuItem.text();
+				return labelMenuText;
+			}
+		}
+	});
+}
+
+
+// Генерація підказок меню в лівій панелі меню навігація
+function menuTooltip() {
+	// Дістаємо з DOM бокове меню яке має клас: t-Body-nav
+	const bodyNav = document.querySelector(".t-Body-nav")
+
+	// Перевіряємо чи є на сторінці бокове меню
+	if (bodyNav) {
+		// Дістаємо всі рядки меню (контейнери)
+		const elements = document.querySelectorAll(".a-TreeView-content");
+		// Перебираємо елементи меню
+		for (let i = 0; i < elements.length; i++) {
+			// У елементі меню (рядку), дістаємо під елемент з написом
+			let element = elements[i].querySelector(".a-TreeView-label")
+			// Дістаємо назву елемена з меню
+			let name = element.innerHTML;
+			// Вставляємо знайдену назву всьому div контейрену даного рядка меню у вигляді title
+			elements[i].title = name;
+		}
+	}
+}
+
+
+
+// <==================================================================>
+// <==================================================================>
+
+function parseDate(dateString, format = "dd.mm.yyyy HH24:mi:ss") {
+	// Якщо рядок порожній або складається лише з пробілів
+	if (!dateString.trim()) {
+		throw new Error("Вхідний рядок порожній");
+	}
+
+	// Мапа для форматів та відповідних регулярних виразів
+	const formats = {
+		"dd.mm.yyyy HH24:mi:ss": /(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2}):(\d{2})/,
+		"yyyy-mm-dd HH:mm:ss": /(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})/,
+		"dd/mm/yyyy HH:mm:ss": /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2})/,
+		"mm-dd-yyyy HH:mm:ss": /(\d{2})-(\d{2})-(\d{4}) (\d{2}):(\d{2}):(\d{2})/,
+		// Формат без часу
+		"dd.mm.yyyy": /(\d{2})\.(\d{2})\.(\d{4})/,
+		"yyyy-mm-dd": /(\d{4})-(\d{2})-(\d{2})/,
+	};
+
+	const regex = formats[format];
+	if (!regex) {
+		throw new Error(`Невідомий формат: ${format}`);
+	}
+
+	const match = dateString.match(regex);
+	if (!match) {
+		throw new Error("Невірний формат дати або помилка в значеннях");
+	}
+
+	try {
+		let day, month, year, hour = 0, minute = 0, second = 0;
+
+		// Якщо формат містить час, то розбираємо і його
+		if (match.length === 7) {
+			day = parseInt(match[1], 10);
+			month = parseInt(match[2], 10) - 1; // Місяці в JavaScript починаються з 0
+			year = parseInt(match[3], 10);
+			hour = parseInt(match[4], 10);
+			minute = parseInt(match[5], 10);
+			second = parseInt(match[6], 10);
+		} else { 
+			// Якщо вхідний рядок тільки дата, додаємо час за замовчуванням
+			day = parseInt(match[1], 10);
+			month = parseInt(match[2], 10) - 1;
+			year = parseInt(match[3], 10);
+		}
+
+		// Створюємо об'єкт Date
+		const date = new Date(year, month, day, hour, minute, second);
+
+		// Перевіряємо, чи створена дата валідна
+		if (isNaN(date.getTime())) {
+			throw new Error("Не вдалося створити правильну дату.");
+		}
+
+		return date;
+	} catch (error) {
+		throw new Error("Помилка при обробці дати: " + error.message);
+	}
+}
+
+// <==================================================================>
+// <============================   CHAT   ============================>
+// <==================================================================>
+
+
+
+
+// <==================================================================>
+// <==================================================================>
+
