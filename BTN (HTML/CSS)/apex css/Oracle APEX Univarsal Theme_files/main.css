@@ -1,0 +1,534 @@
+/* <================ НАЙГЛОБАЛЬНІШІ ЗМІНИ ===============================> */
+html{
+	font-size: clamp(18px, (18 / 1920) * 100vw, 30px) !important;
+}
+
+body {
+    font-family: Tahoma, Verdana, 'Segoe UI', sans-serif;
+}
+
+
+/* <=====================================================================> */
+/* перероблявся -- (можуть бути проблеми)
+перебиває вбудований інлайн сторінки, щоб прибрати маленьку білу полоску в шапці звіту (дефолтний клас APEX) 
+- проблеми з вертикальним скролом при зменшете розміру екрана*/
+.t-Dialog-bodyWrapperIn {
+	overflow-y: scroll !important;
+}
+
+/* <================ Змінюємо (кастомізуємо) дефолтний клас для IG щоб текст міг переноситися автоматично ==============> */
+.a-GV-headerLabel {
+	/* Перебиваємо цим заборону переносу тексту */
+	white-space: normal;
+}
+
+.a-GV-table td, .a-GV-table th {
+	/* Перебиваємо цим заборону переносу тексту */
+	white-space: normal;
+}
+
+
+/* <================ Змінюємо (кастомізуємо) дефолтний клас для IR щоб ширина була нормальна і headerTR не налазив на 1 рядок репорту після рефреша через перерахування відсутпа зверху js ==============> */
+.t-fht-wrapper div.t-fht-thead.js-stickyTableHeader:not(.is-stuck) {
+	top: 0 !important;
+	width: 100% !important;
+}
+
+
+/* <================ Для хедерсів в IR для Link (додаємо іконку до клікабельних заголовків - Фільтрів) ==============> */ 
+.a-IRR-headerLink::after {
+	font-family: 'Font APEX Small' !important;
+	content: "\f0b0";
+	color: var(--c-background-color-content);
+	padding-left: 0.1em;
+	font-size: 1.2em;
+} 
+
+
+/* <================ Для обов'язкових полів додаємо відповідне позначення ==============> */ 
+.t-Form-fieldContainer--floatingLabel.is-required::before {
+    position: absolute;
+    content: "";
+    border-width: .25rem;
+    border-color: var(--a-form-required-asterisk-text-color, red) transparent transparent var(--a-form-required-asterisk-text-color, red);
+    border-style: solid;
+    z-index: 2;
+    border-top-left-radius: var(--a-field-input-border-radius, .125rem);
+    pointer-events: none;
+}
+
+/* <================ Клас який дозволяє resize only vertica ==============> */ 
+.resize-vertical {
+	resize: vertical !important;
+}
+
+
+/* <===============================================> */
+
+/* Ховаємо кнопку на -5- сторінці при ручному введені обладнання */
+#P5_MANUAL_INPUT_EQUIP_ADD_lov_btn {
+	display: none;
+}
+
+
+/* <===============================================> */
+/* клас для активної аварії в зміті аварій */
+/* .active-accident {
+	background-color: rgba(0, 128, 0, 0.3)
+}
+
+
+tr.active-accident:hover td {
+	background-color: rgba(0, 128, 0, 0.3)
+} */
+
+
+/* <===============================================> */
+/* Кастомізуємо  headers */
+.customize-headers-1 {
+	justify-content: center;
+}
+
+
+/* #navBar1 { */
+	/* background-color: rgba(127, 179, 213); */
+	/* position: absolute; */
+	/* top: 0; */
+/* } */
+
+
+.mode-accident {
+	background-color: rgba(255, 0, 0, 0.1);
+}
+
+tr.mode-accident:hover td {
+	background-color:  rgba(255, 0, 0, 0.1);
+}
+
+.mode-accident.active-accident,
+tr.mode-accident.active-accident td {
+	background-color: rgb(255, 63, 63);
+}
+
+
+.mode-training {
+	background-color: rgba(255, 165, 0, 0.1);
+}
+
+tr.mode-training:hover td {
+	background-color: rgba(255, 165, 0, 0.1);
+}
+
+.mode-training.active-accident,
+tr.mode-training.active-accident td {
+	background-color: rgb(255, 188, 63);
+}
+
+
+
+.mode-teaching {
+	background-color: rgba(0, 128, 0, 0.1);
+}
+
+tr.mode-teaching:hover td {
+	background-color: rgba(0, 128, 0, 0.1);
+}
+
+.mode-teaching.active-accident,
+tr.mode-teaching.active-accident td {
+	background-color: rgb(63, 159, 63);
+}
+
+
+
+#navBar1 #P0_USER_LABEL {
+	color: white;
+}
+
+#navBar1 #P0_USER_PERFORMS_MAIN_ROLE_LABEL {
+	color: white;
+}
+
+#navBar1 #P0_ID_ACCIDENT_LABEL {
+	color: white;
+}
+
+#navBar1 #P0_SHIFR_LABEL {
+	color: white;
+}
+
+
+#navBar1 #P0_MODE_ACCIDENT_LABEL {
+	color: white;
+}
+
+
+/* <===============================================> */
+
+/* Розміщення кнопок в аварійному реагувані - респонсів */
+.cc-actions-column-jou-emer-res {
+	/* display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    gap: 4px; */
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: space-around;
+	gap: 10px;
+	align-items: center;
+}
+
+/* Прибираємо відступпи між декількома елементами кнопок підряд, бо є ліві відступи між кнопками */
+.cc-actions-column-jou-emer-res .t-Button+.t-Button {
+	margin: 0;
+}
+
+.cc-actions-column-jou-emer-res .t-Button {
+	padding: 2px;
+	border: none;
+}
+
+/* Розміщення кнопок в колонці дій - респонсів */
+.cc-actions-column {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	justify-content: center;
+	align-items: center;
+}
+
+/* Прибираємо відступпи між декількома елементами кнопок підряд, бо є ліві відступи між кнопками */
+.cc-actions-column .t-Button+.t-Button {
+	margin: 0;
+}
+
+.cc-actions-column .t-Button {
+	padding: 5px;
+}
+
+
+
+/*  <================== Анімація мигання попередження =============================>   */
+/* Анімація для мігання */
+@keyframes blink {
+	0% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
+	100% {
+		opacity: 1;
+	}
+}
+
+/* Для блимання чогось */
+.blink {
+	animation: blink 1s infinite;
+}
+
+/* Стиль для іконки */
+.blinking-icon {
+	margin-right: 10px;
+	/* Розмір іконки */
+	font-size: 30px; 
+	/* Мігання кожну секунду */
+	animation: blink 2s infinite;
+	position: relative;
+	/* Вказівник миші змінюється на "ручку" */
+	cursor: pointer; 
+	/* Колір тексту */
+	color: red;
+}
+
+/* Стиль для кнопки закриття */
+.close-btn {
+	position: absolute;
+	padding: 0;
+	top: -5px;
+	right: -5px;
+	font-size: 16px;
+	background: none;
+	border: none;
+	color: red;
+	cursor: pointer;
+}
+
+
+/* <================== ПІДСВІДЧУЄМО ВИКОНАННІ І НЕ ВИКОНАННІ КРОКИ В КАРТКАХ ДІЙ =============================> */
+/* не потрибує відмітки про виконання */
+tr.step-is-not-confirmation-required {
+	background-color: rgba(229, 232, 232, 1);
+}
+
+tr.step-is-not-confirmation-required:hover td {
+	background-color: rgba(229, 232, 232, 1);
+}
+
+
+/* Виконнано */
+tr.step-confirmed {
+	background-color: rgba(219, 252, 194, 0.6)
+}
+
+tr.step-confirmed:hover td {
+	background-color: rgba(219, 252, 194, 0.7)
+}
+
+
+
+/* Очікує виконання */
+tr.step-not-confirmed {
+	background-color: rgba(249, 234, 198, 0.6)
+}
+
+tr.step-not-confirmed:hover td {
+	background-color: rgba(249, 234, 198, 0.7)
+}
+
+
+/* <================== ПІДСВІДЧУЄМО КАРТКАХ ДІЙ ЗАЛЕЖНО ВІД ВИКОНАННЯ =============================> */
+/* Виконнано */
+tr.card-completed {
+	background-color: rgba(219, 252, 194, 0.6)
+}
+
+tr.card-completed:hover td {
+	background-color: rgba(219, 252, 194, 0.7)
+}
+
+
+/* Виконується */
+tr.card-is-performed {
+	background-color: rgba(249, 234, 198, 0.6)
+}
+
+tr.card-is-performed:hover td {
+	background-color: rgba(249, 234, 198, 0.7)
+}
+
+
+/* Не виконувалася */
+tr.card-was-not-performed {
+	background-color: rgba(249, 198, 198, 0.6)
+}
+
+tr.card-was-not-performed:hover td {
+	background-color: rgba(249, 198, 198, 0.7)
+}
+
+
+/* <================== СТИЛІ ДЛЯ РЕПОРТУ АВАРІЙ НА СТОРІНЦІ ЖУРНАЛІ АВАРІЙНОГО РЕАГУВАННЯ - 4 =============================> */
+/* #report_list_of_accidents {
+	border: 2px solid brown;
+	font-weight: bold;
+} */
+
+/* #report_list_of_accidents :where(.a-IRR-header, tr, tr:hover td)  {
+	background-color: rgb(63, 159, 63);
+} */
+
+
+
+#report_list_of_accidents .mode-accident.active-accident :where(.a-IRR-header, tr, tr:hover td) {
+	background-color: rgb(255, 63, 63);
+}
+
+
+#report_list_of_accidents .mode-training.active-accident :where(.a-IRR-header, tr, tr:hover td) {
+	background-color: rgb(255, 188, 63);
+}
+
+#report_list_of_accidents .mode-teaching.active-accident :where(.a-IRR-header, tr, tr:hover td){
+	background-color: rgb(63, 159, 63);
+}
+
+
+
+
+/* Обовязково має бути щоб при оновленні регіона IR в breadcrumbs, шабка не налазила на 1 рядок (додається відсутпи зверху js) */
+#report_list_of_accidents .t-fht-thead.js-stickyTableHeader:not(.is-stuck)  {
+	top: 0 !important;
+}
+
+/* #report_list_of_accidents .t-fht-thead, #report_list_of_accidents .js-stickyWidget-placeholder {
+	display: none;
+}
+
+#report_list_of_accidents .t-fht-tbody table {
+	margin-top: 0 !important;
+} */
+
+
+/* <================== Відображення файлів в embed =============================> */
+.cc-object-style {
+	display: block;
+	width: 100%;
+	object-fit: contain;
+}
+
+
+/* <================== BEGIN comments/chat region styles =============================> */
+.t-Chat .t-Chat--own .t-Comments-icon {
+  margin-right: 0;
+  margin-left: 12px;
+}
+ 
+.t-Chat .t-Chat--own {
+  flex-direction: row-reverse;
+}
+ 
+.t-Chat .t-Chat--own .t-Comments-body {
+  align-items: flex-end;
+}
+ 
+.t-Chat .t-Chat--own .t-Comments-comment:after {
+  border-left-color: var(--ut-comment-chat-background-color);
+  border-right-color: rgba(0,0,0,0);
+  right: none;
+  left: 100%;
+}
+
+
+.t-Comments-item:not(.t-Chat--own) .t-Comments-body .t-Comments-info::before {
+	content: "";
+	background-image: url(../icons/check-msg-gray.svg);
+	display: inline-block;
+	width: 24px;
+	height: 24px;
+	transform: translateY(7px);
+}
+
+.t-Comments-item.is-read:not(.t-Chat--own) .t-Comments-body .t-Comments-info::before {
+	content: "";
+	background-image: url(../icons/check-msg-green.svg);
+	display: inline-block;
+	width: 24px;
+	height: 24px;
+	transform: translateY(7px);
+}
+
+
+
+/* .t-Comments-item .t-Comments-body .t-Comments-info {
+	font-size: 10px;
+} */
+
+/* <==================  END comments/chat region styles  =============================> */
+
+
+
+
+/* .dialog-chat {
+	left: auto !important;
+	top: 0 !important;
+	right: 0 !important;
+} */
+
+
+/* <==================  START situation-map styles  =============================> */
+
+.leaflet-bottom.leaflet-right {
+	font-size: 10px;
+}
+
+.situation-map-container {
+	position: relative;
+	width: 100%; /*95vw;*/
+	height: 91vh;   /*85vh;*/
+	/* background-image: url("../img/test-map-1.jpg"); */
+	/* background-size: cover; */
+	/* background-repeat: no-repeat; */
+	/* background-position: center; */
+	border: 2px solid black;
+}
+
+#map {
+    position: absolute;
+    /* width: 2000px; */
+    /* height: 2000px; */
+    background: url("../img/test-map-1.jpg") no-repeat;
+    background-size: contain;
+    cursor: grab;
+    transform-origin: 0 0;
+}
+
+.marker {
+	position: absolute;
+	width: 30px;
+	height: 30px;
+	transform: translate(-50%, -50%);
+	cursor: grab;
+}
+
+
+
+.context-menu {
+	position: absolute;
+	background: white;
+	border: 1px solid #ccc;
+	box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+	border-radius: 5px;
+	display: none;
+	z-index: 1001;
+}
+
+.context-menu button {
+	width: 100%;
+	padding: 8px;
+	border: none;
+	background: none;
+	text-align: left;
+	cursor: pointer;
+	display: block;
+}
+
+.context-menu button:hover {
+	background: #f0f0f0;
+}
+
+.modal-bg {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.5);
+	display: none;
+	justify-content: center;
+	align-items: center;
+	z-index: 1000;
+}
+
+.modal {
+	background: white;
+	padding: 20px;
+	border-radius: 8px;
+	text-align: center;
+	width: 300px;
+	position: relative;
+}
+
+.modal input,
+.modal select {
+	width: 90%;
+	padding: 5px;
+	margin: 10px 0;
+}
+
+.modal button {
+	padding: 8px 12px;
+	margin-top: 10px;
+	cursor: pointer;
+	border: none;
+	background: #007bff;
+	color: white;
+	border-radius: 4px;
+}
+
+.error-message {
+	color: red;
+	font-size: 14px;
+}
+
+
+/* <========================================================> */
