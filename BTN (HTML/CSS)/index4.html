@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Кнопки та посилання з однаковим стилем</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        /* ======= ОСНОВНІ СТИЛІ ДЛЯ .btn (button або a) ======= */
+        .btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: sans-serif;
+            font-weight: 500;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            min-width: 48px;
+            height: 48px;
+            padding: 0 16px;
+            text-decoration: none;
+            /* <a> без підкреслення */
+            color: inherit;
+        }
+
+        /* Щоб <a> виглядало як кнопка */
+        a.btn {
+            background-color: inherit;
+        }
+
+        /* РОЗМІРИ */
+        .btn.sm {
+            font-size: 14px;
+        }
+
+        .btn.md {
+            font-size: 16px;
+        }
+
+        .btn.lg {
+            font-size: 18px;
+        }
+
+        /* КОЛЬОРИ */
+        .btn.primary {
+            background-color: #2563eb;
+            color: white;
+        }
+
+        .btn.danger {
+            background-color: #dc2626;
+            color: white;
+        }
+
+        .btn.primary:hover {
+            background-color: #1e40af;
+        }
+
+        .btn.danger:hover {
+            background-color: #991b1b;
+        }
+
+        /* ІКОНКИ */
+        .btn .icon {
+            font-size: 18px;
+        }
+
+        .btn.icon-left .icon {
+            order: 0;
+            margin-right: 8px;
+        }
+
+        .btn.icon-right .icon {
+            order: 1;
+            margin-left: 8px;
+        }
+
+        .btn.icon-only .icon {
+            margin: 0;
+        }
+
+        .btn.icon-only {
+            padding: 0;
+            width: 48px;
+            height: 48px;
+        }
+
+        /* ВІДСТУПИ ТІЛЬКИ ДЛЯ КНОПОК З ТЕКСТОМ */
+        .btn.icon-left:not(.icon-only):not(.round),
+        .btn.icon-right:not(.icon-only):not(.round) {
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+
+        /* ТЕКСТ */
+        .btn .text {
+            margin: 0 4px;
+        }
+
+        .btn.icon-only .text {
+            display: none;
+        }
+
+        /* БЕЙДЖ */
+        .btn .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: red;
+            color: white;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 50%;
+            font-weight: bold;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        /* DISABLED */
+        .btn.disabled,
+        .btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* LOADING */
+        .btn.loading .text,
+        .btn.loading .icon {
+            display: none;
+        }
+
+        .btn.loading::after {
+            content: '';
+            width: 18px;
+            height: 18px;
+            border: 2px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* АДАПТИВ */
+        @media (max-width: 600px) {
+            .btn.responsive .text {
+                display: none;
+            }
+
+            .btn.responsive.icon-left,
+            .btn.responsive.icon-right,
+            .btn.responsive.icon-only {
+                padding: 0;
+                min-width: 48px;
+                height: 48px;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .btn.responsive.icon-left .icon,
+            .btn.responsive.icon-right .icon {
+                margin: 0;
+            }
+        }
+
+        /* КРУГЛА КНОПКА */
+        .btn.round {
+            border-radius: 50%;
+            padding: 0;
+            width: 48px;
+            height: 48px;
+        }
+
+        /* ІКОНКА З БЕЙДЖЕМ НАД НЕЮ */
+        .icon-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .icon-wrapper .badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background-color: red;
+            color: white;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 50%;
+            font-weight: bold;
+            min-width: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+
+    <!-- 🔘 Кнопка з <button> -->
+    <button class="btn md primary icon-left">
+        <i class="fas fa-bell icon"></i>
+        <span class="text">Сповіщення</span>
+        <span class="badge">3</span>
+    </button>
+
+    <!-- 🔗 Кнопка з <a> -->
+    <a href="#" class="btn md primary icon-left">
+        <i class="fas fa-bell icon"></i>
+        <span class="text">Посилання</span>
+        <span class="badge">2</span>
+    </a>
+
+    <!-- 🛒 Іконка + бейдж над іконкою (кнопка <button>) -->
+    <button class="btn md danger icon-only">
+        <span class="icon-wrapper">
+            <i class="fas fa-shopping-cart icon"></i>
+            <span class="badge">5</span>
+        </span>
+    </button>
+
+    <!-- 🛒 Іконка + бейдж над іконкою (посилання <a>) -->
+    <a href="#" class="btn md danger icon-only" role="button">
+        <span class="icon-wrapper">
+            <i class="fas fa-shopping-cart icon"></i>
+            <span class="badge">9</span>
+        </span>
+    </a>
+
+</body>
+
+</html>
