@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Універсальна кнопка</title>
+    <!-- Font Awesome для іконок -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        /* ======= БАЗОВІ СТИЛІ КНОПКИ ======= */
+        .btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-family: sans-serif;
+            font-weight: 500;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            min-width: 48px;
+            height: 48px;
+        }
+
+        /* ======= РОЗМІРИ ======= */
+        .btn.sm {
+            font-size: 14px;
+        }
+
+        .btn.md {
+            font-size: 16px;
+        }
+
+        .btn.lg {
+            font-size: 18px;
+        }
+
+        /* ======= КОЛЬОРИ ======= */
+        .btn.primary {
+            background-color: #2563eb;
+            color: white;
+        }
+
+        .btn.danger {
+            background-color: #dc2626;
+            color: white;
+        }
+
+        .btn.primary:hover {
+            background-color: #1e40af;
+        }
+
+        .btn.danger:hover {
+            background-color: #991b1b;
+        }
+
+        /* ======= ІКОНКИ ======= */
+        .btn .icon {
+            font-size: 18px;
+        }
+
+        .btn.icon-left .icon {
+            order: 0;
+            margin-right: 8px;
+        }
+
+        .btn.icon-right .icon {
+            order: 1;
+            margin-left: 8px;
+        }
+
+        .btn.icon-only .icon {
+            margin: 0;
+            /* Центрування */
+        }
+
+        .btn.icon-only {
+            padding: 0;
+            width: 48px;
+            height: 48px;
+        }
+
+        /* Відступи тільки для кнопок з текстом */
+        .btn.icon-left:not(.icon-only):not(.round),
+        .btn.icon-right:not(.icon-only):not(.round) {
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+
+        /* ======= ТЕКСТ ======= */
+        .btn .text {
+            margin: 0 4px;
+        }
+
+        .btn.icon-only .text {
+            display: none;
+        }
+
+        /* ======= БЕЙДЖ ======= */
+        .btn .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: red;
+            color: white;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 50%;
+            font-weight: bold;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        /* ======= DISABLED ======= */
+        .btn.disabled,
+        .btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* ======= LOADING ======= */
+        .btn.loading .text,
+        .btn.loading .icon {
+            display: none;
+        }
+
+        .btn.loading::after {
+            content: '';
+            width: 18px;
+            height: 18px;
+            border: 2px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ======= АДАПТИВ ======= */
+        @media (max-width: 600px) {
+            .btn.responsive .text {
+                display: none;
+            }
+
+            .btn.responsive.icon-left,
+            .btn.responsive.icon-right,
+            .btn.responsive.icon-only {
+                padding: 0;
+                min-width: 48px;
+                height: 48px;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .btn.responsive.icon-left .icon,
+            .btn.responsive.icon-right .icon {
+                margin: 0;
+            }
+        }
+
+        /* ======= КРУГЛА КНОПКА ======= */
+        .btn.round {
+            border-radius: 50%;
+            padding: 0;
+            width: 48px;
+            height: 48px;
+        }
+    </style>
+</head>
+
+<body style="padding: 20px; display: flex; flex-direction: column; gap: 12px;">
+
+    <!-- 🔔 Іконка зліва + текст + бейдж -->
+    <button class="btn md primary icon-left">
+        <i class="fas fa-bell icon"></i>
+        <span class="text">Сповіщення</span>
+        <span class="badge">3</span>
+    </button>
+
+    <!-- 📥 Лише іконка -->
+    <button class="btn md primary icon-only">
+        <i class="fas fa-bars icon"></i>
+        <span class="text">Меню</span>
+    </button>
+
+    <!-- 👤 Іконка справа -->
+    <button class="btn lg danger icon-right">
+        <span class="text">Профіль</span>
+        <i class="fas fa-user icon"></i>
+    </button>
+
+    <!-- ⏳ Завантаження -->
+    <button class="btn md primary loading">
+        <i class="fas fa-download icon"></i>
+        <span class="text">Завантаження</span>
+    </button>
+
+    <!-- 🚫 Disabled -->
+    <button class="btn md primary disabled" disabled>
+        <i class="fas fa-lock icon"></i>
+        <span class="text">Заблоковано</span>
+    </button>
+
+    <!-- 📱 Адаптивна кнопка -->
+    <button class="btn md primary icon-left responsive">
+        <i class="fas fa-envelope icon"></i>
+        <span class="text">Пошта</span>
+    </button>
+
+    <!-- 🛒 Лише іконка + бейдж -->
+    <button class="btn md danger icon-only">
+        <i class="fas fa-shopping-cart icon"></i>
+        <span class="badge">5</span>
+    </button>
+
+    <!-- 🔘 Кругла кнопка -->
+    <button class="btn md primary icon-only round">
+        <i class="fas fa-bell icon"></i>
+        <span class="badge">8</span>
+    </button>
+
+</body>
+
+</html>
