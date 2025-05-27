@@ -44,3 +44,37 @@ const proxy = new Proxy(
 )
 
 export default proxy
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// src/logger/index.js
+
+import consoleLogger from './consoleLogger.js';
+import winstonLogger from './winstonLogger.js';
+
+const LOG_PROVIDER = process.env.LOG_PROVIDER || 'console';
+
+let logger;
+
+switch (LOG_PROVIDER.toLowerCase()) {
+  case 'winston':
+    logger = winstonLogger;
+    break;
+  case 'console':
+  default:
+    logger = consoleLogger;
+    break;
+}
+
+export default logger;
