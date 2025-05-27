@@ -1,0 +1,43 @@
+{
+    // **Індентація**
+    "editor.tabSize": 4,                // Визначає ширину табуляції у пробілах (у цьому випадку 4 пробіли).
+    "editor.insertSpaces": true,        // Вставляти пробіли замість табуляції.
+    "editor.detectIndentation": false,  // Вимкнути автоматичне визначення відступів (завжди використовувати задані).
+
+    // **Автозбереження**
+    "files.autoSave": "afterDelay",     // Автоматично зберігати зміни після невеликої затримки.
+    "files.autoSaveDelay": 1000,        // Затримка в мілісекундах для автозбереження (1000 мс = 1 секунда).
+
+    // **Форматування**
+    "editor.formatOnSave": true,        // Автоматичне форматування коду під час збереження файлу.
+    "editor.formatOnPaste": true,       // Автоматичне форматування під час вставки тексту.
+
+
+    // **Підсвітка та зручність редагування**
+    "editor.cursorSmoothCaretAnimation": "explicit",    // Плавна анімація для курсору.
+    "editor.minimap.enabled": false,                    // Відображення мінікарти праворуч.
+    "editor.lineNumbers": "on",                         // Включити відображення номерів рядків.
+    "editor.renderWhitespace": "selection",            // Відображення пробілів, табуляцій і перенесень рядків.
+
+    // **Продуктивність**
+    // "workbench.startupEditor": "newUntitledFile", // Відкривати новий файл замість стартової сторінки.
+    "files.trimTrailingWhitespace": true,        // Автоматично видаляти пробіли в кінці рядків.
+    "files.insertFinalNewline": true,            // Додавати порожній рядок у кінець файлу.
+    "files.trimFinalNewlines": true,             // Видаляти зайві порожні рядки в кінці файлу.
+
+    // **Темна тема та вигляд**
+    // "workbench.colorTheme": "Default Dark+",     // Вибір теми оформлення (у цьому випадку темна тема).
+    "editor.fontSize": 17,                       // Розмір шрифту в редакторі.
+    "editor.fontFamily": "Consolas, 'Courier New', monospace", // Шрифт (підтримка "лігатур", якщо шрифт це дозволяє).
+    "editor.fontLigatures": true,                // Увімкнути лігатури для спеціальних символів (наприклад, `=>`).
+
+    // **Панель терміналу**
+    "terminal.integrated.fontSize": 14,          // Розмір шрифту в терміналі.
+    "terminal.integrated.defaultProfile.windows": "Command Prompt", // Профіль термінала за замовчуванням у Windows.
+    "terminal.integrated.defaultProfile.linux": "bash",             // Профіль термінала за замовчуванням у Linux.
+
+    // **Мови**
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode" // Вибір форматувальника для JavaScript (Prettier).
+    },
+}
