@@ -120,8 +120,9 @@ class OracleDbManager {
 
         return options
     }
+
     // 🔧 Профілювання запитів (SQL + час + params)
-    async profile(fn, sql, params) {
+    async profiler(fn, sql, params) {
         const start = process.hrtime.bigint()
         // const start = Date.now()
         const result = await fn()
@@ -145,7 +146,7 @@ class OracleDbManager {
             const generalOptions = await this.mergeOptions(options)
             connection = await this.getConnection(dbName, usePool)
 
-            const result = await this.profile(
+            const result = await this.profiler(
                 () => connection.execute(sql, params, generalOptions),
                 sql,
                 params,
@@ -172,7 +173,7 @@ class OracleDbManager {
             const generalOptions = await this.mergeOptions(options)
             connection = await this.getConnection(dbName, usePool)
 
-            const result = await this.profile(
+            const result = await this.profiler(
                 () => connection.executeMany(sql, binds, generalOptions),
                 sql,
                 binds,
@@ -225,7 +226,7 @@ class OracleDbManager {
     // Метод execute, що дозволяє явно виконати запит з конкретним connection (для транзакцій)
     async executeWithConnection(connection, sql, params = {}, options = {}) {
         const generalOptions = { ...this.defaultOptions, ...options, autoCommit: false }
-        const result = await this.profile(
+        const result = await this.profiler(
             () => connection.execute(sql, params, generalOptions),
             sql,
             params,
