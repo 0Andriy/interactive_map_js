@@ -34,8 +34,13 @@ class JwtManager {
      * @param {object} userConfig - Кастомна конфігурація
      */
     constructor(userConfig = {}) {
-        // Виклик статичного методу
-        JwtManager.getInstance(userConfig)
+        // Реалізація патерну (Singleton)
+        if (JwtManager._instance) {
+            // Якщо інстанс вже існує — повертаємо його
+            return JwtManager._instance
+        }
+        // Зберігаємо інстанс для Singleton
+        JwtManager._instance = this
 
         /**
          * Конфігурація за замовчуванням.
