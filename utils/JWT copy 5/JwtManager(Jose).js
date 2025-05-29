@@ -48,6 +48,7 @@ class JwtManager {
                     generateJti: true, // Чи генерувати jti (JWT ID)
                     kid: null, // kid для підпису (опціонально)
                     payloadValidator: null, // callback для валідації payload
+                    allowNoExpiration: false, // Чи може токен бути вічним
                 },
                 refresh: {
                     algorithm: 'HS256', // Алгоритм підпису
@@ -65,6 +66,25 @@ class JwtManager {
                     generateJti: true, // Чи генерувати jti (JWT ID)
                     kid: null, // kid для підпису (опціонально)
                     payloadValidator: null, // callback для валідації payload
+                    allowNoExpiration: false, // Чи може токен бути вічним
+                },
+                apiKey: {
+                    algorithm: 'HS256', // Алгоритм підпису
+                    expiresIn: null, // Час життя токена
+                    keySource: 'env', // Джерело ключа: env, file, db, jwks
+                    secretKey: 'API_KEY_SECRET', // Назва env змінної з секретом
+                    keyId: null, // ID ключа для запиту до бази даних
+                    privateKeyPath: null, //Шлях до файлу з приватним ключем
+                    publicKeyPath: null, //Шлях до файлу з публічним ключем
+                    jwksUri: null, //url для отримання публічного ключа для валідації
+                    cacheTTL: 5 * 60 * 1000, // Час кешування ключа в мс
+                    loader: async (keyId) => {
+                        return { key, privateKey, publicKey }
+                    }, // Функція для завантаження ключів з бази даних
+                    generateJti: true, // Чи генерувати jti (JWT ID)
+                    kid: null, // kid для підпису (опціонально)
+                    payloadValidator: null, // callback для валідації payload
+                    allowNoExpiration: true, // Чи може токен бути вічним
                 },
             },
         }
@@ -252,7 +272,7 @@ class JwtManager {
             jwt.setExpirationTime(options.exp)
         } else if (options.expiresIn !== undefined) {
             jwt.setExpirationTime('' + (Math.floor(Date.now() / 1000) + Number(options.expiresIn)))
-        } else if (cfg.expiresIn !== undefined) {
+        } else if (cfg.expiresIn !== undefined && cfg.expiresIn !== null) {
             jwt.setExpirationTime('' + (Math.floor(Date.now() / 1000) + Number(cfg.expiresIn)))
         }
 
@@ -302,7 +322,9 @@ class JwtManager {
                 result = await jwtVerify(token, verifyKey, { algorithms: [cfg.algorithm] })
             }
         } catch (err) {
-            throw new Error(`Token verification failed: ${err.message}`)
+            if (!(cfg.allowNoExpiration && err?.code === 'ERR_JWT_EXPIRED')) {
+                throw new Error(`Token verification failed: ${err.message}`)
+            }
         }
 
         if (typeof cfg.payloadValidator === 'function') {
@@ -324,6 +346,30 @@ class JwtManager {
         return decodeJwt(token)
     }
 
+    /**
+     * Розбирає строку з тривалістю (expiresIn) у секунди.
+     * Підтримуються формати:
+     * - число (вважається кількістю секунд)
+     * - строка з числом і одиницею часу: 's' (секунди), 'm' (хвилини), 'h' (години), 'd' (дні)
+     *
+     * Приклади:
+     * - '15m' => 900 (15 хвилин у секундах)
+     * - '2h'  => 7200
+     * - 30    => 30 (число, повертається як є)
+     *
+     * @param {string|number} str - Час у форматі рядка або число секунд
+     * @returns {number} Час у секундах
+     * @throws {Error} Якщо формат рядка некоректний
+     */
+    async parseExpiresIn(str) {
+        if (typeof str === 'number') return str
+        const match = /^(\d+)([smhd])?$/.exec(str)
+        if (!match) throw new Error(`Invalid expiresIn format: ${str}`)
+        const value = parseInt(match[1])
+        const unit = match[2] || 's'
+        const multipliers = { s: 1, m: 60, h: 3600, d: 86400 }
+        return value * multipliers[unit]
+    }
     /** ----------- Автооновлення ключів ----------- */
 
     /**
