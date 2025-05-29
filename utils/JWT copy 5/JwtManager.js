@@ -27,7 +27,7 @@ function generateJti() {
  */
 class JwtManager {
     // Ініціалізація статичного поля _instance (Singleton)
-    _instance = null
+    static _instance = null
 
     /**
      * Створює або повертає існуючий інстанс JwtManager (Singleton)
@@ -263,16 +263,11 @@ class JwtManager {
         const cfg = this.config.tokenTypes[tokenType]
         const keys = await this.getKeys(tokenType)
 
-        let key
         if (cfg.keySource === 'jwks') {
-            if (!cfg.privateKey)
-                throw new Error('privateKey must be set in config for signing with jwks')
-            key = cfg.privateKey
-        } else if (cfg.algorithm.startsWith('HS')) {
-            key = keys.secret
-        } else {
-            key = keys.privateKey
+            throw new Error('Signing with JWKS source is not supported')
         }
+
+        const key = cfg.algorithm.startsWith('HS') ? keys.secret : keys.privateKey
 
         // Опції для jwt.sign
         const allowedOptions = [
@@ -341,8 +336,9 @@ class JwtManager {
         // Виконуємо додаткову валідацію payload, якщо є
         if (typeof cfg.payloadValidator === 'function') {
             const result = cfg.payloadValidator(verified)
-            if (!result.isValid) {
-                throw new Error(`Payload validation failed: ${result.errors.join(', ')}`)
+            if (!result || typeof result !== 'object' || !result.isValid) {
+                const errors = result?.errors?.join(', ') || 'Unknown validation error'
+                throw new Error(`Payload validation failed: ${errors}`)
             }
         }
 
