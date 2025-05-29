@@ -60,6 +60,7 @@ class JwtManager {
                     generateJti: true, // Чи генерувати jti (JWT ID)
                     kid: null, // kid для підпису (опціонально)
                     payloadValidator: null, // callback для валідації payload
+                    jwksUri: null, //url для отримання публічного ключа для валідації
                 },
                 refresh: {
                     algorithm: 'HS256', // Алгоритм підпису
@@ -73,6 +74,7 @@ class JwtManager {
                     generateJti: true, // Чи генерувати jti (JWT ID)
                     kid: null, // kid для підпису (опціонально)
                     payloadValidator: null, // callback для валідації payload
+                    jwksUri: null, //url для отримання публічного ключа для валідації
                 },
             },
         }
