@@ -317,6 +317,11 @@ class JwtManager {
         const decoded = jwt.decode(token, { complete: true })
         if (!decoded) throw new Error('Invalid token')
 
+        const headerAlg = decoded.header.alg
+        if (headerAlg !== cfg.algorithm) {
+            throw new Error(`Unexpected token algorithm: ${headerAlg}`)
+        }
+
         let key
         if (cfg.keySource === 'jwks') {
             // Визначаємо key за kid
