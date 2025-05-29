@@ -49,7 +49,9 @@ class JwtManager {
                     keySource: 'env', // Джерело ключа: env, file, db, jwks
                     secretKey: 'ACCESS_TOKEN_SECRET', // Назва env змінної з секретом
                     cacheTTL: 5 * 60 * 1000, // Час кешування ключа в мс
-                    loader: async (keyId) => {}, // Функція для завантаження ключів з бази даних
+                    loader: async (keyId) => {
+                        return { secret, privateKey, publicKey }
+                    }, // Функція для завантаження ключів з бази даних
                     generateJti: true, // Чи генерувати jti (JWT ID)
                     kid: null, // kid для підпису (опціонально)
                     payloadValidator: null, // callback для валідації payload
@@ -60,7 +62,9 @@ class JwtManager {
                     keySource: 'env', // Джерело ключа: env, file, db, jwks
                     secretKey: 'REFRESH_TOKEN_SECRET', // Назва env змінної з секретом
                     cacheTTL: 5 * 60 * 1000, // Час кешування ключа в мс
-                    loader: async (keyId) => {}, // Функція для завантаження ключів з бази даних
+                    loader: async (keyId) => {
+                        return { secret, privateKey, publicKey }
+                    }, // Функція для завантаження ключів з бази даних
                     generateJti: true, // Чи генерувати jti (JWT ID)
                     kid: null, // kid для підпису (опціонально)
                     payloadValidator: null, // callback для валідації payload
