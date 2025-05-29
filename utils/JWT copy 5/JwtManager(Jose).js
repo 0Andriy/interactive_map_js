@@ -26,26 +26,53 @@ class JwtManager {
         if (JwtManager._instance) return JwtManager._instance
         JwtManager._instance = this
 
+        /**
+         * Конфігурація за замовчуванням.
+         * Користувач може переоприділяти через userConfig
+         */
         this.defaultConfig = {
             tokenTypes: {
                 access: {
-                    algorithm: 'HS256',
-                    expiresIn: 900, // 15 хвилин (у секундах)
-                    keySource: 'env',
-                    secretKey: 'ACCESS_TOKEN_SECRET',
-                    cacheTTL: 5 * 60 * 1000, // 5 хв кеш ключів
-                    generateJti: true,
-                    kid: null,
-                    payloadValidator: null,
-                    jwksUri: null,
+                    algorithm: 'HS256', // Алгоритм підпису
+                    expiresIn: '15m', // Час життя токена
+                    keySource: 'env', // Джерело ключа: env, file, db, jwks
+                    secretKey: 'ACCESS_TOKEN_SECRET', // Назва env змінної з секретом
+                    keyId: null, // ID ключа для запиту до бази даних
+                    privateKeyPath: null, //Шлях до файлу з приватним ключем
+                    publicKeyPath: null, //Шлях до файлу з публічним ключем
+                    jwksUri: null, //url для отримання публічного ключа для валідації
+                    cacheTTL: 5 * 60 * 1000, // Час кешування ключа в мс
+                    loader: async (keyId) => {
+                        return { key, privateKey, publicKey }
+                    }, // Функція для завантаження ключів з бази даних
+                    generateJti: true, // Чи генерувати jti (JWT ID)
+                    kid: null, // kid для підпису (опціонально)
+                    payloadValidator: null, // callback для валідації payload
+                },
+                refresh: {
+                    algorithm: 'HS256', // Алгоритм підпису
+                    expiresIn: '12h', // Час життя токена
+                    keySource: 'env', // Джерело ключа: env, file, db, jwks
+                    secretKey: 'REFRESH_TOKEN_SECRET', // Назва env змінної з секретом
+                    keyId: null, // ID ключа для запиту до бази даних
+                    privateKeyPath: null, //Шлях до файлу з приватним ключем
+                    publicKeyPath: null, //Шлях до файлу з публічним ключем
+                    jwksUri: null, //url для отримання публічного ключа для валідації
+                    cacheTTL: 5 * 60 * 1000, // Час кешування ключа в мс
+                    loader: async (keyId) => {
+                        return { key, privateKey, publicKey }
+                    }, // Функція для завантаження ключів з бази даних
+                    generateJti: true, // Чи генерувати jti (JWT ID)
+                    kid: null, // kid для підпису (опціонально)
+                    payloadValidator: null, // callback для валідації payload
                 },
             },
         }
 
-        /** @type {object} Об'єднана конфігурація */
+        /** @type {object} Об'єднана конфігурація (дефолтні + користувацькі) */
         this.config = this.mergeConfigs(this.defaultConfig, userConfig)
 
-        /** @type {Map<string, {keys: object, cachedAt: number}>} Кеш ключів */
+        /** @type {Map<string, {keys: object, cachedAt: number, ttlMs: number}>} Кеш ключів */
         this.keyCache = new Map()
 
         /** @type {object} Об'єкт з функціями для завантаження ключів */
@@ -158,7 +185,7 @@ class JwtManager {
         const loader = this.keyLoaders[cfg.keySource]
         if (!loader) throw new Error(`Unknown key source: ${cfg.keySource}`)
         const keys = await loader(cfg)
-        this.keyCache.set(tokenType, { keys, cachedAt: now })
+        this.keyCache.set(tokenType, { keys, cachedAt: now, ttlMs: ttl })
         return keys
     }
 
@@ -206,16 +233,17 @@ class JwtManager {
         const alg = cfg.algorithm
         const signKey = alg.startsWith('HS') ? key : await importJWK(privateKey, alg)
 
+        // Ініціалізація з payload
         const jwt = new SignJWT({ ...payload })
 
-        // Заголовки
+        // Встановлення заголовків (header)
         const header = { alg, ...(cfg.kid ? { kid: cfg.kid } : {}), ...(options.header || {}) }
         jwt.setProtectedHeader(header)
 
         // Встановлюємо iat (час видачі) або беремо з options
         if (options.iat !== undefined) {
             jwt.setIssuedAt(options.iat)
-        } else if (options.noIat !== true) {
+        } else {
             jwt.setIssuedAt() // автоматично ставить поточний час
         }
 
