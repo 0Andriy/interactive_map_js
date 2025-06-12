@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--License: Apache. Made by googlefonts: https://github.com/googlefonts/noto-emoji-->
+<svg width="50" height="70" viewBox="0 0 365 560" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img"
+    preserveAspectRatio="xMidYMid meet">
+    <!--Title and Description for better accessibility-->
+    <title>Map Marker Icon with House</title>
+    <desc>
+        A map marker with a blue color, circular center, and a house image centered on top.
+    </desc>
+    <!--Фон маркера-->
+    <path fill="#c924c9" d="M182.9,551.7c0,0.1,0.2,0.3,0.2,0.3S358.3,283,358.3,194.6c0-130.1-88.8-186.7-175.4-186.9
+        C96.3,7.9,7.5,64.5,7.5,194.6c0,88.4,175.3,357.4,175.3,357.4S182.9,551.7,182.9,551.7z M122.2,187.2c0-33.6,27.2-60.8,60.8-60.8
+        c33.6,0,60.8,27.2,60.8,60.8S216.5,248,182.9,248C149.4,248,122.2,220.8,122.2,187.2z" />
+    <!--Додаємо коло для закриття дірки-->
+    <circle cx="182.9" cy="187.2" r="64.8" fill="#c924c9" />
+    <!--Додаємо зображення, центруючи його на дірці-->
+    <!--<image x="82.9" y="87.2" width="200" height="200"
+        href="data:image/png;base64,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" />-->
+    <!--Додаємо SVG замість картинки доміка, центруючи його на дірці-->
+    <g transform="translate(50, -50)">
+        <!--Переміщаємо SVG до центру кола-->
+        <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+            x="0px" y="0px" viewBox="0 0 700 700" style="enable-background:new 0 0 512 512;" xml:space="preserve">
+            <path style="fill:#FF9900;" d="M507.494,426.066L282.864,53.536c-5.677-9.415-15.87-15.172-26.865-15.172
+	c-10.994,0-21.188,5.756-26.865,15.172L4.506,426.066c-5.842,9.689-6.015,21.774-0.451,31.625
+	c5.564,9.852,16.001,15.944,27.315,15.944h449.259c11.314,0,21.751-6.093,27.315-15.944
+	C513.509,447.839,513.336,435.755,507.494,426.066z" />
+            <path style="fill:#FFDC35;"
+                d="M255.999,38.365c-10.994,0-21.188,5.756-26.865,15.172L4.506,426.066
+	c-5.842,9.689-6.015,21.774-0.451,31.625c5.564,9.852,16.001,15.944,27.315,15.944h224.629L255.999,38.365L255.999,38.365z" />
+            <path style="fill:#F20013;"
+                d="M445.326,432.791H67.108c-3.591,0-6.911-1.909-8.718-5.012c-1.807-3.104-1.827-6.934-0.055-10.056
+	L247.23,85.028c1.792-3.155,5.139-5.106,8.767-5.107c0.001,0,0.003,0,0.004,0c3.626,0,6.974,1.946,8.767,5.099l189.324,332.694
+	c1.777,3.123,1.759,6.955-0.047,10.061S448.918,432.791,445.326,432.791z M84.436,412.616h343.543L256.013,110.423L84.436,412.616z" />
+            <path style="fill:#FF4B00;" d="M256.332,412.616H84.436l171.576-302.192l-0.01-30.501h-0.005c-3.628,0.001-6.976,1.951-8.767,5.107
+	L58.336,417.722c-1.773,3.123-1.752,6.953,0.055,10.056c1.807,3.104,5.127,5.012,8.718,5.012h189.224v-20.175H256.332z" />
+            <path style="fill:#533F29;"
+                d="M279.364,376.883c0,12.344-10.537,23.182-22.88,23.182c-13.246,0-23.182-10.838-23.182-23.182
+	c0-12.644,9.935-23.182,23.182-23.182C268.826,353.701,279.364,364.238,279.364,376.883z M273.644,319.681
+	c0,9.333-10.236,13.246-17.462,13.246c-9.634,0-17.762-3.914-17.762-13.246c0-35.826-4.214-87.308-4.214-123.134
+	c0-11.741,9.634-18.365,21.977-18.365c11.741,0,21.677,6.623,21.677,18.365C277.858,232.373,273.644,283.855,273.644,319.681z" />
+        </svg>
+    </g>
+</svg>
