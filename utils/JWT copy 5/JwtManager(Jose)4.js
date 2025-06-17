@@ -74,6 +74,13 @@ class JwtManager {
         }
         JwtManager._instance = this
 
+        // Встановлюємо кастомний логер, якщо він переданий у userConfig
+        if (userConfig.logger) {
+            this.setLogger(userConfig.logger)
+            // Видаляємо логер з userConfig, щоб він не потрапив у this.config
+            delete userConfig.logger
+        }
+
         /**
          * @private
          * @type {object} Конфігурація за замовчуванням для різних типів токенів.
