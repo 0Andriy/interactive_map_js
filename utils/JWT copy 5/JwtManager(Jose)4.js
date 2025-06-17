@@ -187,7 +187,7 @@ class JwtManager {
          * @type {object} Об'єднана конфігурація, яка є результатом злиття `defaultConfig` та `userConfig`.
          * Це дозволяє легко налаштовувати поведінку `JwtManager`.
          */
-        this.config = this.mergeConfigs(this.defaultConfig, userConfig)
+        this.config = userConfig || this.defaultConfig //this.mergeConfigs(this.defaultConfig, userConfig)
 
         /**
          * @private
