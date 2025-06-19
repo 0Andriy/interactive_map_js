@@ -18,6 +18,7 @@ class OracleDbManager {
      * @private
      * @typedef {Object} Logger
      * @property {function(...any): void} info - Logs informational messages.
+     * @property {function(...any): void} warning - Logs warning messages.
      * @property {function(...any): void} error - Logs error messages.
      * @property {function(...any): void} debug - Logs debug messages.
      */
@@ -28,6 +29,7 @@ class OracleDbManager {
      */
     static #defaultLogger = {
         info: (...args) => console.log('[INFO]', ...args),
+        warning: (...args) => console.log('[WARNING]', ...args),
         error: (...args) => console.error('[ERROR]', ...args),
         debug: (...args) => console.debug('[DEBUG]', ...args),
     }
@@ -73,8 +75,23 @@ class OracleDbManager {
         this.defaultConfig = {
             // user: 'admin', // Consider removing defaults for sensitive info
             // password: 'admin', // Consider removing defaults for sensitive info
-            // connectString: 'admin', // Consider removing defaults for sensitive info
+            // connectString: `(DESCRIPTION=(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST=ip)(PORT=port)))(CONNECT_DATA=(SID=sid)))`, // Consider removing defaults for sensitive info
+            // edition: 'ORA$BASE', // used for Edition Based Redefintion
+            // events: false, // whether to handle Oracle Database FAN and RLB events or support CQN
+            // externalAuth: false, // whether connections should be established using External Authentication
+            // homogeneous: true, // all connections in the pool have the same credentials
+            // poolAlias: 'default', // set an alias to allow access to the pool via a name.
+            // poolIncrement: 1, // only grow the pool by one connection at a time
+            // poolMax: 4, // maximum size of the pool. (Note: Increase UV_THREADPOOL_SIZE if you increase poolMax in Thick mode)
+            // poolMin: 0, // start with no connections; let the pool shrink completely
+            // poolPingInterval: 60, // check aliveness of connection if idle in the pool for 60 seconds
+            // poolTimeout: 60, // terminate connections that are idle in the pool for 60 seconds
+            // queueMax: 500, // don't allow more than 500 unsatisfied getConnection() calls in the pool queue
+            // queueTimeout: 60000, // terminate getConnection() calls queued for longer than 60000 milliseconds
             sessionCallback: this.initSession.bind(this), // Bind 'this' to ensure logger context
+            // sodaMetaDataCache: false, // Set true to improve SODA collection access performance
+            // stmtCacheSize: 30, // number of statements that are cached in the statement cache of each connection
+            // enableStatistics: false, // record pool usage for oracledb.getPool().getStatistics() and logStatistics()
         }
 
         /**
@@ -82,7 +99,7 @@ class OracleDbManager {
          * @type {object}
          */
         this.defaultOptions = {
-            autoCommit: true,
+            autoCommit: true, // Default to autoCommit true for single operations
             outFormat: oracledb.OUT_FORMAT_OBJECT,
             fetchTypeHandler: (metaData) => {
                 if (metaData.dbType === oracledb.DB_TYPE_BLOB) {
@@ -118,6 +135,9 @@ class OracleDbManager {
                 // throw new Error(`Failed to initialize Oracle Thick Client: ${err.message}`);
             }
         }
+
+        // Додаємо опцію для профілювання
+        this.enableProfiling = dbConfig.enableProfiling === true // За замовчуванням false або undefined
 
         /**
          * List of allowed database names from the configuration.
@@ -358,7 +378,12 @@ class OracleDbManager {
      * @param {object} [profilerOptions={}] - Options for profiler (e.g., `maskSensitiveParams: true`).
      * @returns {Promise<any>} - The result of the profiled function.
      */
-    async profiler(fn, sql, params, profilerOptions = {}) {
+    async profiler(fn, sql, params) {
+        // Перевіряємо, чи увімкнено профілювання
+        if (!this.enableProfiling) {
+            return await fn() // Якщо вимкнено, просто виконайте функцію без профілювання
+        }
+
         const start = process.hrtime.bigint()
         const result = await fn()
         const end = process.hrtime.bigint()
@@ -423,20 +448,40 @@ class OracleDbManager {
 
     /**
      * Executes a single SQL query against a specified database.
-     * Automatically handles getting and closing the connection if pooling is used.
+     * Automatically handles getting and closing the connection if pooling is used and no existing connection is provided.
+     * When `connection` is provided (e.g., for transactions), `autoCommit` should be managed externally.
      * @param {string} dbName - The name of the database to execute the query against.
      * @param {string} sql - The SQL query string to execute.
      * @param {object} [params={}] - Bind parameters for the SQL query.
      * @param {object} [options={}] - OracleDB execution options.
      * @param {boolean} [usePool=this.usePool] - Whether to use a connection from a pool. Defaults to `this.usePool`.
+     * @param {import('oracledb').Connection} [connectionToUse=null] - An optional existing connection to use (for transactions).
      * @returns {Promise<import('oracledb').Result<any>>} - The result of the SQL execution.
      * @throws {Error} If there is an error during query execution.
      */
-    async execute(dbName, sql, params = {}, options = {}, usePool = this.usePool) {
-        let connection
+    async execute(
+        dbName,
+        sql,
+        params = {},
+        options = {},
+        usePool = this.usePool,
+        connectionToUse = null,
+    ) {
+        let connection = connectionToUse
+        let connectionAcquiredLocally = false // Flag to know if we acquired the connection in this method
+
         try {
             const generalOptions = await this.mergeOptions(options)
-            connection = await this.getConnection(dbName, usePool)
+
+            if (!connection) {
+                // If no connection is provided, acquire one locally
+                connection = await this.getConnection(dbName, usePool)
+                connectionAcquiredLocally = true
+            } else {
+                // If a connectionToUse is provided, ensure autoCommit is false for it
+                // as it's assumed to be part of a larger transaction or manually managed.
+                generalOptions.autoCommit = false
+            }
 
             const result = await this.profiler(
                 () => connection.execute(sql, params, generalOptions),
@@ -449,8 +494,11 @@ class OracleDbManager {
             this.#logger.error(`Error executing query: ${sql}`, error)
             throw new Error(`Error executing query: ${sql} \n${error.message}`)
         } finally {
-            if (connection && usePool) {
+            // Only close the connection if it was acquired within this method and pooling is used.
+            // If connectionToUse was provided, it's the caller's responsibility to close/release it.
+            if (connectionAcquiredLocally && connection && usePool) {
                 try {
+                    connection.autoCommit = this.defaultOptions.autoCommit
                     await connection.close()
                 } catch (error) {
                     this.#logger.error(
@@ -464,20 +512,40 @@ class OracleDbManager {
 
     /**
      * Executes multiple SQL queries in a batch (e.g., for bulk inserts/updates).
-     * Automatically handles getting and closing the connection if pooling is used.
+     * Automatically handles getting and closing the connection if pooling is used and no existing connection is provided.
+     * When `connection` is provided (e.g., for transactions), `autoCommit` should be managed externally.
      * @param {string} dbName - The name of the database to execute the batch against.
      * @param {string} sql - The SQL query string to execute (e.g., an INSERT statement).
      * @param {Array<object>} [binds=[]] - An array of bind parameter objects for each row/operation.
      * @param {object} [options={}] - OracleDB execution options (e.g., `batchErrors: true`).
      * @param {boolean} [usePool=this.usePool] - Whether to use a connection from a pool. Defaults to `this.usePool`.
+     * @param {import('oracledb').Connection} [connectionToUse=null] - An optional existing connection to use (for transactions).
      * @returns {Promise<import('oracledb').Result<any>>} - The result of the batch execution.
      * @throws {Error} If there is an error during batch execution.
      */
-    async executeMany(dbName, sql, binds = [], options = {}, usePool = this.usePool) {
-        let connection
+    async executeMany(
+        dbName,
+        sql,
+        binds = [],
+        options = {},
+        usePool = this.usePool,
+        connectionToUse = null,
+    ) {
+        let connection = connectionToUse
+        let connectionAcquiredLocally = false
+
         try {
             const generalOptions = await this.mergeOptions(options)
-            connection = await this.getConnection(dbName, usePool)
+
+            if (!connection) {
+                // If no connection is provided, acquire one locally
+                connection = await this.getConnection(dbName, usePool)
+                connectionAcquiredLocally = true
+            } else {
+                // If a connectionToUse is provided, ensure autoCommit is false for it
+                // as it's assumed to be part of a larger transaction or manually managed.
+                generalOptions.autoCommit = false
+            }
 
             const result = await this.profiler(
                 () => connection.executeMany(sql, binds, generalOptions),
@@ -490,8 +558,9 @@ class OracleDbManager {
             this.#logger.error(`Error executing queryMany: ${sql}`, error)
             throw new Error(`Error executing queryMany: ${sql} \n${error.message}`)
         } finally {
-            if (connection && usePool) {
+            if (connectionAcquiredLocally && connection && usePool) {
                 try {
+                    connection.autoCommit = this.defaultOptions.autoCommit
                     await connection.close()
                 } catch (error) {
                     this.#logger.error(
@@ -503,88 +572,143 @@ class OracleDbManager {
         }
     }
 
-    /**
-     * Executes a series of database operations within a transaction.
-     * The callback function receives the connection object, allowing multiple
-     * operations to use the same transaction. The transaction is committed on success
-     * and rolled back on error.
-     * @param {string} dbName - The name of the database to perform the transaction on.
-     * @param {(connection: import('oracledb').Connection) => Promise<any>} callback - An asynchronous function containing the transaction logic.
-     * @param {boolean} [usePool=this.usePool] - Whether to get a connection from a pool for the transaction. Defaults to `this.usePool`.
-     * @returns {Promise<any>} - The result of the callback function.
-     * @throws {Error} If an error occurs during the transaction, or if the connection cannot be acquired.
-     */
-    async executeInTransaction(dbName, callback, usePool = this.usePool) {
-        let connection
-        try {
-            connection = await this.getConnection(dbName, usePool)
-            this.#logger.info(`Transaction started for ${dbName}.`)
+    // <========================= Методи для транзакцій ====================================>
 
+    /**
+     * Begins a new transaction by acquiring a connection and setting autoCommit to false.
+     * This connection *must* be explicitly committed or rolled back and then released.
+     * @param {string} dbName - The name of the database to start the transaction on.
+     * @param {boolean} [usePool=true] - Whether to get a connection from a pool. It's highly recommended to use a pool for transactions.
+     * @returns {Promise<import('oracledb').Connection>} The OracleDB connection object for the transaction.
+     * @throws {Error} If unable to acquire a connection.
+     */
+    async beginTransaction(dbName, usePool = true) {
+        this.#logger.info(`Starting transaction for database: ${dbName}`)
+        try {
+            const connection = await this.getConnection(dbName, usePool)
             // Ensure autoCommit is false for transactions
             connection.autoCommit = false
-
-            const result = await callback(connection)
-
-            await connection.commit()
-            this.#logger.info(`Transaction committed for ${dbName}.`)
-
-            return result
+            return connection
         } catch (error) {
-            if (connection) {
-                try {
-                    await connection.rollback()
-                    this.#logger.error(
-                        `Transaction rolled back for ${dbName} due to error: ${error.message}`,
-                    )
-                } catch (rollbackError) {
-                    this.#logger.error(`Error during rollback for ${dbName}:`, rollbackError)
-                }
-            }
+            this.#logger.error(`Failed to begin transaction for ${dbName}:`, error)
+            throw error
+        }
+    }
+
+    /**
+     * Commits the transaction on the given connection and releases it back to the pool.
+     * @param {import('oracledb').Connection} connection - The connection object on which to commit.
+     * @returns {Promise<void>}
+     */
+    async commit(connection) {
+        if (!connection) {
+            this.#logger.error('Attempted to commit with a null or undefined connection.')
+            throw new Error('No connection provided for commit operation.')
+        }
+
+        this.#logger.info('Committing transaction.')
+
+        try {
+            await connection.commit()
+            this.#logger.info('Transaction committed successfully.')
+        } catch (error) {
+            this.#logger.error('Error committing transaction:', error)
             throw error
         } finally {
-            if (connection && usePool) {
-                try {
-                    // Reset autoCommit to default before returning to pool
-                    connection.autoCommit = this.defaultOptions.autoCommit
-                    await connection.close()
-                } catch (error) {
-                    this.#logger.error(
-                        `Error closing connection for ${dbName} after transaction:`,
-                        error,
-                    )
-                }
+            // Always release the connection back to the pool after commit
+            try {
+                connection.autoCommit = this.defaultOptions.autoCommit
+                await connection.close()
+            } catch (releaseError) {
+                this.#logger.error('Error releasing connection after commit:', releaseError)
             }
         }
     }
 
     /**
-     * Executes a SQL query using a provided OracleDB connection.
-     * This method is particularly useful when you need to perform multiple operations
-     * within an existing transaction or with a specific connection, without
-     * automatically acquiring and releasing it.
-     * @param {import('oracledb').Connection} connection - The OracleDB connection object to use.
-     * @param {string} sql - The SQL query string to execute.
-     * @param {object} [params={}] - Bind parameters for the SQL query.
-     * @param {object} [options={}] - OracleDB execution options. `autoCommit` will be set to `false` by default.
-     * @returns {Promise<import('oracledb').Result<any>>} - The result of the SQL execution.
-     * @throws {Error} If there is an error during query execution.
+     * Rolls back the transaction on the given connection and releases it back to the pool.
+     * @param {import('oracledb').Connection} connection - The connection object on which to rollback.
+     * @returns {Promise<void>}
      */
-    async executeWithConnection(connection, sql, params = {}, options = {}) {
-        // Ensure autoCommit is false for operations within a manually managed connection (e.g., transaction)
-        const generalOptions = { ...this.defaultOptions, ...options, autoCommit: false }
+    async rollback(connection) {
+        if (!connection) {
+            this.#logger.error('Attempted to rollback with a null or undefined connection.')
+            throw new Error('No connection provided for rollback operation.')
+        }
+
+        this.#logger.info('Rolling back transaction.')
+
         try {
-            const result = await this.profiler(
-                () => connection.execute(sql, params, generalOptions),
-                sql,
-                params,
-            )
+            await connection.rollback()
+            this.#logger.info('Transaction rolled back successfully.')
+        } catch (error) {
+            this.#logger.error('Error rolling back transaction:', error)
+            throw error
+        } finally {
+            // Always release the connection back to the pool after rollback
+            try {
+                connection.autoCommit = this.defaultOptions.autoCommit
+                await connection.close()
+            } catch (releaseError) {
+                this.#logger.error('Error releasing connection after rollback:', releaseError)
+            }
+        }
+    }
+
+    /**
+     * Executes a callback function within a database transaction.
+     * Automatically handles transaction initiation, commit, rollback, and connection release.
+     * This method simplifies transaction management by abstracting the `beginTransaction`,
+     * `commit`, and `rollback` calls.
+     *
+     * @param {string} dbName - The name of the database for the transaction.
+     * @param {(connection: import('oracledb').Connection) => Promise<any>} callback - An asynchronous function
+     * that receives the transaction connection and performs database operations.
+     * @param {boolean} [usePool=true] - Whether to acquire the connection from a pool. Defaults to true.
+     * @returns {Promise<any>} The result of the callback function.
+     * @throws {Error} If the transaction fails, the error will be re-thrown after rollback.
+     */
+    async withTransaction(dbName, callback, usePool = this.usePool) {
+        let connection
+        try {
+            // 1. Acquire a connection and start the transaction
+            connection = await this.beginTransaction(dbName, usePool)
+            this.#logger.debug(`Connection acquired for transaction: ${dbName}`)
+
+            // 2. Execute the user's callback function with the transaction connection
+            // The callback is responsible for using this connection for all its DB operations.
+            const result = await callback(connection)
+
+            // 3. If the callback completes successfully, commit the transaction
+            await this.commit(connection)
+            // await connection.commit()
+
+            this.#logger.debug('Transaction successfully committed via withTransaction.')
             return result
         } catch (error) {
-            this.#logger.error(`Error executing query with provided connection: ${sql}`, error)
-            throw new Error(
-                `Error executing query with provided connection: ${sql} \n${error.message}`,
-            )
-        }
+            // 4. If any error occurs, rollback the transaction
+            this.#logger.error(`Error during transaction for ${dbName}:`, error)
+            if (connection) {
+                await this.rollback(connection)
+                // await connection.rollback()
+                this.#logger.debug('Transaction rolled back via withTransaction.')
+            }
+            throw error // Re-throw the error so the caller knows the transaction failed
+        } /*finally {
+            // Only close the connection if it was acquired within this method and pooling is used.
+            // If connectionToUse was provided, it's the caller's responsibility to close/release it.
+            if (connection && usePool) {
+                try {
+                    connection.autoCommit = this.defaultOptions.autoCommit
+                    await connection.close()
+                } catch (error) {
+                    this.#logger.error(
+                        `Error closing connection for ${dbName} after withTransaction:`,
+                        error,
+                    )
+                }
+            }
+        }*/
     }
 }
 

@@ -4,6 +4,8 @@ const oracleDBConfig = {
     DriverMode: 'thick',
     ClientOpts: { libDir: '/path/to/instantclient' },
 
+    // Додайте цю опцію для увімкнення/вимкнення профілювання
+    enableProfiling: true, // Встановіть на false, щоб вимкнути
     // Правила маскування для логів (нові рекомендації)
     maskingRules: {
         params: [
