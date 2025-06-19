@@ -22,11 +22,6 @@ class OracleDbManager {
      * @property {function(...any): void} error - Logs error messages.
      * @property {function(...any): void} debug - Logs debug messages.
      */
-    /**
-     * @private
-     * The internal default logger object.
-     * @type {Logger}
-     */
     static #defaultLogger = {
         info: (...args) => console.log('[INFO]', ...args),
         warning: (...args) => console.log('[WARNING]', ...args),
@@ -175,6 +170,10 @@ class OracleDbManager {
      */
     static getInstance(dbConfig = {}, customLogger = null) {
         if (!OracleDbManager.#instance) {
+            if (!dbConfig || !dbConfig.db) {
+                throw new Error('Must provide valid dbConfig on first getInstance() call.')
+            }
+
             OracleDbManager.#instance = new OracleDbManager(dbConfig, customLogger)
         }
         return OracleDbManager.#instance
@@ -390,8 +389,23 @@ class OracleDbManager {
 
         const durationMs = Number(end - start) / 1_000_000
 
-        let loggedParams = params
+        let loggedParams = this._maskParams(params)
 
+        this.#logger.info(
+            `[ORACLE EXECUTE][${durationMs.toFixed(2)} ms] Script: ${sql}, Params: ${JSON.stringify(
+                loggedParams,
+            )}`,
+        )
+        return result
+    }
+
+    /**
+     * Masks SQL parameters based on global config rules.
+     * @private
+     * @param {object | Array<object>} params - SQL parameters to mask.
+     * @returns {object | Array<object>} Masked parameters.
+     */
+    _maskParams(params) {
         // Застосовуємо маскування, якщо воно налаштоване
         if (this.config.maskAllParams) {
             // Просте маскування всіх значень
@@ -410,7 +424,7 @@ class OracleDbManager {
                 }
                 loggedParams = masked
             }
-        } else if (this.config.maskingRules && this.config.maskingRules.params) {
+        } else if (this.config.maskingRules && this.config.maskingRules?.params) {
             // Маскування за правилами (патернами)
             const applyMasking = (obj) => {
                 if (typeof obj !== 'object' || obj === null) return obj
@@ -438,12 +452,7 @@ class OracleDbManager {
             }
         }
 
-        this.#logger.info(
-            `[ORACLE EXECUTE][${durationMs.toFixed(2)} ms] Script: ${sql}, Params: ${JSON.stringify(
-                loggedParams,
-            )}`,
-        )
-        return result
+        return params
     }
 
     /**
@@ -694,7 +703,7 @@ class OracleDbManager {
                 this.#logger.debug('Transaction rolled back via withTransaction.')
             }
             throw error // Re-throw the error so the caller knows the transaction failed
-        } /*finally {
+        } finally {
             // Only close the connection if it was acquired within this method and pooling is used.
             // If connectionToUse was provided, it's the caller's responsibility to close/release it.
             if (connection && usePool) {
@@ -708,7 +717,7 @@ class OracleDbManager {
                     )
                 }
             }
-        }*/
+        }
     }
 }
 
