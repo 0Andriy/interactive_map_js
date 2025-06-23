@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>WebSocket Manager Demo (з Express)</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        #connectionStatus {
+            font-weight: bold;
+        }
+
+        .status-connected {
+            color: green;
+        }
+
+        .status-disconnected {
+            color: red;
+        }
+
+        .status-pending {
+            color: orange;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .panel {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            min-width: 300px;
+        }
+
+        h2 {
+            color: #0056b3;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 0.9em;
+            resize: vertical;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            width: calc(100% - 16px);
+        }
+
+        .chat-messages {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .chat-message {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>WebSocket Manager Демонстрація (з Express.js)</h1>
+    <p>Статус з'єднання: <span id="connectionStatus" class="status-disconnected">Відключено</span></p>
+
+    <div class="container">
+        <div class="panel">
+            <h2>Автентифікація</h2>
+            <label for="tokenInput">Введіть токен:</label>
+            <input type="text" id="tokenInput" value="valid_user_token_123"
+                placeholder="valid_user_token_123 або valid_user_token_456">
+            <button onclick="connectWebSocket()">Підключитися</button>
+            <button onclick="disconnectWebSocket()">Відключитися</button>
+            <p>Ваш UserId: <span id="currentUserId">N/A</span></p>
+        </div>
+
+        <div class="panel">
+            <h2>Кімнати з оновленнями (predefined)</h2>
+            <button onclick="joinRoom('global-news')">Приєднатися до 'global-news'</button>
+            <button onclick="leaveRoom('global-news', 'globalNewsOutput')">Вийти з 'global-news'</button>
+            <textarea id="globalNewsOutput" rows="5" readonly placeholder="Оновлення з global-news..."></textarea>
+            <hr>
+            <button onclick="joinRoom('system-status')">Приєднатися до 'system-status'</button>
+            <button onclick="leaveRoom('system-status', 'systemStatusOutput')">Вийти з 'system-status'</button>
+            <textarea id="systemStatusOutput" rows="5" readonly placeholder="Оновлення зі system-status..."></textarea>
+        </div>
+
+        <div class="panel">
+            <h2>Динамічна кімната (order-status)</h2>
+            <label for="orderIdInput">Order ID:</label>
+            <input type="text" id="orderIdInput" value="ORDER_ABC_123" placeholder="Наприклад, ORDER_ABC_123">
+            <button onclick="joinDynamicRoom()">Приєднатися до Order Status</button>
+            <button onclick="leaveDynamicRoom('orderStatusOutput')">Вийти з Order Status</button>
+            <textarea id="orderStatusOutput" rows="5" readonly placeholder="Оновлення статусу замовлення..."></textarea>
+        </div>
+
+        <div class="panel">
+            <h2>Чат кімната</h2>
+            <label for="chatRoomName">Назва кімнати чату:</label>
+            <input type="text" id="chatRoomName" value="general-chat" placeholder="Наприклад, general-chat">
+            <button onclick="joinChatRoom()">Приєднатися до чату</button>
+            <button onclick="leaveChatRoom('chatMessagesOutput')">Вийти з чату</button>
+            <div class="chat-messages" id="chatMessagesOutput"></div>
+            <input type="text" id="chatMessageInput" placeholder="Введіть повідомлення...">
+            <button onclick="sendChatMessage()">Надіслати</button>
+        </div>
+    </div>
+
+    <script>
+        let ws;
+        // Виносимо URL WebSocket-сервера в окрему змінну
+        const WS_SERVER_URL = `ws://172.16.211.161:8080/ws`;
+
+        const connectionStatus = document.getElementById('connectionStatus');
+        const currentUserId = document.getElementById('currentUserId');
+        const globalNewsOutput = document.getElementById('globalNewsOutput');
+        const systemStatusOutput = document.getElementById('systemStatusOutput');
+        const orderIdInput = document.getElementById('orderIdInput');
+        const orderStatusOutput = document.getElementById('orderStatusOutput');
+        const chatRoomNameInput = document.getElementById('chatRoomName');
+        const chatMessagesOutput = document.getElementById('chatMessagesOutput');
+        const chatMessageInput = document.getElementById('chatMessageInput');
+
+        // Функція для очищення конкретного поля виводу
+        function clearOutputField(outputId) {
+            const field = document.getElementById(outputId);
+            if (field) {
+                if (field.tagName === 'TEXTAREA' || field.tagName === 'INPUT') {
+                    field.value = '';
+                } else if (field.tagName === 'DIV') { // Для чату
+                    field.innerHTML = '';
+                }
+            }
+        }
+
+        function updateConnectionStatus(status, colorClass) {
+            connectionStatus.textContent = status;
+            connectionStatus.className = ''; // Reset classes
+            connectionStatus.classList.add(colorClass);
+        }
+
+        function connectWebSocket() {
+            const token = document.getElementById('tokenInput').value;
+            // Використовуємо змінну WS_SERVER_URL
+            const wsUrl = `${WS_SERVER_URL}?token=${token}`;
+            updateConnectionStatus('Підключення...', 'status-pending');
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.warn("WebSocket вже відкритий. Спочатку відключіться.");
+                return;
+            }
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('WebSocket з\'єднання відкрито.');
+                updateConnectionStatus('Підключено', 'status-connected');
+            };
+
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                console.log('Отримано повідомлення:', message);
+
+                switch (message.type) {
+                    case 'authSuccess':
+                        currentUserId.textContent = message.userId;
+                        break;
+                    case 'authError':
+                        alert(`Помилка автентифікації: ${message.message}`);
+                        currentUserId.textContent = 'N/A (Auth Failed)';
+                        disconnectWebSocket();
+                        break;
+                    case 'authRequired':
+                        alert(`Сервер вимагає автентифікації. Ваш тимчасовий ID: ${message.userId}.`);
+                        currentUserId.textContent = message.userId;
+                        break;
+                    case 'joined':
+                        console.log(`Приєдналися до кімнати: ${message.roomName}`);
+                        // Очищаємо поле при приєднанні, щоб мати чистий стан
+                        if (message.roomName === 'global-news') {
+                            clearOutputField('globalNewsOutput');
+                        } else if (message.roomName === 'system-status') {
+                            clearOutputField('systemStatusOutput');
+                        } else if (message.roomName.startsWith('order-status-')) {
+                            clearOutputField('orderStatusOutput');
+                        } else if (message.roomName === chatRoomNameInput.value) { // Для чату
+                            clearOutputField('chatMessagesOutput');
+                        }
+                        break;
+                    case 'left':
+                        console.log(`Вийшли з кімнати: ${message.roomName}`);
+                        // Очищення поля вже відбувається у функції leaveRoom або leaveDynamicRoom
+                        break;
+                    case 'periodicUpdate':
+                        if (message.data.room === 'global-news') {
+                            globalNewsOutput.value = JSON.stringify(message.data.data, null, 2);
+                        } else if (message.data.room === 'system-status') {
+                            systemStatusOutput.value = JSON.stringify(message.data.data, null, 2);
+                        } else if (message.data.room.startsWith('order-status-')) {
+                            orderStatusOutput.value = JSON.stringify(message.data.data, null, 2);
+                        }
+                        break;
+                    case 'chatMessage':
+                        const msgElement = document.createElement('div');
+                        msgElement.classList.add('chat-message');
+                        msgElement.textContent = `[${message.sender}] ${message.text}`;
+                        chatMessagesOutput.appendChild(msgElement);
+                        chatMessagesOutput.scrollTop = chatMessagesOutput.scrollHeight;
+                        break;
+                    case 'error':
+                        console.error('Помилка від сервера:', message.message);
+                        alert(`Помилка від сервера: ${message.message}`);
+                        break;
+                    default:
+                        console.warn('Невідомий тип повідомлення:', message.type);
+                }
+            };
+
+            ws.onclose = (event) => {
+                console.log(`WebSocket з'єднання закрито. Код: ${event.code}, Причина: ${event.reason}`);
+                updateConnectionStatus('Відключено', 'status-disconnected');
+                currentUserId.textContent = 'N/A';
+                // Очищаємо ВСІ поля виводу при відключенні
+                clearOutputField('globalNewsOutput');
+                clearOutputField('systemStatusOutput');
+                clearOutputField('orderStatusOutput');
+                clearOutputField('chatMessagesOutput');
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket помилка:', error);
+                updateConnectionStatus('Помилка', 'status-disconnected');
+            };
+        }
+
+        function disconnectWebSocket() {
+            if (ws) {
+                ws.close();
+            }
+        }
+
+        function sendMessage(type, payload = {}) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const message = { type, ...payload };
+                ws.send(JSON.stringify(message));
+                console.log('Надіслано:', message);
+            } else {
+                console.warn('WebSocket не підключено або закрито.');
+                alert('Будь ласка, підключіться до WebSocket спочатку!');
+            }
+        }
+
+        // Модифікована функція leaveRoom
+        function leaveRoom(roomName, outputId) {
+            sendMessage('leave', { roomName: roomName });
+            clearOutputField(outputId); // Очищаємо відповідне поле
+        }
+
+        // Модифікована функція leaveDynamicRoom
+        function leaveDynamicRoom(outputId) {
+            const orderId = orderIdInput.value;
+            if (!orderId) {
+                alert("Будь ласка, введіть Order ID.");
+                return;
+            }
+            sendMessage('leave', { roomName: `order-status-${orderId}` });
+            clearOutputField(outputId); // Очищаємо відповідне поле
+        }
+
+        // Модифікована функція leaveChatRoom
+        function leaveChatRoom(outputId) {
+            const roomName = chatRoomNameInput.value;
+            if (!roomName) {
+                alert("Будь ласка, введіть назву кімнати чату.");
+                return;
+            }
+            sendMessage('leave', { roomName: roomName });
+            clearOutputField(outputId); // Очищаємо відповідне поле
+        }
+
+        function joinRoom(roomName) {
+            sendMessage('join', { roomName: roomName });
+        }
+
+        function joinDynamicRoom() {
+            const orderId = orderIdInput.value;
+            if (!orderId) {
+                alert("Будь ласка, введіть Order ID.");
+                return;
+            }
+            sendMessage('join', {
+                roomName: `order-status-${orderId}`,
+                dataSourceMethod: 'getOrderByOrderId',
+                dataParameters: { orderId: orderId }
+            });
+        }
+
+        function joinChatRoom() {
+            const roomName = chatRoomNameInput.value;
+            if (!roomName) {
+                alert("Будь ласка, введіть назву кімнати чату.");
+                return;
+            }
+            sendMessage('join', { roomName: roomName });
+        }
+
+        function sendChatMessage() {
+            const roomName = chatRoomNameInput.value;
+            const text = chatMessageInput.value;
+            if (!roomName || !text) {
+                alert("Будь ласка, введіть назву кімнати чату та повідомлення.");
+                return;
+            }
+            sendMessage('chatMessage', { roomName: roomName, text: text });
+            chatMessageInput.value = '';
+        }
+    </script>
+</body>
+
+</html>
