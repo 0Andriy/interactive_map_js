@@ -1,0 +1,320 @@
+
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+    <meta charset="UTF-8">
+    <title>WebSocket Manager Demo (з Express)</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        #connectionStatus {
+            font-weight: bold;
+        }
+
+        .status-connected {
+            color: green;
+        }
+
+        .status-disconnected {
+            color: red;
+        }
+
+        .status-pending {
+            color: orange;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .panel {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            min-width: 300px;
+        }
+
+        h2 {
+            color: #0056b3;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 0.9em;
+            resize: vertical;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            width: calc(100% - 16px);
+        }
+
+        .chat-messages {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .chat-message {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>WebSocket Manager Демонстрація (з Express.js)</h1>
+    <p>Статус з'єднання: <span id="connectionStatus" class="status-disconnected">Відключено</span></p>
+
+    <div class="container">
+        <div class="panel">
+            <h2>Автентифікація</h2>
+            <label for="tokenInput">Введіть токен:</label>
+            <input type="text" id="tokenInput" value="valid_user_token_123">
+            <button onclick="connectWebSocket()">Підключитися</button>
+            <button onclick="disconnectWebSocket()">Відключитися</button>
+            <p>Ваш UserId: <span id="currentUserId">N/A</span></p>
+        </div>
+        <div class="panel">
+            <h2>Кімнати з оновленнями (predefined)</h2>
+            <button onclick="joinRoom('global-news')">Приєднатися до 'global-news'</button>
+            <button onclick="leaveRoom('global-news', 'globalNewsOutput')">Вийти</button>
+            <textarea id="globalNewsOutput" readonly></textarea>
+            <hr>
+            <button onclick="joinRoom('system-status')">Приєднатися до 'system-status'</button>
+            <button onclick="leaveRoom('system-status', 'systemStatusOutput')">Вийти</button>
+            <textarea id="systemStatusOutput" readonly></textarea>
+        </div>
+        <div class="panel">
+            <h2>Динамічна кімната (order-status)</h2>
+            <label for="orderIdInput">Order ID:</label>
+            <input type="text" id="orderIdInput" value="ORDER_ABC_123">
+            <button onclick="joinDynamicRoom()">Приєднатися</button>
+            <button onclick="leaveDynamicRoom('orderStatusOutput')">Вийти</button>
+            <textarea id="orderStatusOutput" readonly></textarea>
+        </div>
+        <div class="panel">
+            <h2>Чат кімната</h2>
+            <label for="chatRoomName">Назва кімнати чату:</label>
+            <input type="text" id="chatRoomName" value="general-chat">
+            <button onclick="joinChatRoom()">Приєднатися</button>
+            <button onclick="leaveChatRoom('chatMessagesOutput')">Вийти</button>
+            <div class="chat-messages" id="chatMessagesOutput"></div>
+            <input type="text" id="chatMessageInput" placeholder="Введіть повідомлення...">
+            <button onclick="sendChatMessage()">Надіслати</button>
+        </div>
+    </div>
+
+    <script>
+        function createWebSocketConnection({ url, token, onMessage, onOpen, onClose, onError, onReconnect, autoReconnect = true, baseDelay = 1000, maxDelay = 30000, maxRetries = Infinity, checkInterval = 30000, pingInterval = 15000, pongTimeout = 5000 }) {
+            let socket, isManuallyClosed = false, currentRetries = 0, currentToken = token, lastDelay = baseDelay, checkTimer, pingTimer, pongTimer;
+            const messageQueue = [];
+            function getDecorrelatedJitterDelay() {
+                const minDelay = baseDelay;
+                const maxDelayThisTry = lastDelay * 3;
+                const delay = Math.min(maxDelay, Math.floor(Math.random() * (maxDelayThisTry - minDelay + 1)) + minDelay);
+                lastDelay = delay;
+                return delay;
+            }
+            function flushQueue() {
+                while (messageQueue.length && isOpen()) socket.send(messageQueue.shift());
+            }
+            function connect() {
+                socket = new WebSocket(`${url}?token=${currentToken}`);
+                socket.onopen = () => {
+                    currentRetries = 0;
+                    lastDelay = baseDelay;
+                    onOpen?.();
+                    flushQueue();
+                    startPing();
+                };
+                socket.onmessage = (e) => {
+                    const parsed = parseJsonSafe(e.data);
+                    if (parsed?.type === 'pong') return clearTimeout(pongTimer);
+                    onMessage?.(e);
+                };
+                socket.onclose = () => {
+                    onClose?.();
+                    stopPing();
+                    if (!isManuallyClosed && autoReconnect && currentRetries < maxRetries) {
+                        currentRetries++;
+                        const delay = getDecorrelatedJitterDelay();
+                        onReconnect?.(currentRetries, delay);
+                        setTimeout(connect, delay);
+                    }
+                };
+                socket.onerror = (err) => {
+                    onError?.(err);
+                    socket.close();
+                };
+            }
+            function startHealthCheck() {
+                checkTimer = setInterval(() => { if (!isOpen()) socket?.close(); }, checkInterval);
+            }
+            function stopHealthCheck() { clearInterval(checkTimer); }
+            function isOpen() { return socket?.readyState === WebSocket.OPEN; }
+            function startPing() {
+                pingTimer = setInterval(() => {
+                    if (isOpen()) {
+                        socket.send(JSON.stringify({ type: 'ping' }));
+                        pongTimer = setTimeout(() => socket?.close(), pongTimeout);
+                    }
+                }, pingInterval);
+            }
+            function stopPing() {
+                clearInterval(pingTimer);
+                clearTimeout(pongTimer);
+            }
+            function parseJsonSafe(data) { try { return JSON.parse(data); } catch { return null; } }
+            connect();
+            startHealthCheck();
+            return {
+                send: (msg) => isOpen() ? (socket.send(msg), true) : (messageQueue.push(msg), false),
+                close: () => { isManuallyClosed = true; stopHealthCheck(); stopPing(); socket?.close(); },
+                updateToken: (newToken) => { currentToken = newToken; if (isOpen()) socket.close(); },
+                isOpen,
+                rawSocket: () => socket
+            };
+        }
+
+        const WS_SERVER_URL = `ws://172.16.211.161:8080/ws`;
+        let wsClient;
+        const connectionStatus = document.getElementById('connectionStatus');
+        const currentUserId = document.getElementById('currentUserId');
+        const globalNewsOutput = document.getElementById('globalNewsOutput');
+        const systemStatusOutput = document.getElementById('systemStatusOutput');
+        const orderIdInput = document.getElementById('orderIdInput');
+        const orderStatusOutput = document.getElementById('orderStatusOutput');
+        const chatRoomNameInput = document.getElementById('chatRoomName');
+        const chatMessagesOutput = document.getElementById('chatMessagesOutput');
+        const chatMessageInput = document.getElementById('chatMessageInput');
+
+        function updateConnectionStatus(status, colorClass) {
+            connectionStatus.textContent = status;
+            connectionStatus.className = colorClass;
+        }
+        function clearOutputField(id) {
+            const field = document.getElementById(id);
+            if (!field) return;
+            if (field.tagName === 'TEXTAREA') field.value = '';
+            else if (field.tagName === 'DIV') field.innerHTML = '';
+        }
+        function connectWebSocket() {
+            const token = document.getElementById('tokenInput').value;
+            if (wsClient) wsClient.close();
+            updateConnectionStatus('Підключення...', 'status-pending');
+            wsClient = createWebSocketConnection({
+                url: WS_SERVER_URL,
+                token,
+                onOpen: () => updateConnectionStatus('Підключено', 'status-connected'),
+                onClose: () => {
+                    updateConnectionStatus('Відключено', 'status-disconnected');
+                    currentUserId.textContent = 'N/A';
+                    ['globalNewsOutput', 'systemStatusOutput', 'orderStatusOutput', 'chatMessagesOutput'].forEach(clearOutputField);
+                },
+                onMessage: (e) => {
+                    const message = JSON.parse(e.data);
+                    switch (message.type) {
+                        case 'authSuccess': currentUserId.textContent = message.userId; break;
+                        case 'authError': alert(message.message); disconnectWebSocket(); break;
+                        case 'authRequired': alert('Auth needed'); currentUserId.textContent = message.userId; break;
+                        case 'joined':
+                            if (message.roomName === 'global-news') clearOutputField('globalNewsOutput');
+                            else if (message.roomName === 'system-status') clearOutputField('systemStatusOutput');
+                            else if (message.roomName.startsWith('order-status-')) clearOutputField('orderStatusOutput');
+                            else if (message.roomName === chatRoomNameInput.value) clearOutputField('chatMessagesOutput');
+                            break;
+                        case 'periodicUpdate':
+                            const { room, data } = message.data;
+                            if (room === 'global-news') globalNewsOutput.value = JSON.stringify(data, null, 2);
+                            else if (room === 'system-status') systemStatusOutput.value = JSON.stringify(data, null, 2);
+                            else if (room.startsWith('order-status-')) orderStatusOutput.value = JSON.stringify(data, null, 2);
+                            break;
+                        case 'chatMessage':
+                            const div = document.createElement('div');
+                            div.classList.add('chat-message');
+                            div.textContent = `[${message.sender}] ${message.text}`;
+                            chatMessagesOutput.appendChild(div);
+                            chatMessagesOutput.scrollTop = chatMessagesOutput.scrollHeight;
+                            break;
+                        case 'error': alert(`Помилка: ${message.message}`); break;
+                    }
+                },
+                onError: (err) => updateConnectionStatus('Помилка', 'status-disconnected'),
+                onReconnect: (n, d) => updateConnectionStatus(`Повтор #${n} через ${d}мс`, 'status-pending')
+            });
+        }
+        function disconnectWebSocket() { wsClient?.close(); }
+        function sendMessage(type, payload = {}) {
+            if (!wsClient?.isOpen()) return alert('З’єднання не встановлено.');
+            wsClient.send(JSON.stringify({ type, ...payload }));
+        }
+        function joinRoom(room) { sendMessage('join', { roomName: room }); }
+        function leaveRoom(room, outId) { sendMessage('leave', { roomName: room }); clearOutputField(outId); }
+        function joinDynamicRoom() {
+            const id = orderIdInput.value.trim();
+            if (!id) return alert('Введіть Order ID');
+            sendMessage('join', { roomName: `order-status-${id}`, dataSourceMethod: 'getOrderByOrderId', dataParameters: { orderId: id } });
+        }
+        function leaveDynamicRoom(outId) {
+            const id = orderIdInput.value.trim();
+            if (!id) return;
+            sendMessage('leave', { roomName: `order-status-${id}` });
+            clearOutputField(outId);
+        }
+        function joinChatRoom() {
+            const room = chatRoomNameInput.value.trim();
+            if (!room) return alert('Введіть назву чату');
+            sendMessage('join', { roomName: room });
+        }
+        function leaveChatRoom(outId) {
+            const room = chatRoomNameInput.value.trim();
+            if (!room) return;
+            sendMessage('leave', { roomName: room });
+            clearOutputField(outId);
+        }
+        function sendChatMessage() {
+            const room = chatRoomNameInput.value.trim();
+            const text = chatMessageInput.value.trim();
+            if (!room || !text) return alert('Введіть кімнату та текст');
+            sendMessage('chatMessage', { roomName: room, text });
+            chatMessageInput.value = '';
+        }
+    </script>
+</body>
+
+</html>
