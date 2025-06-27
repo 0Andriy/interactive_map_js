@@ -1,0 +1,13 @@
+{
+    // Список рекомендованих розширень для цього проєкту.
+    // VS Code запропонує встановити ці розширення, коли хтось відкриє цей проєкт.
+    "recommendations": [
+        "esbenp.prettier-vscode", // **Prettier - Code formatter:** Обов'язково для автоматичного форматування JS, TS, JSON, HTML, CSS.
+        "dbaeumer.vscode-eslint", // **ESLint:** Якщо ви використовуєте ESLint для лінтингу JavaScript/TypeScript.
+        "ms-python.python", // **Python:** Якщо ваш проєкт включає Python (для форматування, лінтингу та інших функцій).
+        "vscode-icons-team.vscode-icons", // **VSCode Icons:** Забезпечує красиві іконки для файлів у Explorer, покращуючи навігацію.
+        "formulahendry.auto-rename-tag", // **Auto Rename Tag:** Автоматично перейменовує парний HTML/XML тег.
+        "CoenraadS.bracket-pair-colorizer-2", // **Bracket Pair Colorizer 2:** Допомагає візуально розрізняти парні дужки за допомогою кольорової індикації. (Зауважте: нові версії VS Code мають схожу функціональність вбудовано).
+        "yzhang.markdown-all-in-one" // **Markdown All in One:** Якщо ви активно працюєте з Markdown файлами (наприклад, README.md), це розширення додає багато зручних функцій.
+    ]
+}
