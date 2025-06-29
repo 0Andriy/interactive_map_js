@@ -58,7 +58,7 @@ class RoleModel {
                         `Error creating table '${tableName.toUpperCase()}': ${error.message}`,
                         { error },
                     )
-                    throw error // Зупиняємо, якщо є критична помилка
+                    // throw error // Зупиняємо, якщо є критична помилка
                 }
             }
         }
@@ -77,7 +77,7 @@ class RoleModel {
                         `Error creating index '${indexName.toUpperCase()}': ${error.message}`,
                         { error },
                     )
-                    throw error
+                    // throw error
                 }
             }
         }

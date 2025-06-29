@@ -1,6 +1,7 @@
 // src/utils/cookieUtils.js
 import config from '../config/config.js'
-const tokenConfig = config.tokenTypes
+import logger from './logger.js'
+const tokenTypes = config.tokenTypes
 
 /**
  * Повертає конфігурацію для певного типу токена.

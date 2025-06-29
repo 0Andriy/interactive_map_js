@@ -267,7 +267,7 @@ class OracleDbManager {
                 } catch (err) {
                     this.#logger.error('Failed to initialize Oracle Thick Client:', err)
                     // If thick client initialization is critical for your application, re-throw the error
-                    throw new Error(`Failed to initialize Oracle Thick Client: ${err.message}`)
+                    throw new Error(`Failed to initialize Oracle Thick Client: ${error.message}`)
                 }
             }
 
@@ -556,16 +556,20 @@ class OracleDbManager {
             return await fn() // If disabled, just execute the function without profiling
         }
 
+        let durationMs = 0 // Initialize duration for error logging
+        let loggedParams = params // Default to original params for logging
+        let normalizedSql = sql // Default to original SQL for logging
+
         try {
             const start = process.hrtime.bigint()
             const result = await fn()
             const end = process.hrtime.bigint()
 
-            const durationMs = Number(end - start) / 1_000_000
+            /*const*/ durationMs = Number(end - start) / 1_000_000
 
-            let loggedParams = this._maskParams(params)
+            /*let*/ loggedParams = this._maskParams(params)
 
-            const normalizedSql = sql
+            /*const*/ normalizedSql = sql
                 .replace(/\n/g, ' ') // Замінити всі нові рядки одним пробілом
                 .replace(/\s+/g, ' ') // Замінити кілька пробілів (включаючи ті, що з нових рядків) одним пробілом
                 .trim()
@@ -586,13 +590,13 @@ class OracleDbManager {
             this.#logger.error(
                 `\n[ORACLE EXECUTE][${durationMs.toFixed(
                     2,
-                )} ms] Script: \n${sql}, \nParams: ${JSON.stringify(loggedParams, null, 2)}`,
+                )} ms] Script: ${sql}, \nParams: ${JSON.stringify(loggedParams, null, 2)}`,
                 {
                     sql: normalizedSql.substring(0, 200) + (sql.length > 200 ? '...' : ''), // Обрізаємо довгий SQL
                     binds: loggedParams, //Object.keys(params).length > 0 ? Object.keys(params) : 'No params', // Показуємо тільки ключі для params
-                    error: err.message,
-                    oracleErrorNum: err.errorNum,
-                    stack: err.stack, // Логуємо стек-трейс для дебагу
+                    error: error.message,
+                    oracleErrorNum: error.errorNum,
+                    stack: error.stack, // Логуємо стек-трейс для дебагу
                 },
             )
 

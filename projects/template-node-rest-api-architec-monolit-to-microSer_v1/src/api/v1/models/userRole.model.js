@@ -64,7 +64,7 @@ class UserRoleModel {
                         `Error creating table '${tableName.toUpperCase()}': ${error.message}`,
                         { error },
                     )
-                    throw error // Зупиняємо, якщо є критична помилка
+                    // throw error // Зупиняємо, якщо є критична помилка
                 }
             }
         }
@@ -83,7 +83,7 @@ class UserRoleModel {
                         `Error creating index '${indexName.toUpperCase()}': ${error.message}`,
                         { error },
                     )
-                    throw error
+                    // throw error
                 }
             }
         }

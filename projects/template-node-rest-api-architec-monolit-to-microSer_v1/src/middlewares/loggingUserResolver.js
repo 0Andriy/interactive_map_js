@@ -58,6 +58,7 @@ const decodeJwtWithoutVerification = (token) => {
     }
 
     const payloadBase64Url = parts[1] // The middle part is the Payload
+
     return decodeBase64Url(payloadBase64Url)
 }
 
@@ -146,8 +147,8 @@ export const loggingUserResolver = (req, res, next) => {
             ['header', 'cookie', 'body'], // Assume refresh token can also be in x-refresh-token header
         )
 
-        if (decodedRefreshToken && decodedRefreshToken.id) {
-            userIdentifier = decodedRefreshToken.id
+        if (decodedRefreshToken && decodedRefreshToken.userId) {
+            userIdentifier = decodedRefreshToken.userId
             userRoles = Array.isArray(decodedRefreshToken.roles) ? decodedRefreshToken.roles : []
             // `source` is already set inside `findAndDecodeToken`
         }

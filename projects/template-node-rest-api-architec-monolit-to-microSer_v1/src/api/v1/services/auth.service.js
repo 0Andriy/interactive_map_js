@@ -182,6 +182,8 @@ class AuthService {
                 )
             }
 
+            // await refreshTokenModel.deleteByToken(dbName, refreshToken)
+
             return success
         } catch (error) {
             logger.error(`Logout failed: ${error.message}`, { error })

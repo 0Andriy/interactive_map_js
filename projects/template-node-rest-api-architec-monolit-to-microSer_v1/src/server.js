@@ -15,6 +15,12 @@ import jwtManager from './utils/JwtManager.js'
 // import WebSocketManager from './ws/WebSocketManager.js'
 // import wsHandlers from './ws/handlers.js'
 
+// model
+import userModel from './api/v1/models/user.model.js'
+import roleModel from './api/v1/models/role.model.js'
+import userRoleModel from './api/v1/models/userRole.model.js'
+import refreshTokenModel from './api/v1/models/refreshToken.model.js'
+
 // <=======================================================================>
 // <=========================  HTTP(S) server  ============================>
 // <=======================================================================>
@@ -52,10 +58,20 @@ async function initApp() {
     await oracleDbManager.initialize(config.oracleDB, logger)
     await oracleDbManager.connect('TEST')
 
+    // відповюємо створення схеми
+    // userModel.createTable('TEST')
+    // roleModel.createTable('TEST')
+    // userRoleModel.createTable('TEST')
+    // refreshTokenModel.createTable('TEST')
+
     // <=======================================================================>
     // <========================  Ініціалізація JWT  ==========================>
     // <=======================================================================>
     config.tokenTypes.access.loader = async (keyId) => {
+        return {
+            key: 'access_key_placeholder', // Замініть на реальний ключ або логіку отримання
+        }
+
         const sqlScript = `begin
                                 :key := BASE_OBJ.SSO_PKG.get_s_key_f(1,1);
                             end;`
@@ -70,6 +86,10 @@ async function initApp() {
     }
 
     config.tokenTypes.refresh.loader = async (keyId) => {
+        return {
+            key: 'refresh_key_placeholder', // Замініть на реальний ключ або логіку отримання
+        }
+
         const sqlScript = `begin
                                 :key := BASE_OBJ.SSO_PKG.get_s_key_f(2,2);
                             end;`

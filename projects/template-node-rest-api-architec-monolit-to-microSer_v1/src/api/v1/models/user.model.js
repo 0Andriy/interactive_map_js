@@ -111,7 +111,7 @@ class UserModel {
                         `Error creating table '${tableName.toUpperCase()}': ${error.message}`,
                         { error },
                     )
-                    throw error // Зупиняємо, якщо є критична помилка
+                    // throw error // Зупиняємо, якщо є критична помилка
                 }
             }
         }
@@ -119,6 +119,7 @@ class UserModel {
         for (const indexName of indexOrder) {
             try {
                 await oracleDbManager.execute(dbName, createTableSQL[indexName])
+
                 logger.info(`Index '${indexName.toUpperCase()}' created successfully.`)
             } catch (error) {
                 if (error.oracleErrorNum === 955) {
@@ -130,7 +131,7 @@ class UserModel {
                         `Error creating index '${indexName.toUpperCase()}': ${error.message}`,
                         { error },
                     )
-                    throw error
+                    // throw error
                 }
             }
         }

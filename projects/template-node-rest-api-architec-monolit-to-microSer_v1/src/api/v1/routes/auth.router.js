@@ -33,12 +33,15 @@ const router = Router()
  *               username:
  *                 type: string
  *                 description: The username of the user
+ *                 example: johndoe
+ *               email:
+ *                 type: string
+ *                 description: User's email
+ *                 example: user@example.com
  *               password:
  *                 type: string
  *                 description: The password of the user
- *             example:
- *               username: johndoe
- *               password: securepassword
+ *                 example: securepassword
  *     responses:
  *       201:
  *         description: Session created successfully
@@ -130,7 +133,7 @@ router.post('/login', validateSchema({ body: authSchema.loginSchema }), authCont
  *         description: Unauthorized
  */
 
-router.post('/logout', authenticateToken, authController.logout)
+router.post('/logout', authenticateToken(), authController.logout)
 
 /**
  * @swagger
@@ -259,7 +262,7 @@ router.get('/refresh', authController.refresh)
 
 router.post(
     '/change-password',
-    authenticateToken, // Protect this route
+    authenticateToken(), // Protect this route
     validateSchema({ body: authSchema.changePasswordSchema }),
     authController.changePassword,
 )
@@ -367,5 +370,21 @@ router.post('/verify-token', authController.verifyAccessToken)
  */
 
 router.get('/verify-token', authController.verifyAccessToken)
+
+/**
+ * @swagger
+ * /api/v1/auth/test:
+ *   get:
+ *     summary: test authentication route
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Auth route is working!
+ */
+router.get('/test', authenticateToken(), (req, res) => {
+    res.status(200).json({ message: 'Auth route is working!' })
+})
 
 export default router

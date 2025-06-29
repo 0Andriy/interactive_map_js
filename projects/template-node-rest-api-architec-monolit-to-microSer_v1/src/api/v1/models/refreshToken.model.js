@@ -70,7 +70,7 @@ class RefreshTokenModel {
                         `Error creating table '${tableName.toUpperCase()}': ${error.message}`,
                         { error },
                     )
-                    throw error // Зупиняємо, якщо є критична помилка
+                    // throw error // Зупиняємо, якщо є критична помилка
                 }
             }
         }
@@ -89,7 +89,7 @@ class RefreshTokenModel {
                         `Error creating index '${indexName.toUpperCase()}': ${error.message}`,
                         { error },
                     )
-                    throw error
+                    // throw error
                 }
             }
         }
@@ -222,6 +222,39 @@ class RefreshTokenModel {
             return foundToken
         } catch (error) {
             logger.error(`Error finding refresh token by value: ${error.message}`, { error })
+            throw error
+        }
+    }
+
+    /**
+     * Видаляє refresh-токен за його значенням.
+     * @param {string} dbName - Назва бази даних
+     * @param {string} token - Значення refresh-токена.
+     * @returns {Promise<boolean>} True, якщо токен було видалено, false — якщо ні.
+     * @throws {Error} Якщо виникає помилка при видаленні.
+     */
+    async deleteByToken(dbName, token) {
+        try {
+            const sql = `
+            DELETE FROM REFRESH_TOKENS
+            WHERE TOKEN = :token
+        `
+
+            const binds = { token }
+
+            const result = await oracleDbManager.execute(dbName, sql, binds, { autoCommit: true })
+
+            if (result.rowsAffected === 1) {
+                logger.info(`Refresh token deleted: ${token.substring(0, 10)}...`)
+            } else {
+                logger.warn(`Refresh token not found for deletion: ${token.substring(0, 10)}...`)
+            }
+
+            return result.rowsAffected === 1
+        } catch (error) {
+            logger.error(`Error deleting refresh token: ${error.message}`, {
+                error,
+            })
             throw error
         }
     }

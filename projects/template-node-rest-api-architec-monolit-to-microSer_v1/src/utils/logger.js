@@ -7,7 +7,7 @@
 
 import config from '../config/config.js'
 import LoggerFactory from './logger/LoggerFactory.js'
-import { asyncLocalStorage } from './logger/WinstonLogger.js' // AsyncLocalStorage залишається з WinstonLogger
+import { asyncLocalStorage } from './logger/loggers/WinstonLogger.js' // AsyncLocalStorage залишається з WinstonLogger
 // Важливо: Якщо ви використовуєте Winston transports, які потрібно ініціалізувати (наприклад, FileTransport),
 // вам може знадобитися імпортувати їх тут і додати до масиву 'transports' в конфігурації,
 // або ж залишити ініціалізацію транспортов всередині конструктора WinstonLogger.

@@ -16,15 +16,14 @@ export const registerSchema = z.object({
         .toLowerCase(),
     password: z
         .string()
-        .min(8, { message: 'Password must be at least 8 characters long.' })
-        .max(128, { message: 'Password cannot exceed 128 characters.' })
-        .regex(/[a-z]/, { message: 'Password must contain at least one lowercase letter.' })
+        .min(1, { message: 'Password must be at least 8 characters long.' })
+        .max(128, { message: 'Password cannot exceed 128 characters.' }),
+    /*.regex(/[a-z]/, { message: 'Password must contain at least one lowercase letter.' })
         .regex(/[A-Z]/, { message: 'Password must contain at least one uppercase letter.' })
         .regex(/[0-9]/, { message: 'Password must contain at least one number.' })
         .regex(/[^a-zA-Z0-9]/, {
             message: 'Password must contain at least one special character.',
-        }),
-    firstName: z
+        })*/ firstName: z
         .string()
         .min(1, { message: 'First name is required.' })
         .max(50, { message: 'First name cannot exceed 50 characters.' })
@@ -68,15 +67,14 @@ export const changePasswordSchema = z
         oldPassword: z.string().min(1, { message: 'Old password is required.' }),
         newPassword: z
             .string()
-            .min(8, { message: 'New password must be at least 8 characters long.' })
-            .max(128, { message: 'New password cannot exceed 128 characters.' })
-            .regex(/[a-z]/, { message: 'New password must contain at least one lowercase letter.' })
+            .min(1, { message: 'New password must be at least 8 characters long.' })
+            .max(128, { message: 'New password cannot exceed 128 characters.' }),
+        /*.regex(/[a-z]/, { message: 'New password must contain at least one lowercase letter.' })
             .regex(/[A-Z]/, { message: 'New password must contain at least one uppercase letter.' })
             .regex(/[0-9]/, { message: 'New password must contain at least one number.' })
             .regex(/[^a-zA-Z0-9]/, {
                 message: 'New password must contain at least one special character.',
-            }),
-        // Якщо ви хочете підтвердження нового пароля
+            })*/ // Якщо ви хочете підтвердження нового пароля
         confirmNewPassword: z.string().optional(),
     })
     .refine((data) => data.newPassword === data.confirmNewPassword, {

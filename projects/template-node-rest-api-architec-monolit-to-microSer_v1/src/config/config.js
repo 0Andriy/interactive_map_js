@@ -205,9 +205,9 @@ class Config {
         this.oracleDB = {
             useThickMode: getEnvBoolean('ORACLE_USE_THICK_MODE', true),
             ClientOpts: {
-                libDir:
-                    process.env.NODE_ORACLEDB_CLIENT_LIB_DIR ||
-                    path.join(__dirname, '../../dependencies/instantclient_23_6'),
+                libDir: path.resolve(
+                    process.env.NODE_ORACLEDB_CLIENT_LIB_DIR || '../../bin/instantclient_23_6',
+                ),
             },
             enableProfiling: getEnvBoolean('ORACLE_ENABLE_PROFILING', false),
             maskAllParams: getEnvBoolean('ORACLE_MASK_ALL_PARAMS', false),
@@ -264,7 +264,7 @@ class Config {
                 generateJti: getEnvBoolean('JWT_ACCESS_GENERATE_JTI', true),
                 loader: async (keyId) => {},
                 cookie: {
-                    name: process.env.JWT_ACCESS_TOKEN_COOKIE_NAME || 'accessTokenCookie',
+                    name: process.env.JWT_ACCESS_TOKEN_COOKIE_NAME || 'accessToken',
                     options: {
                         ...baseCookieOptions,
                         maxAge: getEnvInt('JWT_ACCESS_TOKEN_COOKIE_MAX_AGE', 15 * 60 * 1000),
@@ -298,7 +298,7 @@ class Config {
                 generateJti: getEnvBoolean('JWT_REFRESH_GENERATE_JTI', true),
                 loader: async (keyId) => {},
                 cookie: {
-                    name: process.env.JWT_REFRESH_TOKEN_COOKIE_NAME || 'refreshTokenCookie',
+                    name: process.env.JWT_REFRESH_TOKEN_COOKIE_NAME || 'refreshToken',
                     options: {
                         ...baseCookieOptions,
                         maxAge: getEnvInt(
@@ -471,12 +471,12 @@ class Config {
     getCorsOptions() {
         const whitelistByEnv = {
             development: [
-                'http://localhost:3000',
-                'https://localhost:3000',
-                'http://127.0.0.1:3000',
-                'https://127.0.0.1:3000',
-                'http://0.0.0.0:3000',
-                'https://0.0.0.0:3000',
+                // 'http://localhost:3000',
+                // 'https://localhost:3000',
+                // 'http://127.0.0.1:3000',
+                // 'https://127.0.0.1:3000',
+                // 'http://0.0.0.0:3000',
+                // 'https://0.0.0.0:3000',
                 // Додайте інші дозволені джерела для розробки
             ],
             production: [
@@ -492,7 +492,7 @@ class Config {
         return {
             origin: (origin, callback) => {
                 // Дозволяємо запити без "origin" (наприклад, з мобільних додатків або curl)
-                if (!origin || allowedOrigins.includes(origin)) {
+                if (!origin || allowedOrigins.includes(origin) || allowedOrigins.length === 0) {
                     callback(null, true) // Дозволено
                 } else {
                     callback(new Error(`Origin '${origin}' не дозволено правилами CORS.`))

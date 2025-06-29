@@ -5,8 +5,8 @@
  * Використовує патерн "Фабричний метод" для інкапсуляції логіки створення об'єктів.
  */
 
-import ConsoleLogger from './ConsoleLogger.js'
-import WinstonLogger from './WinstonLogger.js' // Імпортуємо наш оновлений клас WinstonLogger
+import ConsoleLogger from './loggers/ConsoleLogger.js'
+import WinstonLogger from './loggers/WinstonLogger.js' // Імпортуємо наш оновлений клас WinstonLogger
 // Імпортуйте інші реалізації логерів тут
 
 /**
