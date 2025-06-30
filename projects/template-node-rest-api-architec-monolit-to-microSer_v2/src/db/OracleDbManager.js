@@ -827,6 +827,9 @@ class OracleDbManager {
             const connection = await this.getConnection(dbName, usePool)
             // Ensure autoCommit is false for transactions
             connection.autoCommit = false
+            // Start the transaction block
+            await connection.execute('BEGIN')
+
             return connection
         } catch (error) {
             this.#logger.error(`Failed to begin transaction for ${dbName}:`, error)

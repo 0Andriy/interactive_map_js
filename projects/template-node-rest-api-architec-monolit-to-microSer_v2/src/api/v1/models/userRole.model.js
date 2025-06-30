@@ -110,6 +110,7 @@ class UserRoleModel {
      * @throws {Error} Якщо виникає помилка при призначенні (наприклад, дублікат або неіснуючі ID).
      */
     async assignRole(dbName, userId, roleId) {
+        console.log(dbName, userId, roleId)
         try {
             const sql = `
                 INSERT INTO USER_ROLES (USER_ID, ROLE_ID)
@@ -151,11 +152,11 @@ class UserRoleModel {
             logger.info(`Role ${roleId} assigned to user ${userId} successfully.`)
 
             return {
-                userRoleId: outBinds.out_userRoleId[0],
-                userId: outBinds.out_userId[0],
-                roleId: outBinds.out_roleId[0],
-                assignedAt: outBinds.out_assignedAt[0],
-                isActive: outBinds.out_isActive[0] === 1,
+                USER_ROLE_ID: outBinds.out_userRoleId[0],
+                USER_ID: outBinds.out_userId[0],
+                ROLE_ID: outBinds.out_roleId[0],
+                ASSIGNED_AT: outBinds.out_assignedAt[0],
+                IS_ACTIVE: outBinds.out_isActive[0] === 1,
             }
         } catch (error) {
             logger.error(`Error assigning role ${roleId} to user ${userId}: ${error.message}`, {
@@ -180,7 +181,7 @@ class UserRoleModel {
      * @returns {Promise<boolean>} True, якщо відкликано, false, якщо ні.
      * @throws {Error} Якщо виникає помилка при відкликанні.
      */
-    async revokeRole(dbName, userId, roleId) {
+    async deleteRole(dbName, userId, roleId) {
         try {
             const sql = `
                 DELETE FROM USER_ROLES
@@ -210,26 +211,26 @@ class UserRoleModel {
      * Перевіряє, чи має користувач певну роль.
      * @param {string} dbName - Назва бази даних
      * @param {number} userId - ID користувача.
-     * @param {string} roleName - Назва ролі.
+     * @param {string} roleId - ID ролі.
      * @returns {Promise<boolean>} True, якщо має роль, false, якщо ні.
      * @throws {Error} Якщо виникає помилка при перевірці.
      */
-    async hasRole(dbName, userId, roleName) {
+    async hasRole(dbName, userId, roleId) {
         try {
             const sql = `
                 SELECT COUNT(UR.USER_ROLE_ID) AS COUNT
                 FROM USER_ROLES UR
                 JOIN ROLES R ON UR.ROLE_ID = R.ROLE_ID
-                WHERE UR.USER_ID = :userId AND R.ROLE_NAME = :roleName AND UR.IS_ACTIVE = 1
+                WHERE UR.USER_ID = :userId AND ROLE_ID = :roleId AND UR.IS_ACTIVE = 1
             `
 
-            const binds = { userId, roleName }
+            const binds = { userId, roleId }
 
             const result = await oracleDbManager.execute(dbName, sql, binds)
 
             return result.rows[0].COUNT > 0
         } catch (error) {
-            logger.error(`Error checking role '${roleName}' for user ${userId}: ${error.message}`, {
+            logger.error(`Error checking role '${roleId}' for user ${userId}: ${error.message}`, {
                 error,
             })
             throw error
@@ -260,11 +261,11 @@ class UserRoleModel {
             const result = await oracleDbManager.execute(dbName, sql, binds)
 
             return result.rows.map((row) => ({
-                roleId: row.ROLE_ID,
-                roleName: row.ROLE_NAME,
-                description: row.DESCRIPTION,
-                assignedAt: row.ASSIGNED_AT,
-                isActive: row.USER_ROLE_IS_ACTIVE === 1, // Конвертуємо в boolean
+                ROLE_ID: row.ROLE_ID,
+                ROLE_NAME: row.ROLE_NAME,
+                DESCRIPTION: row.DESCRIPTION,
+                ASSIGNED_AT: row.ASSIGNED_AT,
+                USER_ROLE_IS_ACTIVE: row.USER_ROLE_IS_ACTIVE === 1, // Конвертуємо в boolean
             }))
         } catch (error) {
             logger.error(`Error getting roles for user ${userId}: ${error.message}`, {
@@ -287,7 +288,7 @@ class UserRoleModel {
         try {
             const sql = `
                 UPDATE USER_ROLES
-                SET IS_ACTIVE = :isActive, ASSIGNED_AT = SYSTIMESTAMP -- Оновлюємо assigned_at при зміні статусу
+                SET IS_ACTIVE = :isActive, ASSIGNED_AT = SYSTIMESTAMP
                 WHERE USER_ID = :userId AND ROLE_ID = :roleId
             `
 

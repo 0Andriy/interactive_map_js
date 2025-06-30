@@ -244,13 +244,13 @@ class UserModel {
             const outBinds = result.outBinds
 
             return {
-                userId: outBinds.out_userId[0],
-                username: outBinds.out_username[0],
-                email: outBinds.out_email[0],
-                isActive: outBinds.out_isActive[0] === 1,
-                isEmailVerified: outBinds.out_isEmailVerified[0] === 1,
-                createdAt: outBinds.out_createdAt[0],
-                updatedAt: outBinds.out_updatedAt[0],
+                USER_ID: outBinds.out_userId[0],
+                USERNAME: outBinds.out_username[0],
+                EMAIL: outBinds.out_email[0],
+                IS_ACTIVE: outBinds.out_isActive[0] === 1,
+                IS_EMAIL_VERIFIED: outBinds.out_isEmailVerified[0] === 1,
+                CREATED_AT: outBinds.out_createdAt[0],
+                UPDATED_AT: outBinds.out_updatedAt[0],
             }
         } catch (error) {
             logger.error(`Error creating user: ${error.message}`, { error })
@@ -300,6 +300,7 @@ class UserModel {
             `
 
             const binds = { userId }
+
             const result = await oracleDbManager.execute(dbName, sql, binds)
 
             if (result.rows.length === 0) {
@@ -456,6 +457,7 @@ class UserModel {
      * @throws {Error} Якщо виникає помилка при отриманні списку.
      */
     async findAll(dbName, filters = {}, includeDeleted = false, limit, offset = 0) {
+        console.log(12, offset, limit)
         try {
             let sqlBase = `
             FROM
@@ -542,7 +544,7 @@ class UserModel {
         `
 
             // Гнучка логіка пагінації
-            if (limit !== undefined && limit !== null) {
+            if (limit !== undefined && limit !== null && limit > 0) {
                 usersSql += ` OFFSET ${offset} ROWS FETCH NEXT ${limit} ROWS ONLY`
             } else if (offset > 0) {
                 usersSql += ` OFFSET ${offset} ROWS`

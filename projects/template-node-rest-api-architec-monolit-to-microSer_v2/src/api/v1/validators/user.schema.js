@@ -39,10 +39,8 @@ export const updateUserSchema = z
     })
 
 // Схема для призначення ролі користувачеві
-export const assignRoleSchema = z.object({
-    roleName: z.string({
-        required_error: 'Role name is required',
-    }),
+export const assignRolesSchema = z.object({
+    roleIds: z.array(z.number()).nonempty('roleIds cannot be empty'),
 })
 
 // Схема для валідації зміни пароля для власника
@@ -76,4 +74,11 @@ export const adminChangeUserPasswordSchema = z.object({
         .regex(/[a-z]/, 'Має містити хоча б одну малу літеру')
         .regex(/[0-9]/, 'Має містити хоча б одну цифру')
         .regex(/[^A-Za-z0-9]/, 'Має містити хоча б один спеціальний символ'),
+})
+
+// Схема для відкликання ролей у користувача
+export const revokeRolesSchema = z.object({
+    roleIds: z.array(z.number().int().positive()).nonempty({
+        message: 'roleIds must be a non-empty array of positive integers',
+    }),
 })

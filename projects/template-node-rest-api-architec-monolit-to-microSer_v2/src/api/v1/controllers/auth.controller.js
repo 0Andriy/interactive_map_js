@@ -10,8 +10,9 @@ const logger = loggerModule.getLoggerForService('auth-service')
  * Після успішної реєстрації автоматично логінить користувача.
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
-export async function register(req, res) {
+export async function register(req, res, next) {
     try {
         const dbName = req.dbName
 
@@ -78,8 +79,9 @@ export async function register(req, res) {
  * Обробник для входу користувача.
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
-export async function login(req, res) {
+export async function login(req, res, next) {
     try {
         const dbName = req.dbName
 
@@ -125,8 +127,9 @@ export async function login(req, res) {
  * Обробник для виходу користувача.
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
-export async function logout(req, res) {
+export async function logout(req, res, next) {
     try {
         const dbName = req.dbName
 
@@ -154,8 +157,9 @@ export async function logout(req, res) {
  * Використовує refresh token з HTTP-Only cookie.
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
-export async function refresh(req, res) {
+export async function refresh(req, res, next) {
     try {
         const dbName = req.dbName
 
@@ -205,8 +209,9 @@ export async function refresh(req, res) {
  * Обробник для зміни пароля аутентифікованим користувачем.
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
-export async function changePassword(req, res) {
+export async function changePassword(req, res, next) {
     try {
         const dbName = req.dbName
 
@@ -240,8 +245,9 @@ export async function changePassword(req, res) {
  * Обробник верифікації accessToken надістланим користувачем
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
-export async function verifyAccessToken(req, res) {
+export async function verifyAccessToken(req, res, next) {
     try {
         // 1. Спробувати отримати з заголовка Authorization
         let token = req.headers.authorization

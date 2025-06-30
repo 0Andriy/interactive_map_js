@@ -9,6 +9,6 @@ const router = Router()
 
 router.use('/', basicRoutes)
 router.use('/auth', authRoutes)
-router.use('/users', /*authenticateToken(),*/ userRoutes)
+router.use('/users', authenticateToken(), userRoutes)
 
 export default router

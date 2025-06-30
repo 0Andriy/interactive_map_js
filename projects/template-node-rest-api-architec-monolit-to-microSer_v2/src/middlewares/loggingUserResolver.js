@@ -75,7 +75,7 @@ const decodeJwtWithoutVerification = (token) => {
  * @param {import('express').NextFunction} next - The next middleware function in the stack.
  * @returns {void}
  */
-export const loggingUserResolver = (req, res, next) => {
+export async function loggingUserResolver(req, res, next) {
     let userIdentifier = 'anonymous' // Default identifier
     let userRoles = [] // User roles
     let source = 'none' // Where the data came from
@@ -86,9 +86,9 @@ export const loggingUserResolver = (req, res, next) => {
      * @param {Array<'header' | 'cookie' | 'body'>} preferredSourceOrder - An array specifying the order of sources to check (e.g., ['header', 'cookie']).
      * @returns {object|null} The decoded token payload, or null if not found or decoding fails.
      */
-    const findAndDecodeToken = (tokenName, preferredSourceOrder) => {
+    function findAndDecodeToken(tokenName, preferredSourceOrder) {
         let token = null
-
+        // Iterate through the preferred sources in order
         for (const src of preferredSourceOrder) {
             if (src === 'header') {
                 // 1. Try to get token from Authorization header (access token)
@@ -100,6 +100,7 @@ export const loggingUserResolver = (req, res, next) => {
                         break
                     }
                 }
+
                 // Also check custom header, if any (e.g., for refresh token)
                 if (req.headers[`x-${tokenName}`]) {
                     token = req.headers[`x-${tokenName}`]
@@ -124,7 +125,8 @@ export const loggingUserResolver = (req, res, next) => {
         }
 
         if (token) {
-            return decodeJwtWithoutVerification(token)
+            const result = decodeJwtWithoutVerification(token)
+            return result
         }
         return null
     }
@@ -133,8 +135,8 @@ export const loggingUserResolver = (req, res, next) => {
     // Priority order for Access Token: Header (Authorization Bearer), Cookie, Body
     const decodedAccessToken = findAndDecodeToken('accessToken', ['header', 'cookie', 'body'])
 
-    if (decodedAccessToken && decodedAccessToken.id) {
-        userIdentifier = decodedAccessToken.id
+    if (decodedAccessToken && decodedAccessToken.userId) {
+        userIdentifier = decodedAccessToken.userId
         userRoles = Array.isArray(decodedAccessToken.roles) ? decodedAccessToken.roles : []
         // `source` is already set inside `findAndDecodeToken`
     }

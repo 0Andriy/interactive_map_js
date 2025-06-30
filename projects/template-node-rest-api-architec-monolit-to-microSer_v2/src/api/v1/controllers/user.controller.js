@@ -7,6 +7,7 @@ const logger = loggerModule.getLoggerForService('user-management-service')
  * Створити користувача
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
 export async function createUser(req, res, next) {
     try {
@@ -31,14 +32,14 @@ export async function createUser(req, res, next) {
         res.status(201).json({
             message: 'User created successfully.',
             user: {
-                userId: user.USER_ID,
-                username: user.USERNAME,
-                email: user.EMAIL,
-                firstName: user.FIRST_NAME,
-                lastName: user.LAST_NAME,
-                isEmailVerified: user.IS_EMAIL_VERIFIED,
-                isActive: user.IS_ACTIVE,
-                roles: user.ROLES,
+                userId: newUser.USER_ID,
+                username: newUser.USERNAME,
+                email: newUser.EMAIL,
+                firstName: newUser.FIRST_NAME,
+                lastName: newUser.LAST_NAME,
+                isEmailVerified: newUser.IS_EMAIL_VERIFIED,
+                isActive: newUser.IS_ACTIVE,
+                roles: newUser.ROLES,
             }, // Повертаємо дані користувача з об'єкта, отриманого від свторення користувача
         })
     } catch (error) {
@@ -50,6 +51,7 @@ export async function createUser(req, res, next) {
  * Отримати всіх користувачів
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
 export async function getAllUsers(req, res, next) {
     try {
@@ -77,6 +79,7 @@ export async function getAllUsers(req, res, next) {
  * Отримати користувача за ID
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
 export async function getUserById(req, res, next) {
     try {
@@ -103,15 +106,16 @@ export async function getUserById(req, res, next) {
  * дані пропоточного користувача береться з навантаження accessToken
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
 export async function getMe(req, res, next) {
     try {
         const dbName = req.dbName
 
-        const { id } = req.user
+        const { userId } = req.user
 
         // ID користувача додається в req.user мідлвером authenticateToken
-        const user = await userService.getUserById(dbName, id)
+        const user = await userService.getUserById(dbName, userId)
         if (!user) {
             return res.status(404).json({ message: 'User profile not found' })
         }
@@ -126,6 +130,7 @@ export async function getMe(req, res, next) {
  * Оновити дані користувача
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
 export async function updateUser(req, res, next) {
     try {
@@ -165,6 +170,7 @@ export async function updateUser(req, res, next) {
  * Видалити користувача (м'яке видалення)
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
 export async function deleteUser(req, res, next) {
     try {
@@ -194,8 +200,9 @@ export async function deleteUser(req, res, next) {
  * Обробник для зміни пароля аутентифікованим користувачем.
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
-export async function changePassword(req, res) {
+export async function changePassword(req, res, next) {
     try {
         const dbName = req.dbName
         const { id } = req.params
@@ -247,19 +254,79 @@ export async function changePassword(req, res) {
  * Призначити роль користувачеві
  * @param {import('express').Request} req
  * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
  */
-export async function assignRole(req, res, next) {
+export async function assignRoles(req, res, next) {
     try {
         const dbName = req.dbName
         const { id: userId } = req.params
-        const { roleName } = req.body
+        const { roleIds } = req.body
 
-        const result = await userService.assignRolesToUser(dbName, userId, [roleName])
+        // Простенька валідація
+        if (
+            !Array.isArray(roleIds) ||
+            roleIds.length === 0 ||
+            !roleIds.every((id) => Number.isInteger(id))
+        ) {
+            return res
+                .status(400)
+                .json({ error: '`roleIds` має бути масивом цілих чисел і мати якесь значення' })
+        }
+
+        const result = await userService.assignRolesToUser(dbName, userId, roleIds)
+
         res.status(200).json(result)
     } catch (error) {
-        // if (error.message.includes('not found')) {
-        //     return next(new AppError(error.message, 404))
-        // }
+        next(error)
+    }
+}
+
+/**
+ * Отримати ролі користувача
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+export async function getUserRoles(req, res, next) {
+    try {
+        const dbName = req.dbName
+        const { id: userId } = req.params
+
+        const result = await userService.getUserRoles(dbName, userId)
+
+        res.status(200).json(result)
+    } catch (error) {
+        next(error)
+    }
+}
+
+/**
+ * Відкликати ролі користувача
+ * @param {import('express').Request} req
+ * @param {import('express').Response} res
+ * @param {import('express').NextFunction} next
+ */
+export async function revokeUserRoles(req, res, next) {
+    try {
+        const dbName = req.dbName
+        const { id: userId } = req.params
+        const { roleIds } = req.body
+
+        // Простенька валідація
+        if (
+            !Array.isArray(roleIds) ||
+            roleIds.length === 0 ||
+            !roleIds.every((id) => Number.isInteger(id))
+        ) {
+            return res
+                .status(400)
+                .json({ error: '`roleIds` має бути масивом цілих чисел і мати якесь значення' })
+        }
+
+        const result = await userService.revokeUserRoles(dbName, userId, roleIds)
+
+        res.status(200).json(result)
+    } catch (error) {
         next(error)
     }
 }

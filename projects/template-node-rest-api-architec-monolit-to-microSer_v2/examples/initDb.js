@@ -1,5 +1,5 @@
-import oracleDbManager from '../src/db/OracleDbManager.js'
-import logger from '../src/utils/logger.js'
+import oracleDbManager from './OracleDbManager.js'
+import logger from '../utils/logger.js'
 
 const createTableSQL = {
     // Таблиці

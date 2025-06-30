@@ -68,16 +68,24 @@ class UserService {
 
         const offset = (page - 1) * limit
 
-        const { users, pagination } = await userModel.findAll(dbName, {
+        console.log(11, offset, limit)
+
+        const { users, pagination } = await userModel.findAll(
+            dbName,
+            {
+                limit,
+                offset,
+                sortBy,
+                order,
+                filters,
+                search,
+            },
+            false,
             limit,
             offset,
-            sortBy,
-            order,
-            filters,
-            search,
-        })
+        )
 
-        users = users.map((user) => {
+        const sanitizedUsers = users.map((user) => {
             delete user.PASSWORD_HASH
             delete user.SALT
 
@@ -85,7 +93,7 @@ class UserService {
         })
 
         return {
-            users,
+            users: sanitizedUsers,
             pagination,
         }
     }
@@ -228,24 +236,147 @@ class UserService {
      *
      * @param {string} dbName - Назва бази даних, з якою працювати.
      * @param {number|string} userId - Ідентифікатор користувача, якому потрібно призначити ролі.
-     * @param {string[]} [roles=[]] - Масив рядків, де кожен рядок є назвою ролі для призначення.
+     * @param {string[]} [roleIds=[]] - Масив ID ролей для призначення.
      * @returns {Promise<Object[]>} Масив результатів операцій призначення ролей.
      * @throws {CustomError.NotFound} Якщо користувача з вказаним `userId` не знайдено.
      */
-    async assignRolesToUser(dbName, userId, roles = []) {
-        const user = await userModel.findById(dbName, userId)
+    async assignRolesToUser(dbName, userId, roleIds = []) {
+        try {
+            // Спершу шукаємо користувача, щоб впевнитися, що він існує
+            const user = await userModel.findById(dbName, userId)
 
-        if (!user) {
-            throw CustomError.NotFound('User not found', null, 'USER_NOT_FOUND')
+            if (!user) {
+                throw CustomError.NotFound('User not found', null, 'USER_NOT_FOUND')
+            }
+
+            if (!Array.isArray(roleIds) || roleIds.length === 0) {
+                return [] // Нічого не призначати, якщо масив порожній
+            }
+
+            // Отримуємо всі ролі, що вже є у користувача
+            // Це потрібно, щоб зрозуміти, які ролі активні, які ні, а яких немає
+            const currentRoles = await userRoleModel.getRolesForUser(dbName, userId, true)
+
+            const results = []
+
+            // Перебираємо всі ролі, які хочемо призначити
+            for (const roleId of roleIds) {
+                // Шукаємо, чи є ця роль вже призначена користувачу
+                const role = currentRoles.find((r) => r.ROLE_ID === roleId)
+
+                if (role) {
+                    if (role.USER_ROLE_IS_ACTIVE) {
+                        // Якщо роль активна — нічого не робимо
+                        results.push({ roleId, status: 'already_active' })
+                    } else {
+                        // Якщо роль є, але неактивна — активуємо її
+                        await userRoleModel.updateRoleStatusForUser(dbName, userId, roleId, true)
+                        results.push({ roleId, status: 'reactivated' })
+                    }
+                } else {
+                    // Якщо ролі немає — додаємо новий запис
+                    await userRoleModel.assignRole(dbName, userId, roleId)
+                    results.push({ roleId, status: 'assigned' })
+                }
+            }
+
+            // Логування результату
+            logger.info(`Assign roles to user ${userId}: [${roleIds.join(', ')}]`)
+
+            return results
+        } catch (error) {
+            logger.error(`Error assigning roles to user ${userId}: ${error.message}`, {
+                error,
+            })
+            throw error
         }
+    }
 
-        const results = await Promise.all(
-            roles.map((roleName) => userRoleModel.assignRole(dbName, userId, roleName)),
-        )
+    /**
+     * Отримує ролі користувача.
+     *
+     * @param {string} dbName - Назва бази даних.
+     * @param {number|string} userId - Ідентифікатор користувача.
+     * @returns {Promise<Object[]>} Масив ролей користувача з інформацією про їх статус.
+     * @throws {CustomError.NotFound} Якщо користувача з вказаним `userId` не знайдено.
+     */
+    async getUserRoles(dbName, userId) {
+        try {
+            // Перевіряємо чи існує користувач
+            const user = await userModel.findById(dbName, userId)
 
-        logger.info(`Assign roles to user ${userId}: [${roles.join(', ')}]`)
+            if (!user) {
+                throw CustomError.NotFound('User not found', null, 'USER_NOT_FOUND')
+            }
 
-        return results
+            // Отримуємо ролі користувача (припускаємо, що параметр true означає, що беремо всі ролі, включно з неактивними)
+            const currentUserRoles = await userRoleModel.getRolesForUser(dbName, userId, true)
+
+            // Логування
+            logger.info(`Fetched roles for user ${userId}`)
+
+            return currentUserRoles
+        } catch (error) {
+            logger.error(`Error fetching roles for user ${userId}: ${error.message}`, { error })
+            throw error
+        }
+    }
+
+    /**
+     * Відкликає одну або декілька ролей у користувача (деактивує).
+     *
+     * @param {string} dbName - Назва бази даних, з якою працювати.
+     * @param {number|string} userId - Ідентифікатор користувача, у якого потрібно відкликати ролі.
+     * @param {string[]} [roleIds=[]] - Масив ID ролей для відкликання.
+     * @returns {Promise<Object[]>} Масив результатів операцій відкликання ролей.
+     * @throws {CustomError.NotFound} Якщо користувача з вказаним `userId` не знайдено.
+     */
+    async revokeUserRoles(dbName, userId, roleIds = []) {
+        try {
+            // Спершу шукаємо користувача, щоб впевнитися, що він існує
+            const user = await userModel.findById(dbName, userId)
+
+            if (!user) {
+                throw CustomError.NotFound('User not found', null, 'USER_NOT_FOUND')
+            }
+
+            if (!Array.isArray(roleIds) || roleIds.length === 0) {
+                return [] // Нічого не відкликати, якщо масив порожній
+            }
+
+            // Отримуємо всі ролі користувача, включно з активними та неактивними
+            const currentRoles = await userRoleModel.getRolesForUser(dbName, userId, true)
+
+            const results = []
+
+            // Перебираємо ролі, які потрібно відкликати
+            for (const roleId of roleIds) {
+                // Шукаємо, чи призначена ця роль користувачу
+                const role = currentRoles.find((r) => r.ROLE_ID === roleId)
+
+                if (role) {
+                    if (!role.USER_ROLE_IS_ACTIVE) {
+                        // Якщо роль вже неактивна — нічого не робимо
+                        results.push({ roleId, status: 'already_inactive' })
+                    } else {
+                        // Якщо роль активна — деактивуємо
+                        await userRoleModel.updateRoleStatusForUser(dbName, userId, roleId, false)
+                        results.push({ roleId, status: 'revoked' })
+                    }
+                } else {
+                    // Якщо роль не призначена користувачу — нічого не робимо або можна записати у результат
+                    results.push({ roleId, status: 'not_assigned' })
+                }
+            }
+
+            // Логування результату
+            logger.info(`Revoked roles from user ${userId}: [${roleIds.join(', ')}]`)
+
+            return results
+        } catch (error) {
+            logger.error(`Error revoking roles for user ${userId}: ${error.message}`, { error })
+            throw error
+        }
     }
 }
 

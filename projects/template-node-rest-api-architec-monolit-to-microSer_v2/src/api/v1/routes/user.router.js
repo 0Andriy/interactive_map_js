@@ -56,7 +56,9 @@ const router = Router()
 
 router.post(
     '/',
-    /*authorizeRole(['admin']), validateSchema({ body: userSchema.createUserSchema }),*/ userController.createUser,
+    authorizeRoles(['admin']),
+    validateSchema({ body: userSchema.createUserSchema }),
+    userController.createUser,
 )
 
 /**
@@ -91,7 +93,7 @@ router.post(
  *         description: Forbidden - Admin access required
  */
 
-router.get('/', /*authorizeRole(['admin']), */ userController.getAllUsers)
+router.get('/', authorizeRoles(['admin']), userController.getAllUsers)
 
 /**
  * @swagger
@@ -122,7 +124,7 @@ router.get('/', /*authorizeRole(['admin']), */ userController.getAllUsers)
  *         description: User not found
  */
 
-router.get('/:id', userController.getUserById)
+router.get(/(?<id>\d+)$/, userController.getUserById)
 
 /**
  * @swagger
@@ -241,8 +243,8 @@ router.delete('/:id', userController.deleteUser)
 
 router.put(
     '/:id/change-password',
-    /*authenticateToken(['admin']), // Protect this route
-    validateSchema({ body: userSchema.adminChangeUserPasswordSchema }),*/
+    authorizeRoles(['admin']),
+    validateSchema({ body: userSchema.adminChangeUserPasswordSchema }),
     userController.changePassword,
 )
 
@@ -291,8 +293,7 @@ router.put(
 
 router.put(
     '/me/change-password',
-    /*authenticateToken(), // Protect this route
-    validateSchema({ body: userSchema.changeOwnPasswordSchema }),*/
+    validateSchema({ body: userSchema.changeOwnPasswordSchema }),
     userController.changePassword,
 )
 
@@ -315,8 +316,17 @@ router.put(
  *       required: true
  *       content:
  *         application/json:
- *           example:
- *             roleName: "editor"
+ *           schema:
+ *             type: object
+ *             required:
+ *               - roleIds
+ *             properties:
+ *               roleIds:
+ *                 type: array
+ *                 description: Список ID ролей для призначення користувачу.
+ *                 items:
+ *                   type: number
+ *                 example: [1, 2, 3]
  *     responses:
  *       200:
  *         description: Role assigned successfully
@@ -328,9 +338,92 @@ router.put(
 
 router.post(
     '/:id/roles',
-    /*authorizeRole(['admin']),*/
-    validateSchema({ body: userSchema.assignRoleSchema }),
-    userController.assignRole,
+    authorizeRoles(['admin']),
+    validateSchema({ body: userSchema.assignRolesSchema }),
+    userController.assignRoles,
+)
+
+/**
+ * @swagger
+ * /api/v1/users/{id}/roles:
+ *   get:
+ *     summary: Get roles assigned to a user (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the user to get roles for
+ *     responses:
+ *       200:
+ *         description: List of roles assigned to the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   role_id:
+ *                     type: number
+ *                   role_name:
+ *                     type: string
+ *                   is_active:
+ *                     type: boolean
+ *       404:
+ *         description: User not found
+ */
+
+router.get('/:id/roles', authorizeRoles(['admin', 'manager']), userController.getUserRoles)
+
+/**
+ * @swagger
+ * /api/v1/users/{id}/roles:
+ *   delete:
+ *     summary: Revoke multiple roles from a user (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - roleIds
+ *             properties:
+ *               roleIds:
+ *                 type: array
+ *                 description: List of role IDs to revoke from the user
+ *                 items:
+ *                   type: number
+ *                 example: [1, 2, 3]
+ *     responses:
+ *       204:
+ *         description: Roles revoked successfully
+ *       404:
+ *         description: User or one of the roles not found
+ *       403:
+ *         description: Forbidden
+ */
+
+router.delete(
+    '/:id/roles',
+    authorizeRoles(['admin']),
+    validateSchema({ body: userSchema.revokeRolesSchema }),
+    userController.revokeUserRoles,
 )
 
 export default router
