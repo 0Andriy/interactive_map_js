@@ -71,8 +71,6 @@ class UserService {
         // Розрахунок безпечного початку
         const offset = page > 0 ? (page - 1) * limit : 0
 
-        console.log(11, offset, limit)
-
         const { users, pagination } = await userModel.findAll(
             dbName,
             {
@@ -184,6 +182,8 @@ class UserService {
             await authGateway.revokeAllUserTokens(dbName, userId)
 
             logger.info(`Password successfully changed for user ${userId}. All tokens revoked.`)
+
+            return true
         } catch (error) {
             logger.error(`Change password service failed for user ${userId}: ${error.message}`, {
                 error,
@@ -230,6 +230,8 @@ class UserService {
             await authGateway.revokeAllUserTokens(dbName, userId)
 
             logger.info(`Password successfully changed for user ${userId}. All tokens revoked.`)
+
+            return true
         } catch (error) {
             logger.error(`Change password service failed for user ${userId}: ${error.message}`, {
                 error,

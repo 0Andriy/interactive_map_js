@@ -168,7 +168,7 @@ router.get('/me', userController.getMe)
  *       content:
  *         application/json:
  *           example:
- *             name: "Jane Updated"
+ *             username: "Jane Updated"
  *             email: "jane@example.com"
  *     responses:
  *       200:

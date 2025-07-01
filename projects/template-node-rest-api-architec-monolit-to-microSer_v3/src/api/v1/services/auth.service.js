@@ -416,7 +416,7 @@ class AuthService {
 
             return {
                 isValid,
-                payload,
+                payload: payload || (await jwtManager.decode(accessToken)),
             }
         } catch (error) {
             logger.error(`Logout failed: ${error.message}`, { error })

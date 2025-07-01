@@ -50,7 +50,7 @@ export async function register(req, res, next) {
         setTokenCookie(res, 'refresh', refreshToken)
 
         // 4. Повертаємо відповідь з токенами та даними користувача
-        res.status(201).json({
+        return res.status(201).json({
             message: 'User registered and logged in successfully.',
             user: {
                 userId: user.USER_ID,
@@ -101,7 +101,7 @@ export async function login(req, res, next) {
         // Встановлюємо refresh token як HTTP-Only cookie для додаткової безпеки (Відповідає терміну дії refresh token)
         setTokenCookie(res, 'refresh', refreshToken)
 
-        res.status(200).json({
+        return res.status(200).json({
             message: 'Logged in successfully.',
             user,
             accessToken,
@@ -135,7 +135,7 @@ export async function logout(req, res, next) {
         // Очищаємо HTTP-Only cookie з refresh token
         clearTokenCookie(res, 'refresh')
 
-        res.status(200).json({ message: 'Logged out successfully.' })
+        return res.status(200).json({ message: 'Logged out successfully.' })
     } catch (error) {
         logger.error(`Logout error: ${error.message}`, { error })
         next(error)
@@ -173,7 +173,7 @@ export async function refresh(req, res, next) {
         // Встановлюємо новий refresh token як HTTP-Only cookie
         setTokenCookie(res, 'refresh', refreshToken)
 
-        res.status(200).json({
+        return res.status(200).json({
             message: 'Tokens refreshed successfully.',
             accessToken,
             refreshToken,
@@ -230,29 +230,31 @@ export async function verifyAccessToken(req, res, next) {
     try {
         // 1. Спробувати отримати з заголовка Authorization
         let token = req.headers.authorization
+
         // Формат: "Bearer <token>"
         if (token && token.startsWith('Bearer ')) {
             token = token.split(' ')[1]
         } else {
             // Якщо не знайшли в заголовку або формат невірний, шукаємо в query параметрах
             // 2. Спробувати отримати з параметра запиту
-            token = req.query.access_token || req.query.accessToken
+            token = req.query?.access_token || req.query?.accessToken
             if (!token) {
                 // Якщо і там немає, спробувати отримати з тіла запиту (для POST-запитів)
                 // 3. Спробувати отримати з тіла запиту
-                token = req.body.access_token || req.body.accessToken
+                token = req.body?.access_token || req.body?.accessToken
             }
         }
 
         if (!token) {
-            res.status(401).json({
+            // Обов'язково через return, щоб не продовжувати виконання і не вионався res.status(200) бо буде hтtp 200 з помилкою
+            return res.status(401).json({
                 message: 'Токен доступу відсутній у заголовку, параметрі запиту або тілі.',
             })
         }
 
         const verificationResult = await authService.verifyAccessToken(token)
 
-        res.status(200).json({
+        return res.status(200).json({
             message: 'Результат верифікації AccessToken',
             isValid: verificationResult.isValid,
             payload: verificationResult.payload,

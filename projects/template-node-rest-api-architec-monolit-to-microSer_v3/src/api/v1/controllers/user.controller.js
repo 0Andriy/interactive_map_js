@@ -59,7 +59,10 @@ export async function getAllUsers(req, res, next) {
 
         const { page, limit } = req.query
 
-        const { users, pagination } = await userService.getAllUsers(dbName, { page, limit })
+        const { users, pagination } = await userService.getAllUsers(dbName, {
+            page: Number(page),
+            limit: Number(limit),
+        })
 
         res.status(200).json({
             message:
@@ -191,7 +194,7 @@ export async function changePassword(req, res, next) {
     try {
         const dbName = req.dbName
         const { id } = req.params
-        const { oldPassword, newPassword } = req.body
+        const { currentPassword, newPassword } = req.body
 
         let passwordChanged = false
         if (id) {
@@ -210,7 +213,7 @@ export async function changePassword(req, res, next) {
             passwordChanged = await userService.changeOwnPassword(
                 dbName,
                 userId,
-                oldPassword,
+                currentPassword,
                 newPassword,
             )
         }

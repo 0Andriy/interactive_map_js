@@ -457,7 +457,6 @@ class UserModel {
      * @throws {Error} Якщо виникає помилка при отриманні списку.
      */
     async findAll(dbName, filters = {}, includeDeleted = false, limit, offset = 0) {
-        console.log(12, offset, limit)
         try {
             let sqlBase = `
                 FROM
@@ -581,7 +580,7 @@ class UserModel {
                 // }
             })
 
-            // Нормалізація limit та offset
+            // Нормалізація limit та offset (Limit, Offset мають бути числами)
             const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : totalCount
             const safeOffset = Number.isFinite(offset) && offset >= 0 ? offset : 0
 

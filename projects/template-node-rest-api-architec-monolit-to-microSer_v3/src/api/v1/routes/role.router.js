@@ -120,7 +120,7 @@ router.get('/:id', authorizeRoles(['admin']), roleController.getRoleById)
  *       content:
  *         application/json:
  *           example:
- *             name: "supervisor"
+ *             role_name: "supervisor"
  *     responses:
  *       200:
  *         description: Role updated successfully

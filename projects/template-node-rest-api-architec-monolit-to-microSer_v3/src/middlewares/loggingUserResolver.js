@@ -93,6 +93,7 @@ export async function loggingUserResolver(req, res, next) {
             if (src === 'header') {
                 // 1. Try to get token from Authorization header (access token)
                 const authHeader = req.headers['authorization']
+
                 if (authHeader && authHeader.startsWith('Bearer ')) {
                     token = authHeader.split(' ')[1]
                     if (token) {

@@ -22,7 +22,7 @@ export async function createRole(req, res, next) {
 
         const role = await roleService.createRole(dbName, name)
 
-        res.status(201).json({
+        return res.status(201).json({
             message: 'Role created successfully',
             role,
         })
@@ -44,7 +44,7 @@ export async function getAllRoles(req, res, next) {
 
         const roles = await roleService.getAllRoles(dbName)
 
-        res.status(200).json({
+        return res.status(200).json({
             message: 'Roles retrieved successfully',
             results: roles.length,
             roles,
@@ -68,7 +68,7 @@ export async function getRoleById(req, res, next) {
 
         const role = await roleService.getRoleById(dbName, id)
 
-        res.status(200).json({
+        return res.status(200).json({
             message: 'Role retrieved successfully',
             role,
         })
@@ -88,11 +88,11 @@ export async function updateRole(req, res, next) {
     try {
         const dbName = req.dbName
         const { id } = req.params
-        const { name } = req.body
+        const { name: role_name } = req.body
 
-        const updatedRole = await roleService.updateRole(dbName, id, { name })
+        const updatedRole = await roleService.updateRole(dbName, id, { role_name })
 
-        res.status(200).json({
+        return res.status(200).json({
             message: 'Role updated successfully',
             role: updatedRole,
         })
@@ -115,7 +115,10 @@ export async function deleteRole(req, res, next) {
 
         const deleted = await roleService.deleteRole(dbName, id)
 
-        res.status(204).send()
+        // res.status(204).send()
+        return res.status(200).json({
+            message: 'Role deleted successfully',
+        })
     } catch (error) {
         logger.error(`Delete role error: ${error.message}`, { error })
         next(error)

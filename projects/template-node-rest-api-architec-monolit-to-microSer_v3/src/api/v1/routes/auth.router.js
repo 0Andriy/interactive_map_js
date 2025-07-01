@@ -289,7 +289,7 @@ router.get(
  *     summary: Перевірити дійсність Access Token (через тіло запиту)
  *     description: >
  *       Цей ендпоінт дозволяє перевірити дійсність наданого Access Token,
- *       переданого у тілі запиту.
+ *       переданого у тілі запиту. access_token або accessToken.
  *
  *       **Важливо:** Передача токенів через тіло запиту менш безпечна, ніж через заголовок `Authorization`,
  *       і рекомендована лише для сценаріїв, де заголовок `Authorization` не може бути використаний.
@@ -352,13 +352,13 @@ router.post(
  *     parameters:
  *       - in: header
  *         name: Authorization
+ *         required: false
  *         schema:
  *           type: string
  *           pattern: "^Bearer [A-Za-z0-9-_=]+\\.[A-Za-z0-9-_=]+\\.[A-Za-z0-9-_.+/=]*$"
  *         description: |
  *           Access Token у форматі Bearer.
  *           Приклад: `Bearer eyJhbGciOiJIUzI1Ni...`
- *         required: false
  *       - in: query
  *         name: access_token
  *         schema:

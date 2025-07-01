@@ -17,7 +17,7 @@ export const createUserSchema = z.object({
         .string({
             required_error: 'Password is required',
         })
-        .min(8, 'Password must be at least 8 characters long'),
+        .min(1, 'Password must be at least 8 characters long'),
     firstName: z.string().min(2).max(50).optional(),
     lastName: z.string().min(2).max(50).optional(),
     roles: z.array(z.string()).optional(), // Наприклад ['user', 'editor']
@@ -46,7 +46,7 @@ export const assignRolesSchema = z.object({
 // Схема для валідації зміни пароля для власника
 export const changeOwnPasswordSchema = z
     .object({
-        oldPassword: z.string().min(1, { message: 'Old password is required.' }),
+        currentPassword: z.string().min(1, { message: 'Old password is required.' }),
         newPassword: z
             .string()
             .min(1, { message: 'New password must be at least 8 characters long.' })
