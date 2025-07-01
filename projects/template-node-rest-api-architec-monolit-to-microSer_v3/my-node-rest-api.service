@@ -1,0 +1,72 @@
+# 1. Створити файл systemd для вашого REST API сервісу
+# 2. Зберегти його в /etc/systemd/system/ з назвою вашого сервісу, наприклад my-node-rest-api.service
+# 3. Замінити 'your_linux_user' та 'your_linux_user_group' на ваші дані
+# 4. Замінити '/path/to/your/project/root' на повний шлях до кореневої папки вашого REST API
+# 5. Замінити '/usr/bin/npm start' на команду, яка запускає ваш REST API
+# 6. Зберегти файл та виконати команди для перезавантаження systemd та запуску сервісу
+# 6. Виконати команди:
+#   Перезавантажити systemd, щоб він побачив новий сервіс - sudo systemctl daemon-reload
+#   Додати сервіс до автозапуск - sudo systemctl enable my-node-rest-api.service
+#   Запустити сервіс - sudo systemctl start my-node-rest-api.service
+#   Перевірити статус сервісу за допомогою - systemctl status my-node-rest-api.service
+#   Переглянути логи сервісу за допомогою - journalctl -u my-node-rest-api.service
+# 7. Якщо потрібно зупинити сервіс, використовуйте - sudo systemctl stop my-node-rest-api.service
+# 8. Якщо потрібно перезапустити сервіс, використовуйте - sudo systemctl restart my-node-rest-api.service
+# 9. Якщо потрібно видалити сервіс з автозапуску, використовуйте - sudo systemctl disable my-node-rest-api.service
+#   Потім видаліть файл з /etc/systemd/system/ та виконайте - sudo systemctl daemon-reload
+
+
+[Unit]
+Description=My REST API Service
+# Опис сервісу. Відображається при перегляді статусу.
+After=network.target
+# Вказує, що цей сервіс повинен запускатися після того, як мережа буде доступною.
+# Додайте 'After=postgresql.service' або 'After=mysql.service', якщо ваш API залежить від локальної бази даних.
+
+[Service]
+User=your_linux_user
+# Користувач, від імені якого буде запущено сервіс.
+# Це повинно бути ім'я користувача на вашій Linux-системі, який має права доступу до файлів проєкту.
+# Рекомендується використовувати окремого користувача для сервісу з мінімальними правами.
+
+Group=your_linux_user_group
+# Група, від імені якої буде запущено сервіс. Зазвичай співпадає з ім'ям користувача.
+
+WorkingDirectory=/path/to/your/project/root
+# Робоча директорія для вашого застосунку.
+# Це **дуже важливо**: вкажіть повний шлях до кореневої папки вашого REST API (де знаходиться package.json або основний скрипт).
+# Приклад: /home/your_linux_user/my-api-project
+
+ExecStart=/usr/bin/npm start
+# Або, якщо ви запускаєте Node.js скрипт напряму:
+# ExecStart=/usr/bin/node /path/to/your/project/root/server.js
+# Або, якщо це Python:
+# ExecStart=/usr/bin/python3 /path/to/your/project/root/app.py
+# Команда, яка буде виконана для запуску вашого застосунку.
+# Переконайтеся, що шляхи до виконуваних файлів (npm, node, python3) правильні.
+# Можете знайти їх за допомогою 'which npm', 'which node', 'which python3'.
+
+Restart=always
+# Вказує 'systemd' перезапускати сервіс, якщо він несподівано завершився.
+# 'on-failure' - перезапускати лише у разі збою.
+# 'always' - перезапускати незалежно від причини зупинки.
+
+RestartSec=5
+# Час (у секундах) очікування перед перезапуском сервісу.
+
+StandardOutput=syslog
+# Виводить стандартний вивід застосунку до системного журналу (syslog).
+# Можна змінити на 'journal' (для journalctl) або 'file:/path/to/log.log'.
+StandardError=syslog
+# Виводить стандартні помилки застосунку до системного журналу (syslog).
+
+# [Опціонально] Змінні середовища.
+# Якщо ваш застосунок потребує змінних середовища (наприклад, для конфігурації бази даних),
+# ви можете вказати їх тут.
+# Environment="NODE_ENV=production" "PORT=3000"
+# Або завантажити їх з файлу (наприклад, .env, якщо використовуєте dotenv):
+# EnvironmentFile=/path/to/your/project/root/.env
+
+[Install]
+WantedBy=multi-user.target
+# Вказує, що сервіс повинен запускатися при старті системи (коли система досягає багатокористувацького режиму).
