@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>WebSocket Чат Приклад</title>
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                display: flex;
+                flex-direction: column;
+                min-height: 100vh;
+                margin: 0;
+                padding: 20px;
+                background-color: #f4f7f6;
+                color: #333;
+                line-height: 1.6;
+            }
+
+            h1 {
+                color: #2c3e50;
+                text-align: center;
+                margin-bottom: 25px;
+            }
+
+            #connection-status {
+                margin-bottom: 15px;
+                font-weight: bold;
+                text-align: center;
+            }
+
+            .status-online {
+                color: #28a745;
+            }
+            .status-offline {
+                color: #dc3545;
+            }
+            .status-reconnecting {
+                color: #ffc107;
+            }
+
+            #controls {
+                background-color: #ffffff;
+                border-radius: 10px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                padding: 20px;
+                margin-bottom: 20px;
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            #controls label {
+                font-weight: 600;
+                margin-right: 10px;
+                color: #555;
+            }
+
+            #controls input[type='text'] {
+                flex-grow: 1;
+                padding: 10px 12px;
+                border: 1px solid #ced4da;
+                border-radius: 5px;
+                font-size: 1rem;
+                transition: border-color 0.2s;
+            }
+
+            #controls input[type='text']:focus {
+                border-color: #007bff;
+                outline: none;
+                box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            }
+
+            .button-group {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+
+            .main-button {
+                padding: 10px 20px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 1rem;
+                font-weight: 500;
+                transition: background-color 0.2s, transform 0.1s;
+            }
+
+            #connect-button {
+                background-color: #007bff;
+                color: white;
+            }
+            #connect-button:hover:not(:disabled) {
+                background-color: #0056b3;
+                transform: translateY(-1px);
+            }
+
+            #disconnect-button {
+                background-color: #6c757d;
+                color: white;
+            }
+            #disconnect-button:hover:not(:disabled) {
+                background-color: #5a6268;
+                transform: translateY(-1px);
+            }
+
+            .room-button {
+                background-color: #28a745;
+                color: white;
+            }
+            .room-button:hover:not(:disabled) {
+                background-color: #218838;
+                transform: translateY(-1px);
+            }
+
+            .main-button:disabled,
+            .room-button:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+                transform: none;
+            }
+
+            hr {
+                border: 0;
+                border-top: 1px solid #eee;
+                margin: 20px 0;
+            }
+
+            h3 {
+                margin-top: 0;
+                margin-bottom: 10px;
+                color: #34495e;
+            }
+
+            #current-rooms {
+                font-size: 0.9rem;
+                color: #666;
+            }
+
+            #chat-container {
+                flex-grow: 1;
+                background-color: #ffffff;
+                border-radius: 10px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                min-height: 400px;
+            }
+
+            #messages {
+                flex-grow: 1;
+                padding: 15px;
+                overflow-y: auto;
+                border-bottom: 1px solid #e9ecef;
+            }
+
+            #messages div {
+                margin-bottom: 8px;
+                line-height: 1.4;
+                word-wrap: break-word;
+            }
+
+            #messages .system-message {
+                color: #888;
+                font-style: italic;
+                font-size: 0.9rem;
+            }
+
+            #messages .user-message {
+                background-color: #e0f7fa;
+                padding: 8px 12px;
+                border-radius: 8px;
+                max-width: 85%;
+                align-self: flex-start;
+            }
+
+            #messages .user-message strong {
+                color: #00796b;
+            }
+
+            #messages .error-message {
+                color: #dc3545;
+                font-weight: bold;
+            }
+
+            #input-area {
+                display: flex;
+                padding: 15px;
+                background-color: #f8f9fa;
+                border-top: 1px solid #e9ecef;
+                gap: 10px;
+            }
+
+            #message-input {
+                flex-grow: 1;
+                padding: 10px 12px;
+                border: 1px solid #ced4da;
+                border-radius: 5px;
+                font-size: 1rem;
+                transition: border-color 0.2s;
+            }
+
+            #message-input:focus {
+                border-color: #007bff;
+                outline: none;
+                box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            }
+
+            #send-button {
+                padding: 10px 20px;
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 1rem;
+                font-weight: 500;
+                transition: background-color 0.2s, transform 0.1s;
+            }
+
+            #send-button:hover:not(:disabled) {
+                background-color: #0056b3;
+                transform: translateY(-1px);
+            }
+
+            #send-button:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+                transform: none;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>WebSocket Чат Клієнт</h1>
+
+        <div id="connection-status">Статус: <span class="status-offline">Відключено</span></div>
+
+        <div id="controls">
+            <div style="display: flex; align-items: center; gap: 10px">
+                <label for="username-input">Ваше ім'я користувача:</label>
+                <input
+                    type="text"
+                    id="username-input"
+                    placeholder="Введіть ваше ім'я"
+                    value="Гість"
+                />
+            </div>
+            <div class="button-group">
+                <button id="connect-button" class="main-button">Підключитися</button>
+                <button id="disconnect-button" class="main-button" disabled>Відключитися</button>
+            </div>
+            <hr />
+            <h3>Кімнати</h3>
+            <div style="display: flex; align-items: center; gap: 10px">
+                <input
+                    type="text"
+                    id="room-input"
+                    placeholder="Назва кімнати (напр. general)"
+                    value="main_lobby"
+                />
+                <button id="join-room-button" class="room-button" disabled>Приєднатися</button>
+                <button id="leave-room-button" class="room-button" disabled>Покинути</button>
+                <button id="get-users-button" class="room-button" disabled>Користувачі</button>
+            </div>
+            <div id="current-rooms">Поточні кімнати: Main Lobby</div>
+        </div>
+
+        <div id="chat-container">
+            <div id="messages"></div>
+            <div id="input-area">
+                <input
+                    type="text"
+                    id="message-input"
+                    placeholder="Введіть ваше повідомлення..."
+                    disabled
+                />
+                <button id="send-button" disabled>Надіслати</button>
+            </div>
+        </div>
+
+        <script>
+            // DOM елементи
+            const statusSpan = document.getElementById('connection-status').querySelector('span')
+            const connectButton = document.getElementById('connect-button')
+            const disconnectButton = document.getElementById('disconnect-button')
+            const messageInput = document.getElementById('message-input')
+            const sendButton = document.getElementById('send-button')
+            const messagesDiv = document.getElementById('messages')
+            const usernameInput = document.getElementById('username-input')
+            const roomInput = document.getElementById('room-input')
+            const joinRoomButton = document.getElementById('join-room-button')
+            const leaveRoomButton = document.getElementById('leave-room-button')
+            const getUsersButton = document.getElementById('get-users-button')
+            const currentRoomsDiv = document.getElementById('current-rooms')
+
+            // Глобальні змінні для управління з'єднанням та станом
+            let wsClient = null // Екземпляр класу WebSocketClient
+            let token = null // JWT токен для аутентифікації
+            // Відстежуємо кімнати, в яких перебуває клієнт. За замовчуванням в основній кімнаті.
+            let currentJoinedRooms = new Set(['chat:main_lobby'])
+
+            // --- Клас для управління WebSocket з'єднанням ---
+            class WebSocketClient {
+                constructor({
+                    url,
+                    token,
+                    onMessage,
+                    onOpen,
+                    onClose,
+                    onError,
+                    onReconnect,
+                    autoReconnect = true,
+                    baseDelay = 1000,
+                    maxDelay = 30000,
+                    maxRetries = Infinity,
+                    pingInterval = 15000, // Інтервал надсилання клієнтського PING
+                    pongTimeout = 5000, // Час очікування PONG або будь-якого повідомлення від сервера
+                }) {
+                    this.url = url
+                    this.currentToken = token
+                    this.options = {
+                        onMessage,
+                        onOpen,
+                        onClose,
+                        onError,
+                        onReconnect,
+                        autoReconnect,
+                        baseDelay,
+                        maxDelay,
+                        maxRetries,
+                        pingInterval,
+                        pongTimeout,
+                    }
+
+                    this.socket = null
+                    this.isManuallyClosed = false
+                    this.currentRetries = 0
+                    this.lastDelay = baseDelay
+                    this.messageQueue = [] // Черга для повідомлень, які потрібно надіслати після перепідключення
+
+                    this.clientPingTimer = null
+                    this.clientPongTimer = null
+
+                    // Прив'язка контексту для обробників подій
+                    this.handleOpen = this.handleOpen.bind(this)
+                    this.handleMessage = this.handleMessage.bind(this)
+                    this.handleClose = this.handleClose.bind(this)
+                    this.handleError = this.handleError.bind(this)
+                }
+
+                /**
+                 * Ініціює підключення до WebSocket.
+                 */
+                connect() {
+                    if (
+                        this.socket &&
+                        (this.socket.readyState === WebSocket.CONNECTING ||
+                            this.socket.readyState === WebSocket.OPEN)
+                    ) {
+                        console.warn(
+                            'WebSocketClient: Вже підключаємося або підключено. Спроба підключення відхилена.',
+                        )
+                        return
+                    }
+
+                    this.isManuallyClosed = false // Дозволяємо автоматичне перепідключення
+                    this.socket = new WebSocket(`${this.url}?token=${this.currentToken}`)
+
+                    this.socket.onopen = this.handleOpen
+                    this.socket.onmessage = this.handleMessage
+                    this.socket.onclose = this.handleClose
+                    this.socket.onerror = this.handleError
+                    console.log('WebSocketClient: Спроба підключення...')
+                }
+
+                /**
+                 * Обробник події "відкритого" з'єднання.
+                 */
+                handleOpen() {
+                    this.currentRetries = 0
+                    this.lastDelay = this.options.baseDelay
+                    this.options.onOpen?.() // Виклик зовнішнього коллбека
+                    this.flushQueue() // Відправка повідомлень з черги
+                    //this.startClientPing() // Запуск клієнтського пінг-таймера
+                    console.log('WebSocketClient: Підключено.')
+                }
+
+                /**
+                 * Обробник отриманих повідомлень.
+                 * @param {MessageEvent} event - Об'єкт події повідомлення.
+                 */
+                handleMessage(event) {
+                    // Скидаємо таймер "живості" на будь-яке отримане повідомлення, що свідчить про активність сервера.
+                    clearTimeout(this.clientPongTimer)
+                    //this.startClientPing() // Перезапускаємо пінг-таймер
+
+                    // Примітка: сервер надсилає нативні WebSocket PING фрейми, на які браузер відповідає автоматично.
+                    // Тому в даному клієнтському коді ми не очікуємо JSON-повідомлення з типом 'pong' від сервера.
+                    // Якщо ваш сервер буде надсилати кастомні JSON 'ping'/'pong' повідомлення, їх можна обробити тут.
+
+                    this.options.onMessage?.(event) // Виклик зовнішнього коллбека
+                }
+
+                /**
+                 * Обробник події "закриття" з'єднання.
+                 * @param {CloseEvent} event - Об'єкт події закриття.
+                 */
+                handleClose(event) {
+                    this.stopClientPing() // Зупинка пінг-таймера при закритті
+                    this.options.onClose?.(event.code, event.reason) // Виклик зовнішнього коллбека
+
+                    if (
+                        !this.isManuallyClosed &&
+                        this.options.autoReconnect &&
+                        this.currentRetries < this.options.maxRetries
+                    ) {
+                        this.currentRetries++
+                        const delay = this.getDecorrelatedJitterDelay() // Розрахунок затримки
+                        this.options.onReconnect?.(this.currentRetries, delay) // Виклик коллбека перепідключення
+                        console.warn(
+                            `WebSocketClient: З'єднання закрито. Перепідключення через ${delay}мс (спроба ${this.currentRetries}).`,
+                        )
+                        setTimeout(() => this.connect(), delay) // Планування перепідключення
+                    } else if (this.isManuallyClosed) {
+                        console.log('WebSocketClient: Закрито вручну.')
+                    } else {
+                        console.error(
+                            "WebSocketClient: Досягнуто максимальної кількості спроб або автоперепідключення вимкнено. З'єднання остаточно закрито.",
+                        )
+                    }
+                }
+
+                /**
+                 * Обробник події "помилки" з'єднання.
+                 * @param {Event} error - Об'єкт події помилки.
+                 */
+                handleError(error) {
+                    this.options.onError?.(error) // Виклик зовнішнього коллбека
+                    console.error('WebSocketClient: Помилка:', error)
+                    // Помилка зазвичай призводить до події 'close', тому додатково закривати сокет не потрібно.
+                }
+
+                /**
+                 * Надсилає повідомлення через WebSocket.
+                 * Якщо з'єднання не відкрито, повідомлення ставиться в чергу.
+                 * @param {string | object} message - Повідомлення для надсилання (буде JSON.stringify, якщо це об'єкт).
+                 * @returns {boolean} True, якщо повідомлення надіслано негайно, False, якщо поставлено в чергу.
+                 */
+                send(message) {
+                    const msgToSend =
+                        typeof message === 'object' ? JSON.stringify(message) : message
+                    if (this.isOpen()) {
+                        this.socket.send(msgToSend)
+                        return true
+                    } else {
+                        this.messageQueue.push(msgToSend)
+                        console.log(
+                            "WebSocketClient: З'єднання не відкрито, повідомлення додано в чергу.",
+                        )
+                        return false
+                    }
+                }
+
+                /**
+                 * Закриває WebSocket з'єднання.
+                 * Запобігає автоматичному перепідключенню.
+                 */
+                close() {
+                    this.isManuallyClosed = true
+                    this.stopClientPing() // Зупинка пінг-таймерів
+                    if (
+                        this.socket &&
+                        (this.socket.readyState === WebSocket.OPEN ||
+                            this.socket.readyState === WebSocket.CONNECTING)
+                    ) {
+                        this.socket.close(1000, 'Клієнт ініціював відключення')
+                    } else {
+                        console.warn('WebSocketClient: Сокет не відкрито для явного закриття.')
+                    }
+                }
+
+                /**
+                 * Оновлює JWT токен і примусово перепідключається для застосування нового токена.
+                 * @param {string} newToken - Новий JWT токен.
+                 */
+                updateToken(newToken) {
+                    this.currentToken = newToken
+                    console.log(
+                        'WebSocketClient: Токен оновлено. Примусове перепідключення для застосування нового токена.',
+                    )
+                    if (this.isOpen()) {
+                        this.socket.close(1000, 'Токен оновлено, перепідключення')
+                    } else {
+                        // Якщо з'єднання не відкрито, просто спробуємо підключитися негайно
+                        this.isManuallyClosed = false // Дозволяємо перепідключення
+                        this.connect()
+                    }
+                }
+
+                /**
+                 * Перевіряє, чи відкрите з'єднання.
+                 * @returns {boolean} True, якщо з'єднання відкрито.
+                 */
+                isOpen() {
+                    return this.socket?.readyState === WebSocket.OPEN
+                }
+
+                /**
+                 * Повертає сирий об'єкт WebSocket (для прямого доступу, якщо потрібно).
+                 * @returns {WebSocket|null}
+                 */
+                getRawSocket() {
+                    return this.socket
+                }
+
+                // --- Приватні допоміжні методи ---
+
+                /**
+                 * Розраховує затримку для експоненціального бекоффа з джиттером.
+                 * @private
+                 * @returns {number} Затримка в мілісекундах.
+                 */
+                getDecorrelatedJitterDelay() {
+                    const minDelay = this.options.baseDelay
+                    const maxDelayThisTry = this.lastDelay * 3
+                    const delay = Math.min(
+                        this.options.maxDelay,
+                        Math.floor(Math.random() * (maxDelayThisTry - minDelay + 1)) + minDelay,
+                    )
+                    this.lastDelay = delay
+                    return delay
+                }
+
+                /**
+                 * Відправляє всі повідомлення з черги, якщо з'єднання відкрито.
+                 * @private
+                 */
+                flushQueue() {
+                    while (this.messageQueue.length && this.isOpen()) {
+                        this.socket.send(this.messageQueue.shift())
+                    }
+                }
+
+                /**
+                 * Запускає клієнтський PING-таймер.
+                 * @private
+                 */
+                startClientPing() {
+                    this.stopClientPing() // Очищаємо існуючі таймери перед запуском нових
+                    this.clientPingTimer = setInterval(() => {
+                        if (this.isOpen()) {
+                            // Якщо ви хочете, щоб клієнт надсилав свої кастомні "ping" повідомлення, розкоментуйте:
+                            // this.socket.send(JSON.stringify({ type: 'ping' }));
+                            // Але пам'ятайте, що сервер має бути налаштований на їх обробку.
+
+                            // Встановлюємо таймер для закриття, якщо не отримаємо жодних повідомлень
+                            // (включаючи нативні PING/PONG) від сервера протягом pongTimeout.
+                            this.clientPongTimer = setTimeout(() => {
+                                console.warn(
+                                    'WebSocketClient: Не отримано PONG або повідомлення протягом pongTimeout. Закриваю сокет.',
+                                )
+                                this.socket?.close(1000, 'Таймаут PONG') // Закриваємо з'єднання
+                            }, this.options.pongTimeout)
+                        }
+                    }, this.options.pingInterval)
+                }
+
+                /**
+                 * Зупиняє клієнтські PING/PONG таймери.
+                 * @private
+                 */
+                stopClientPing() {
+                    clearInterval(this.clientPingTimer)
+                    clearTimeout(this.clientPongTimer)
+                }
+
+                /**
+                 * Безпечно парсить JSON рядок.
+                 * @private
+                 * @param {string} data - Рядок для парсингу.
+                 * @returns {object|null} Розпарсений об'єкт або null, якщо парсинг не вдався.
+                 */
+                parseJsonSafe(data) {
+                    try {
+                        return JSON.parse(data)
+                    } catch (e) {
+                        console.error('WebSocketClient: Помилка парсингу JSON:', e, 'Дані:', data)
+                        return null
+                    }
+                }
+            }
+            // --- Кінець класу WebSocketClient ---
+
+            // --- Допоміжні функції для UI ---
+
+            function addMessage(msg, type = 'system') {
+                const div = document.createElement('div')
+                div.classList.add(
+                    type === 'system'
+                        ? 'system-message'
+                        : type === 'error'
+                        ? 'error-message'
+                        : 'user-message',
+                )
+                div.innerHTML = msg
+                messagesDiv.appendChild(div)
+                messagesDiv.scrollTop = messagesDiv.scrollHeight // Прокрутка донизу
+            }
+
+            function updateRoomList() {
+                currentRoomsDiv.textContent =
+                    'Поточні кімнати: ' +
+                    Array.from(currentJoinedRooms)
+                        .map((r) => r.replace('chat:', ''))
+                        .join(', ')
+            }
+
+            /**
+             * Генерує JWT токен, відправляючи запит до вашого Express API.
+             * У реальному застосунку, цей запит мав би бути до захищеного ендпоінту вашого бекенду.
+             * @param {string} username - Ім'я користувача для токена.
+             * @returns {Promise<string|null>} JWT токен або null у разі помилки.
+             */
+            async function generateToken(username) {
+                try {
+                    const response = await fetch('/api/auth/generate-token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: username.toLowerCase(),
+                            username: username,
+                        }),
+                    })
+                    const data = await response.json()
+                    if (data.token) {
+                        return data.token
+                    } else {
+                        addMessage(
+                            'Помилка генерації токена: ' + (data.message || 'Невідома помилка'),
+                            'error',
+                        )
+                        return null
+                    }
+                } catch (error) {
+                    addMessage('Не вдалося згенерувати токен: ' + error.message, 'error')
+                    console.error('Помилка генерації токена:', error)
+                    return null
+                }
+            }
+
+            // --- Обробники подій для UI ---
+
+            connectButton.addEventListener('click', async () => {
+                const username = usernameInput.value.trim()
+                if (!username) {
+                    alert("Будь ласка, введіть ім'я користувача.")
+                    return
+                }
+
+                /*token = await generateToken(username)
+                if (!token) {
+                    return // Генерація токена не вдалася
+                }*/
+
+                // Створюємо інстанс класу WebSocketClient
+                wsClient = new WebSocketClient({
+                    url: `ws://172.16.211.161:8080/ws/chat`, // Базовий URL без токена
+                    token: token,
+                    onOpen: () => {
+                        statusSpan.textContent = 'Підключено'
+                        statusSpan.classList.remove('status-offline', 'status-reconnecting')
+                        statusSpan.classList.add('status-online')
+                        connectButton.disabled = true
+                        disconnectButton.disabled = false
+                        messageInput.disabled = false
+                        sendButton.disabled = false
+                        joinRoomButton.disabled = false
+                        leaveRoomButton.disabled = false
+                        getUsersButton.disabled = false
+                        addMessage('Підключено до WebSocket сервісу.')
+                        // Сервер автоматично приєднує до MAIN_CHAT_ROOM.
+                        // Скидаємо список кімнат і додаємо основну, щоб UI відображав коректно.
+                        currentJoinedRooms.clear()
+                        currentJoinedRooms.add('chat:main_lobby')
+                        updateRoomList()
+                    },
+                    onMessage: (event) => {
+                        const data = JSON.parse(event.data)
+                        switch (data.type) {
+                            case 'CHAT_CONNECTED':
+                                addMessage(
+                                    `[СЕРВЕР] ${
+                                        data.message
+                                    } Приєднано до кімнати: ${data.room.replace('chat:', '')}`,
+                                )
+                                break
+                            case 'CHAT_NEW_MESSAGE':
+                                addMessage(
+                                    `<strong>[${data.room.replace('chat:', '')}] ${
+                                        data.username
+                                    }</strong>: ${data.text}`,
+                                    'user',
+                                )
+                                break
+                            case 'CHAT_USER_JOINED':
+                                addMessage(
+                                    `[СЕРВЕР] ${
+                                        data.username
+                                    } приєднався до кімнати ${data.room.replace('chat:', '')}.`,
+                                )
+                                if (data.userId === usernameInput.value.toLowerCase()) {
+                                    // Перевіряємо, чи це *цей* клієнт приєднався
+                                    currentJoinedRooms.add(data.room)
+                                    updateRoomList()
+                                }
+                                break
+                            case 'CHAT_USER_LEFT':
+                                addMessage(
+                                    `[СЕРВЕР] ${data.username} покинув кімнату ${data.room.replace(
+                                        'chat:',
+                                        '',
+                                    )}.`,
+                                )
+                                if (
+                                    data.userId === usernameInput.value.toLowerCase() &&
+                                    data.room !== 'chat:main_lobby'
+                                ) {
+                                    currentJoinedRooms.delete(data.room)
+                                    updateRoomList()
+                                }
+                                break
+                            case 'JOIN_ROOM_SUCCESS':
+                                addMessage(`[СЕРВЕР] ${data.message}`)
+                                currentJoinedRooms.add(data.room)
+                                updateRoomList()
+                                break
+                            case 'LEAVE_ROOM_SUCCESS':
+                                addMessage(`[СЕРВЕР] ${data.message}`)
+                                currentJoinedRooms.delete(data.room)
+                                updateRoomList()
+                                break
+                            case 'USERS_IN_ROOM':
+                                const userList = data.users.map((u) => u.username).join(', ')
+                                addMessage(
+                                    `[СЕРВЕР] Користувачі в ${data.room.replace('chat:', '')} (${
+                                        data.count
+                                    }): ${userList || 'Жодного'}`,
+                                )
+                                break
+                            case 'ERROR':
+                                addMessage(`[ПОМИЛКА] ${data.message}`, 'error')
+                                break
+                            default:
+                                addMessage(`[СИРІ ДАНІ] ${event.data}`)
+                                break
+                        }
+                    },
+                    onClose: (code, reason) => {
+                        statusSpan.textContent = `Відключено (${code})`
+                        statusSpan.classList.remove('status-online', 'status-reconnecting')
+                        statusSpan.classList.add('status-offline')
+                        connectButton.disabled = false
+                        disconnectButton.disabled = true
+                        messageInput.disabled = true
+                        sendButton.disabled = true
+                        joinRoomButton.disabled = true
+                        leaveRoomButton.disabled = true
+                        getUsersButton.disabled = true
+                        addMessage(
+                            `Відключено від WebSocket сервісу. Код: ${code}, Причина: ${
+                                reason || 'N/A'
+                            }`,
+                        )
+                        // Очищаємо список кімнат лише якщо це остаточне відключення
+                        if (
+                            !wsClient.isOpen() &&
+                            (!wsClient.options.autoReconnect ||
+                                wsClient.currentRetries >= wsClient.options.maxRetries)
+                        ) {
+                            currentJoinedRooms.clear()
+                            currentJoinedRooms.add('chat:main_lobby') // Скидання до основної кімнати
+                        }
+                        updateRoomList()
+                    },
+                    onError: (error) => {
+                        addMessage('Помилка WebSocket: ' + error.message, 'error')
+                        console.error('Помилка WebSocket:', error)
+                    },
+                    onReconnect: (retries, delay) => {
+                        statusSpan.textContent = `Перепідключення (${retries})...`
+                        statusSpan.classList.remove('status-online', 'status-offline')
+                        statusSpan.classList.add('status-reconnecting')
+                        addMessage(
+                            `Спроба перепідключення через ${delay} мс (спроба ${retries})...`,
+                            'system',
+                        )
+                        // Після перепідключення, клієнт повинен повторно приєднатися до всіх кімнат,
+                        // окрім 'chat:main_lobby', до якої сервер приєднує автоматично.
+                        setTimeout(() => {
+                            Array.from(currentJoinedRooms).forEach((room) => {
+                                if (room !== 'chat:main_lobby' && wsClient && wsClient.isOpen()) {
+                                    console.log(`Повторне приєднання до кімнати: ${room}`)
+                                    wsClient.send(
+                                        JSON.stringify({
+                                            type: 'JOIN_ROOM',
+                                            payload: { roomName: room.replace('chat:', '') },
+                                        }),
+                                    )
+                                }
+                            })
+                        }, delay + 100) // Невеликий буфер після затримки перепідключення
+                    },
+                    autoReconnect: true, // Увімкнути автоматичне перепідключення
+                    baseDelay: 1000, // Початкова затримка 1 секунда
+                    maxDelay: 60000, // Максимальна затримка 60 секунд
+                    maxRetries: Infinity, // Необмежена кількість спроб перепідключення
+                    pingInterval: 15000, // Клієнтський пінг кожні 15 секунд
+                    pongTimeout: 5000, // Очікування відповіді 5 секунд
+                })
+
+                // Починаємо з'єднання
+                wsClient.connect()
+            })
+
+            disconnectButton.addEventListener('click', () => {
+                if (wsClient) {
+                    wsClient.close() // Використовуємо метод close класу
+                }
+            })
+
+            sendButton.addEventListener('click', () => {
+                sendMessage()
+            })
+
+            messageInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    sendMessage()
+                }
+            })
+
+            function sendMessage() {
+                if (wsClient && wsClient.isOpen()) {
+                    // Перевірка через метод класу
+                    const messageText = messageInput.value.trim()
+                    if (messageText) {
+                        const targetRoom = roomInput.value.trim()
+                        if (targetRoom) {
+                            const fullTargetRoom = `chat:${targetRoom}`
+                            if (currentJoinedRooms.has(fullTargetRoom)) {
+                                wsClient.send(
+                                    JSON.stringify({
+                                        // Відправка через метод класу
+                                        type: 'sendMessage',
+                                        payload: {
+                                            roomName: targetRoom,
+                                            text: messageText,
+                                        },
+                                    }),
+                                )
+                                messageInput.value = '' // Очистити поле вводу
+                            } else {
+                                addMessage(
+                                    `Ви не перебуваєте в кімнаті "${targetRoom}". Будь ласка, приєднайтеся спочатку.`,
+                                    'error',
+                                )
+                            }
+                        } else {
+                            addMessage(
+                                'Будь ласка, вкажіть кімнату для надсилання повідомлення.',
+                                'error',
+                            )
+                        }
+                    }
+                } else {
+                    addMessage('Не підключено до WebSocket сервера.', 'error')
+                }
+            }
+
+            joinRoomButton.addEventListener('click', () => {
+                const roomToJoin = roomInput.value.trim()
+                if (wsClient && wsClient.isOpen() && roomToJoin) {
+                    wsClient.send(
+                        JSON.stringify({
+                            type: 'joinRoom',
+                            payload: { roomName: roomToJoin },
+                        }),
+                    )
+                } else {
+                    addMessage('Не підключено або назва кімнати порожня.', 'error')
+                }
+            })
+
+            leaveRoomButton.addEventListener('click', () => {
+                const roomToLeave = roomInput.value.trim()
+                if (wsClient && wsClient.isOpen() && roomToLeave) {
+                    wsClient.send(
+                        JSON.stringify({
+                            type: 'leaveRoom',
+                            payload: { roomName: roomToLeave },
+                        }),
+                    )
+                } else {
+                    addMessage('Не підключено або назва кімнати порожня.', 'error')
+                }
+            })
+
+            getUsersButton.addEventListener('click', () => {
+                const roomName = roomInput.value.trim()
+                if (wsClient && wsClient.isOpen() && roomName) {
+                    wsClient.send(
+                        JSON.stringify({
+                            type: 'GET_USERS_IN_ROOM',
+                            payload: { roomName: roomName },
+                        }),
+                    )
+                } else {
+                    addMessage('Не підключено або назва кімнати порожня.', 'error')
+                }
+            })
+
+            // Ініціалізація стану UI при завантаженні сторінки
+            messageInput.disabled = true
+            sendButton.disabled = true
+            joinRoomButton.disabled = true
+            leaveRoomButton.disabled = true
+            getUsersButton.disabled = true
+            updateRoomList()
+        </script>
+    </body>
+</html>

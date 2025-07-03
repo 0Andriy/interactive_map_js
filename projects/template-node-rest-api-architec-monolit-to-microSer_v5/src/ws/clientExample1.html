@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>WebSocket Chat Example</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                margin: 0;
+                padding: 20px;
+                background-color: #f0f2f5;
+            }
+            #chat-container {
+                display: flex;
+                flex-direction: column;
+                flex-grow: 1;
+                background-color: #fff;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                overflow: hidden;
+            }
+            #messages {
+                flex-grow: 1;
+                padding: 15px;
+                overflow-y: auto;
+                border-bottom: 1px solid #eee;
+            }
+            #messages div {
+                margin-bottom: 8px;
+                line-height: 1.4;
+            }
+            #messages .system-message {
+                color: #888;
+                font-style: italic;
+            }
+            #messages .user-message strong {
+                color: #333;
+            }
+            #input-area {
+                display: flex;
+                padding: 15px;
+                border-top: 1px solid #eee;
+            }
+            #message-input {
+                flex-grow: 1;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                margin-right: 10px;
+                font-size: 16px;
+            }
+            #send-button {
+                padding: 10px 15px;
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 16px;
+            }
+            #send-button:hover {
+                background-color: #0056b3;
+            }
+            #connection-status {
+                margin-bottom: 10px;
+                font-weight: bold;
+            }
+            #controls {
+                margin-top: 20px;
+                padding: 15px;
+                background-color: #fff;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+            #room-controls {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 10px;
+            }
+            #room-input {
+                flex-grow: 1;
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+            }
+            .room-button {
+                padding: 8px 12px;
+                background-color: #28a745;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            .room-button:hover {
+                background-color: #218838;
+            }
+            .status-online {
+                color: green;
+            }
+            .status-offline {
+                color: red;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>WebSocket Chat Client</h1>
+
+        <div id="connection-status">Status: <span class="status-offline">Disconnected</span></div>
+
+        <div id="controls">
+            <label for="username-input">Your Username:</label>
+            <input
+                type="text"
+                id="username-input"
+                placeholder="Enter your username"
+                value="Guest"
+            /><br /><br />
+            <button id="connect-button">Connect</button>
+            <button id="disconnect-button" disabled>Disconnect</button>
+            <hr />
+            <h3>Rooms</h3>
+            <div id="room-controls">
+                <input
+                    type="text"
+                    id="room-input"
+                    placeholder="Enter room name (e.g., general)"
+                    value="main_lobby"
+                />
+                <button id="join-room-button" class="room-button">Join Room</button>
+                <button id="leave-room-button" class="room-button">Leave Room</button>
+                <button id="get-users-button" class="room-button">Get Users</button>
+            </div>
+            <div id="current-rooms">Current rooms: Main Lobby</div>
+        </div>
+
+        <div id="chat-container">
+            <div id="messages"></div>
+            <div id="input-area">
+                <input type="text" id="message-input" placeholder="Type your message..." disabled />
+                <button id="send-button" disabled>Send</button>
+            </div>
+        </div>
+
+        <script>
+            const statusSpan = document.getElementById('connection-status').querySelector('span')
+            const connectButton = document.getElementById('connect-button')
+            const disconnectButton = document.getElementById('disconnect-button')
+            const messageInput = document.getElementById('message-input')
+            const sendButton = document.getElementById('send-button')
+            const messagesDiv = document.getElementById('messages')
+            const usernameInput = document.getElementById('username-input')
+            const roomInput = document.getElementById('room-input')
+            const joinRoomButton = document.getElementById('join-room-button')
+            const leaveRoomButton = document.getElementById('leave-room-button')
+            const getUsersButton = document.getElementById('get-users-button')
+            const currentRoomsDiv = document.getElementById('current-rooms')
+
+            let ws = null
+            let token = null // JWT token will be stored here
+            let currentJoinedRooms = new Set(['chat:main_lobby']) // Track rooms client is in
+
+            function addMessage(msg, type = 'system') {
+                const div = document.createElement('div')
+                div.classList.add(type === 'system' ? 'system-message' : 'user-message')
+                div.innerHTML = msg
+                messagesDiv.appendChild(div)
+                messagesDiv.scrollTop = messagesDiv.scrollHeight // Scroll to bottom
+            }
+
+            function updateRoomList() {
+                currentRoomsDiv.textContent =
+                    'Current rooms: ' +
+                    Array.from(currentJoinedRooms)
+                        .map((r) => r.replace('chat:', ''))
+                        .join(', ')
+            }
+
+            async function generateToken(username) {
+                try {
+                    // В реальному застосунку, цей запит має йти до вашого API на сервері,
+                    // який поверне згенерований JWT. Тут для прикладу - просто моковий токен.
+                    // Вам потрібно реалізувати цей endpoint на Express.
+                    const response = await fetch('/api/auth/generate-token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: username.toLowerCase(),
+                            username: username,
+                        }),
+                    })
+                    const data = await response.json()
+                    if (data.token) {
+                        return data.token
+                    } else {
+                        addMessage(
+                            'Error generating token: ' + (data.message || 'Unknown error'),
+                            'error',
+                        )
+                        return null
+                    }
+                } catch (error) {
+                    addMessage('Failed to generate token: ' + error.message, 'error')
+                    return null
+                }
+            }
+
+            connectButton.addEventListener('click', async () => {
+                const username = usernameInput.value.trim()
+                if (!username) {
+                    alert('Please enter a username.')
+                    return
+                }
+
+                token = await generateToken(username)
+                if (!token) {
+                    return // Token generation failed
+                }
+
+                // Використовуйте 'ws://' для HTTP або 'wss://' для HTTPS
+                // Передаємо токен як query parameter
+                const wsUrl = `ws://localhost:3000/ws/chat?token=${token}` // Переконайтеся, що порт правильний
+                ws = new WebSocket(wsUrl)
+
+                ws.onopen = () => {
+                    statusSpan.textContent = 'Connected'
+                    statusSpan.classList.remove('status-offline')
+                    statusSpan.classList.add('status-online')
+                    connectButton.disabled = true
+                    disconnectButton.disabled = false
+                    messageInput.disabled = false
+                    sendButton.disabled = false
+                    joinRoomButton.disabled = false
+                    leaveRoomButton.disabled = false
+                    getUsersButton.disabled = false
+                    addMessage('Connected to WebSocket service.')
+                    updateRoomList()
+                }
+
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data)
+                    switch (data.type) {
+                        case 'CHAT_CONNECTED':
+                            addMessage(
+                                `[SERVER] ${data.message} Joined room: ${data.room.replace(
+                                    'chat:',
+                                    '',
+                                )}`,
+                            )
+                            break
+                        case 'CHAT_NEW_MESSAGE':
+                            addMessage(
+                                `<strong>[${data.room.replace('chat:', '')}] ${
+                                    data.username
+                                }</strong>: ${data.text}`,
+                            )
+                            break
+                        case 'CHAT_USER_JOINED':
+                            addMessage(
+                                `[SERVER] ${data.username} joined room ${data.room.replace(
+                                    'chat:',
+                                    '',
+                                )}. (Users online: ${data.usersOnline})`,
+                            )
+                            if (
+                                data.userId === usernameInput.value.toLowerCase() &&
+                                data.room !== 'chat:main_lobby'
+                            ) {
+                                currentJoinedRooms.add(data.room)
+                                updateRoomList()
+                            }
+                            break
+                        case 'CHAT_USER_LEFT':
+                            addMessage(
+                                `[SERVER] ${data.username} left room ${data.room.replace(
+                                    'chat:',
+                                    '',
+                                )}.`,
+                            )
+                            if (
+                                data.userId === usernameInput.value.toLowerCase() &&
+                                data.room !== 'chat:main_lobby'
+                            ) {
+                                currentJoinedRooms.delete(data.room)
+                                updateRoomList()
+                            }
+                            break
+                        case 'JOIN_ROOM_SUCCESS':
+                            addMessage(`[SERVER] ${data.message}`)
+                            currentJoinedRooms.add(data.room)
+                            updateRoomList()
+                            break
+                        case 'LEAVE_ROOM_SUCCESS':
+                            addMessage(`[SERVER] ${data.message}`)
+                            currentJoinedRooms.delete(data.room)
+                            updateRoomList()
+                            break
+                        case 'USERS_IN_ROOM':
+                            const userList = data.users.map((u) => u.username).join(', ')
+                            addMessage(
+                                `[SERVER] Users in ${data.room.replace('chat:', '')} (${
+                                    data.count
+                                }): ${userList || 'None'}`,
+                            )
+                            break
+                        case 'ERROR':
+                            addMessage(`[ERROR] ${data.message}`, 'error')
+                            break
+                        default:
+                            addMessage(`[RAW MESSAGE] ${event.data}`)
+                            break
+                    }
+                }
+
+                ws.onclose = (event) => {
+                    statusSpan.textContent = `Disconnected (${event.code})`
+                    statusSpan.classList.remove('status-online')
+                    statusSpan.classList.add('status-offline')
+                    connectButton.disabled = false
+                    disconnectButton.disabled = true
+                    messageInput.disabled = true
+                    sendButton.disabled = true
+                    joinRoomButton.disabled = true
+                    leaveRoomButton.disabled = true
+                    getUsersButton.disabled = true
+                    addMessage(
+                        `Disconnected from WebSocket service. Code: ${event.code}, Reason: ${
+                            event.reason || 'N/A'
+                        }`,
+                    )
+                    ws = null
+                    currentJoinedRooms.clear()
+                    currentJoinedRooms.add('chat:main_lobby') // Reset to main lobby on disconnect
+                    updateRoomList()
+                }
+
+                ws.onerror = (error) => {
+                    addMessage('WebSocket Error: ' + error.message, 'error')
+                    console.error('WebSocket Error:', error)
+                }
+            })
+
+            disconnectButton.addEventListener('click', () => {
+                if (ws) {
+                    ws.close(1000, 'Client initiated disconnect') // 1000 is Normal Closure
+                }
+            })
+
+            sendButton.addEventListener('click', () => {
+                sendMessage()
+            })
+
+            messageInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    sendMessage()
+                }
+            })
+
+            function sendMessage() {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    const messageText = messageInput.value.trim()
+                    if (messageText) {
+                        const targetRoom = roomInput.value.trim() // Можна відправляти в кімнату, що вказана в полі
+                        if (targetRoom) {
+                            const fullTargetRoom = `chat:${targetRoom}`
+                            if (currentJoinedRooms.has(fullTargetRoom)) {
+                                ws.send(
+                                    JSON.stringify({
+                                        type: 'SEND_MESSAGE',
+                                        payload: {
+                                            roomName: targetRoom,
+                                            text: messageText,
+                                        },
+                                    }),
+                                )
+                                messageInput.value = '' // Clear input
+                            } else {
+                                addMessage(
+                                    `You are not in room "${targetRoom}". Please join it first.`,
+                                    'error',
+                                )
+                            }
+                        } else {
+                            addMessage('Please specify a room to send message to.', 'error')
+                        }
+                    }
+                } else {
+                    addMessage('Not connected to WebSocket server.', 'error')
+                }
+            }
+
+            joinRoomButton.addEventListener('click', () => {
+                const roomToJoin = roomInput.value.trim()
+                if (ws && ws.readyState === WebSocket.OPEN && roomToJoin) {
+                    ws.send(
+                        JSON.stringify({
+                            type: 'JOIN_ROOM',
+                            payload: { roomName: roomToJoin },
+                        }),
+                    )
+                } else {
+                    addMessage('Not connected or room name is empty.', 'error')
+                }
+            })
+
+            leaveRoomButton.addEventListener('click', () => {
+                const roomToLeave = roomInput.value.trim()
+                if (ws && ws.readyState === WebSocket.OPEN && roomToLeave) {
+                    ws.send(
+                        JSON.stringify({
+                            type: 'LEAVE_ROOM',
+                            payload: { roomName: roomToLeave },
+                        }),
+                    )
+                } else {
+                    addMessage('Not connected or room name is empty.', 'error')
+                }
+            })
+
+            getUsersButton.addEventListener('click', () => {
+                const roomName = roomInput.value.trim()
+                if (ws && ws.readyState === WebSocket.OPEN && roomName) {
+                    ws.send(
+                        JSON.stringify({
+                            type: 'GET_USERS_IN_ROOM',
+                            payload: { roomName: roomName },
+                        }),
+                    )
+                } else {
+                    addMessage('Not connected or room name is empty.', 'error')
+                }
+            })
+
+            // Initialize UI state
+            messageInput.disabled = true
+            sendButton.disabled = true
+            joinRoomButton.disabled = true
+            leaveRoomButton.disabled = true
+            getUsersButton.disabled = true
+            updateRoomList()
+        </script>
+    </body>
+</html>

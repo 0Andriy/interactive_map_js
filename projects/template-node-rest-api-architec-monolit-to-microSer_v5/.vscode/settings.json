@@ -1,0 +1,71 @@
+{
+    // **Індентація**
+    "editor.tabSize": 4, // Визначає ширину табуляції у пробілах (у цьому випадку 4 пробіли).
+    "editor.insertSpaces": true, // Вставляти пробіли замість табуляції.
+    "editor.detectIndentation": false, // Вимкнути автоматичне визначення відступів (завжди використовувати задані).
+
+    // **Автозбереження**
+    "files.autoSave": "afterDelay", // Автоматично зберігати зміни після невеликої затримки.
+    "files.autoSaveDelay": 1000, // Затримка в мілісекундах для автозбереження (1000 мс = 1 секунда).
+
+    // **Форматування**
+    "editor.formatOnSave": true, // Автоматичне форматування коду під час збереження файлу.
+    "editor.formatOnPaste": true, // Автоматичне форматування під час вставки тексту.
+
+    // **Підсвітка та зручність редагування**
+    "editor.minimap.enabled": false, // Вимкнути відображення мінікарти праворуч (займе менше місця).
+    "editor.lineNumbers": "on", // Включити відображення номерів рядків.
+    "editor.renderWhitespace": "selection", // Відображення всіх пробілів, табуляцій і перенесень рядків.
+
+    // **Продуктивність**
+    "files.trimTrailingWhitespace": true, // Автоматично видаляти пробіли в кінці рядків.
+    "files.insertFinalNewline": true, // Додавати порожній рядок у кінець файлу.
+    "files.trimFinalNewlines": true, // Видаляти зайві порожні рядки в кінці файлу.
+
+    // **Темна тема та вигляд**
+    "editor.fontSize": 14, // Розмір шрифту в редакторі.
+    "editor.fontFamily": "Fira Code, Consolas, 'Courier New', monospace", // Шрифт (підтримка "лігатур", якщо шрифт це дозволяє).
+    "editor.fontLigatures": true, // Увімкнути лігатури для спеціальних символів (наприклад, `=>`).
+
+    // **Панель терміналу**
+    "terminal.integrated.fontSize": 14, // Розмір шрифту в терміналі.
+    "terminal.integrated.defaultProfile.windows": "Git Bash", // Профіль термінала за замовчуванням у Windows.
+    "terminal.integrated.defaultProfile.linux": "bash", // Профіль термінала за замовчуванням у Linux.
+
+    // **Виключення файлів з бічної панелі Explorer**
+    "files.exclude": {
+        "**/.git": true, // Приховати папку .git
+        "**/.DS_Store": true, // Приховати файли .DS_Store (macOS)
+        "**/node_modules": true, // Приховати папку node_modules
+        "**/bower_components": true, // Приховати папку bower_components
+        "**/*.log": true, // Приховати файли з розширенням .log
+        "**/.vscode-test": true // Приховати папку .vscode-test
+    },
+
+    // **Налаштування для конкретних мов (використання Prettier як форматера)**
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode" // Вибір форматувальника для JavaScript (Prettier).
+    },
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.python", // Форматувальник для Python.
+        "editor.formatOnSave": true // Завжди форматувати Python під час збереження.
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode" // Вибір форматувальника для TypeScript (Prettier).
+    },
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode" // Вибір форматувальника для JSON (Prettier).
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode" // Вибір форматувальника для JSONC (Prettier).
+    },
+    "[html]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode" // Вибір форматувальника для HTML (Prettier).
+    },
+    "[css]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode" // Вибір форматувальника для CSS (Prettier).
+    },
+    "[scss]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode" // Вибір форматувальника для SCSS (Prettier).
+    }
+}

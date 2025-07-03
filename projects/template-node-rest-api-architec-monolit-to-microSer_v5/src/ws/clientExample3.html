@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>WebSocket Чат</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                flex-direction: column;
+                height: 100vh; /* Висота на весь екран */
+                overflow: hidden; /* Забороняємо прокрутку всього тіла */
+                background-color: #f4f4f4;
+                color: #333;
+            }
+
+            #auth-section,
+            #chat-section {
+                padding: 20px;
+                background-color: #fff;
+                margin-bottom: 10px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+
+            #chat-section {
+                display: none; /* Приховуємо чат за замовчуванням */
+                flex-grow: 1; /* Дозволяє займати доступний простір */
+                display: flex;
+                flex-direction: row; /* Розділяє на кімнати та чат */
+                overflow: hidden; /* Приховуємо прокрутку секції чату */
+            }
+
+            #room-sidebar {
+                width: 200px;
+                background-color: #e9e9e9;
+                padding: 15px;
+                border-radius: 8px;
+                margin-right: 15px;
+                flex-shrink: 0; /* Забороняємо стискатися */
+                overflow-y: auto; /* Прокрутка для списку кімнат */
+            }
+
+            #room-sidebar h3 {
+                margin-top: 0;
+                color: #555;
+            }
+
+            #room-list button {
+                display: block;
+                width: 100%;
+                padding: 10px;
+                margin-bottom: 5px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                background-color: #f9f9f9;
+                cursor: pointer;
+                font-size: 1em;
+                text-align: left;
+                transition: background-color 0.2s, border-color 0.2s;
+            }
+
+            #room-list button:hover {
+                background-color: #e0e0e0;
+            }
+
+            #room-list button.active {
+                background-color: #007bff;
+                color: white;
+                border-color: #007bff;
+            }
+
+            #chat-area {
+                flex-grow: 1; /* Займає решту простору */
+                display: flex;
+                flex-direction: column;
+                overflow: hidden; /* Приховуємо прокрутку всередині chat-area */
+                background-color: #fff;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+
+            #messages {
+                flex-grow: 1; /* Дозволяє займати доступний простір для повідомлень */
+                overflow-y: auto; /* Прокрутка для повідомлень */
+                padding: 15px;
+                list-style-type: none;
+                margin: 0;
+                background-color: #fcfcfc;
+            }
+
+            #messages li {
+                padding: 8px 0;
+                border-bottom: 1px solid #eee;
+                word-wrap: break-word; /* Перенесення довгих слів */
+            }
+
+            #messages li:last-child {
+                border-bottom: none;
+            }
+
+            .message-timestamp {
+                font-size: 0.75em;
+                color: #888;
+                margin-left: 5px;
+            }
+
+            .system-message {
+                color: #555;
+                font-style: italic;
+                text-align: center;
+                padding: 10px;
+                background-color: #e0f2f7;
+                border-radius: 5px;
+                margin: 5px 0;
+            }
+
+            .my-message {
+                text-align: right;
+                color: #007bff;
+            }
+            .my-message .message-content {
+                background-color: #d1e7ff;
+                border-radius: 15px;
+                padding: 8px 12px;
+                display: inline-block;
+                max-width: 70%;
+            }
+
+            .other-message {
+                text-align: left;
+                color: #333;
+            }
+            .other-message .message-content {
+                background-color: #f0f0f0;
+                border-radius: 15px;
+                padding: 8px 12px;
+                display: inline-block;
+                max-width: 70%;
+            }
+            .other-message .message-sender {
+                font-weight: bold;
+                color: #0056b3;
+                margin-bottom: 3px;
+                display: block;
+            }
+
+            #input-area {
+                display: flex;
+                padding: 15px;
+                border-top: 1px solid #eee;
+                background-color: #fff;
+                flex-shrink: 0; /* Забороняємо стискатися */
+            }
+
+            #message-input {
+                flex-grow: 1;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                font-size: 1em;
+                margin-right: 10px;
+            }
+
+            #send-button {
+                padding: 10px 15px;
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 1em;
+                transition: background-color 0.2s;
+            }
+
+            #send-button:hover {
+                background-color: #0056b3;
+            }
+
+            input[type='text'],
+            input[type='password'],
+            button {
+                padding: 10px;
+                margin-right: 5px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+            }
+
+            button {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                cursor: pointer;
+            }
+
+            button:hover {
+                background-color: #0056b3;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="auth-section">
+            <h2>Автентифікація</h2>
+            <input type="text" id="user-id" placeholder="ID Користувача (наприклад, 1)" />
+            <input type="text" id="username" placeholder="Ім'я Користувача (наприклад, Alice)" />
+            <button id="generate-token-button">Згенерувати Токен</button>
+            <p
+                id="token-display"
+                style="word-break: break-all; margin-top: 10px; font-size: 0.9em; color: #555"
+            ></p>
+        </div>
+
+        <div id="chat-section">
+            <div id="room-sidebar">
+                <h3>Ваші кімнати</h3>
+                <div id="room-list">
+                    <button data-room-id="chat:main_lobby" class="active">Головний чат</button>
+                </div>
+                <hr />
+                <h4>Приєднатись до кімнати</h4>
+                <input type="text" id="new-room-id" placeholder="Назва нової кімнати" />
+                <button id="join-room-button">Приєднатись</button>
+            </div>
+
+            <div id="chat-area">
+                <ul id="messages"></ul>
+                <div id="input-area">
+                    <input type="text" id="message-input" placeholder="Введіть повідомлення..." />
+                    <button id="send-button">Надіслати</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const userIdInput = document.getElementById('user-id')
+            const usernameInput = document.getElementById('username')
+            const generateTokenButton = document.getElementById('generate-token-button')
+            const tokenDisplay = document.getElementById('token-display')
+            const authSection = document.getElementById('auth-section')
+            const chatSection = document.getElementById('chat-section')
+
+            const roomList = document.getElementById('room-list')
+            const newRoomIdInput = document.getElementById('new-room-id')
+            const joinRoomButton = document.getElementById('join-room-button')
+            const messagesUl = document.getElementById('messages')
+            const messageInput = document.getElementById('message-input')
+            const sendButton = document.getElementById('send-button')
+
+            let chatWsClient = null
+            let userToken = ''
+            let currentUserId = ''
+            let currentUsername = ''
+
+            // Зберігаємо повідомлення для кожної кімнати
+            const roomMessages = new Map() // Map<roomId, Array<messageData>>
+            // Зберігаємо кімнати, до яких приєднався користувач
+            const joinedRooms = new Set() // Set<roomId>
+            let activeRoomId = 'chat:main_lobby' // Початкова активна кімната
+
+            // --- WebSocketClient Class (без змін) ---
+            class WebSocketClient {
+                constructor({
+                    url,
+                    token,
+                    onMessage,
+                    onOpen,
+                    onClose,
+                    onError,
+                    onReconnect,
+                    autoReconnect = true,
+                    baseDelay = 1000,
+                    maxDelay = 30000,
+                    maxRetries = Infinity,
+                    pingInterval = 10000,
+                    pongTimeout = 5000,
+                }) {
+                    this.url = url
+                    this.token = token
+                    this.options = {
+                        onMessage,
+                        onOpen,
+                        onClose,
+                        onError,
+                        onReconnect,
+                        autoReconnect,
+                        baseDelay,
+                        maxDelay,
+                        maxRetries,
+                        pingInterval,
+                        pongTimeout,
+                    }
+                    this.socket = null
+                    this.reconnectAttempts = 0
+                    this.reconnectTimeout = null
+                    this.clientPingTimer = null
+                    this.clientPongTimer = null
+                    this.messageQueue = [] // Черга для повідомлень, надісланих до відкриття сокета
+                }
+
+                connect() {
+                    this.socket = new WebSocket(`${this.url}?token=${this.token}`)
+                    this.socket.onopen = this.handleOpen.bind(this)
+                    this.socket.onmessage = this.handleMessage.bind(this)
+                    this.socket.onclose = this.handleClose.bind(this)
+                    this.socket.onerror = this.handleError.bind(this)
+                    console.log(`WebSocketClient: Підключення до ${this.url} з токеном...`)
+                }
+
+                handleOpen(event) {
+                    console.log("WebSocketClient: З'єднання відкрито.", event)
+                    this.reconnectAttempts = 0
+                    clearTimeout(this.reconnectTimeout)
+                    //this.startClientPing(); // Запускаємо PING після успішного підключення
+                    this.options.onOpen?.(event)
+                    this.flushQueue() // Відправляємо повідомлення з черги
+                }
+
+                handleMessage(event) {
+                    clearTimeout(this.clientPongTimer)
+                    //this.startClientPing(); // Restart ping timer on any message
+
+                    const parsed = this.parseJsonSafe(event.data)
+                    if (parsed?.type === 'pong') {
+                        console.debug('WebSocketClient: Отримано custom pong від сервера.')
+                        return
+                    }
+                    this.options.onMessage?.(event)
+                }
+
+                handleClose(event) {
+                    console.warn(
+                        `WebSocketClient: З\'єднання закрито. Код: ${event.code}, Причина: ${event.reason}.`,
+                        event,
+                    )
+                    this.stopClientPing() // Зупиняємо PING при закритті з'єднання
+                    this.options.onClose?.(event)
+
+                    if (this.options.autoReconnect && event.code !== 1000 && event.code !== 1008) {
+                        // 1000 - нормальне закриття, 1008 - політика
+                        this.reconnectAttempts++
+                        const delay = Math.min(
+                            this.options.baseDelay * Math.pow(2, this.reconnectAttempts - 1),
+                            this.options.maxDelay,
+                        )
+                        if (this.reconnectAttempts <= this.options.maxRetries) {
+                            console.log(
+                                `WebSocketClient: Спроба перепідключення №${
+                                    this.reconnectAttempts
+                                } через ${delay / 1000} секунд...`,
+                            )
+                            this.reconnectTimeout = setTimeout(() => this.connect(), delay)
+                            this.options.onReconnect?.(this.reconnectAttempts, delay)
+                        } else {
+                            console.error(
+                                'WebSocketClient: Досягнуто максимальної кількості спроб перепідключення.',
+                            )
+                        }
+                    }
+                }
+
+                handleError(event) {
+                    console.error('WebSocketClient: Помилка WebSocket:', event)
+                    this.options.onError?.(event)
+                    // Помилка часто призводить до закриття, handleClose обробить перепідключення
+                }
+
+                send(message) {
+                    if (this.isOpen()) {
+                        this.socket.send(message)
+                    } else {
+                        console.warn(
+                            'WebSocketClient: Сокет не відкритий, повідомлення додано до черги.',
+                        )
+                        this.messageQueue.push(message)
+                    }
+                }
+
+                flushQueue() {
+                    while (this.messageQueue.length > 0 && this.isOpen()) {
+                        const message = this.messageQueue.shift()
+                        this.socket.send(message)
+                    }
+                }
+
+                close() {
+                    if (this.socket) {
+                        this.stopClientPing()
+                        this.socket.close(1000, 'Клієнт відключився')
+                    }
+                }
+
+                isOpen() {
+                    return this.socket && this.socket.readyState === WebSocket.OPEN
+                }
+
+                getRawSocket() {
+                    return this.socket
+                }
+
+                parseJsonSafe(jsonString) {
+                    try {
+                        return JSON.parse(jsonString)
+                    } catch (e) {
+                        console.error('Failed to parse JSON:', e)
+                        return null
+                    }
+                }
+
+                startClientPing() {
+                    this.stopClientPing() // Очищаємо існуючі таймери перед запуском нових
+
+                    this.clientPingTimer = setInterval(() => {
+                        if (this.isOpen()) {
+                            this.socket.send(JSON.stringify({ type: 'ping' }))
+                            // console.debug('WebSocketClient: Sent custom ping to server.');
+
+                            this.clientPongTimer = setTimeout(() => {
+                                console.warn(
+                                    'WebSocketClient: No pong or message received within pongTimeout. Closing socket.',
+                                )
+                                this.socket?.close(1000, 'Таймаут PONG')
+                            }, this.options.pongTimeout)
+                        }
+                    }, this.options.pingInterval)
+                }
+
+                stopClientPing() {
+                    clearInterval(this.clientPingTimer)
+                    clearTimeout(this.clientPongTimer)
+                }
+            }
+            // --- Кінець WebSocketClient Class ---
+
+            // --- Функції для управління кімнатами ---
+            function addRoomToUI(roomId) {
+                if (joinedRooms.has(roomId)) return // Не додаємо дублікати
+
+                joinedRooms.add(roomId)
+                const button = document.createElement('button')
+                button.textContent = roomId.replace('chat:', '') // Показуємо назву без префікса
+                button.dataset.roomId = roomId
+                button.addEventListener('click', () => switchRoom(roomId))
+                roomList.appendChild(button)
+
+                // Якщо це перша кімната або активна кімната, робимо її активною
+                if (activeRoomId === roomId || joinedRooms.size === 1) {
+                    switchRoom(roomId)
+                }
+            }
+
+            function switchRoom(roomId) {
+                if (activeRoomId === roomId) return // Вже активна кімната
+
+                activeRoomId = roomId
+
+                // Оновлюємо активну кнопку в UI
+                document.querySelectorAll('#room-list button').forEach((btn) => {
+                    if (btn.dataset.roomId === roomId) {
+                        btn.classList.add('active')
+                    } else {
+                        btn.classList.remove('active')
+                    }
+                })
+
+                // Очищаємо поточні повідомлення та відображаємо повідомлення для нової кімнати
+                messagesUl.innerHTML = ''
+                const messages = roomMessages.get(roomId) || []
+                messages.forEach((msg) => displayMessage(msg, false)) // false, щоб не додавати до roomMessages знову
+                messagesUl.scrollTop = messagesUl.scrollHeight // Прокручуємо вниз
+                console.log(`Переключено до кімнати: ${roomId}`)
+            }
+
+            function displayMessage(msgData, saveToRoom = true) {
+                // Зберігаємо повідомлення, якщо воно не системне
+                if (
+                    saveToRoom &&
+                    msgData.room &&
+                    msgData.type !== 'ERROR' &&
+                    msgData.type !== 'SYSTEM_MESSAGE'
+                ) {
+                    if (!roomMessages.has(msgData.room)) {
+                        roomMessages.set(msgData.room, [])
+                    }
+                    roomMessages.get(msgData.room).push(msgData)
+                }
+
+                // Відображаємо повідомлення, лише якщо воно належить активній кімнаті
+                // або є системним/помилковим (не прив'язаним до конкретної кімнати)
+                if (
+                    msgData.room === activeRoomId ||
+                    msgData.type === 'ERROR' ||
+                    msgData.type === 'SYSTEM_MESSAGE'
+                ) {
+                    const li = document.createElement('li')
+                    const timestamp = new Date(msgData.timestamp || Date.now()).toLocaleTimeString()
+
+                    if (msgData.type === 'SYSTEM_MESSAGE' || msgData.type === 'ERROR') {
+                        li.classList.add('system-message')
+                        li.textContent = `${msgData.text} (${timestamp})`
+                    } else if (msgData.type === 'CHAT_NEW_MESSAGE') {
+                        if (msgData.userId === currentUserId) {
+                            li.classList.add('my-message')
+                            li.innerHTML = `<span class="message-content">${msgData.text}</span> <span class="message-timestamp">${timestamp}</span>`
+                        } else {
+                            li.classList.add('other-message')
+                            li.innerHTML = `<span class="message-sender">${msgData.username}:</span> <span class="message-content">${msgData.text}</span> <span class="message-timestamp">${timestamp}</span>`
+                        }
+                    } else if (msgData.type === 'CHAT_CONNECTED') {
+                        li.classList.add('system-message')
+                        li.textContent = msgData.message
+                        addRoomToUI(msgData.room) // Додаємо кімнату до списку при підключенні
+                    } else if (msgData.type === 'JOIN_ROOM_SUCCESS') {
+                        li.classList.add('system-message')
+                        li.textContent = msgData.message
+                        addRoomToUI(msgData.room) // Додаємо кімнату до списку
+                        switchRoom(msgData.room) // Автоматично перемикаємось
+                    } else if (msgData.type === 'LEAVE_ROOM_SUCCESS') {
+                        li.classList.add('system-message')
+                        li.textContent = msgData.message
+                        // Можна видалити кнопку кімнати з UI, але залишити її в roomMessages
+                    } else if (
+                        msgData.type === 'CHAT_USER_JOINED' &&
+                        msgData.userId !== currentUserId
+                    ) {
+                        li.classList.add('system-message')
+                        li.textContent = `${msgData.username} приєднався до кімнати.`
+                    } else if (
+                        msgData.type === 'CHAT_USER_LEFT' &&
+                        msgData.userId !== currentUserId
+                    ) {
+                        li.classList.add('system-message')
+                        li.textContent = `${msgData.username} покинув кімнату.`
+                    }
+                    // Додайте обробку інших типів повідомлень тут (наприклад, NOTIFICATIONS_)
+
+                    messagesUl.appendChild(li)
+                    messagesUl.scrollTop = messagesUl.scrollHeight // Прокрутка вниз
+                }
+            }
+
+            // --- Обробники подій ---
+            generateTokenButton.addEventListener('click', async () => {
+                currentUserId = userIdInput.value
+                currentUsername = usernameInput.value
+
+                if (!currentUserId || !currentUsername) {
+                    alert("Будь ласка, введіть ID користувача та ім'я.")
+                    return
+                }
+
+                try {
+                    /*const response = await fetch('/api/auth/generate-token', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ userId: currentUserId, username: currentUsername }),
+                    })
+                    const data = await response.json()*/
+                    if (/*response.ok*/ true) {
+                        userToken = 12 || data.token
+                        tokenDisplay.textContent = 12 || `Токен: ${userToken}`
+                        authSection.style.display = 'none'
+                        chatSection.style.display = 'flex' // Показуємо чат секцію
+
+                        // Ініціалізуємо WebSocket клієнта для чату
+                        chatWsClient = new WebSocketClient({
+                            url: `ws://172.16.211.161:8080/ws/chat`,
+                            token: userToken,
+                            onOpen: (e) => {
+                                displayMessage({
+                                    type: 'SYSTEM_MESSAGE',
+                                    text: 'Успішно підключено до чат-сервісу.',
+                                })
+                            },
+                            onMessage: (e) => displayMessage(chatWsClient.parseJsonSafe(e.data)),
+                            onClose: (e) => {
+                                displayMessage({
+                                    type: 'SYSTEM_MESSAGE',
+                                    text: `Відключено від WebSocket сервісу. Код: ${
+                                        e.code
+                                    }, Причина: ${e.rdisplayMessageeason || 'Невідомо'}`,
+                                })
+                            },
+                            onError: (e) => {
+                                displayMessage({
+                                    type: 'ERROR',
+                                    text: `Помилка WebSocket: ${e.message || 'Невідома помилка'}`,
+                                })
+                            },
+                            onReconnect: (attempt, delay) => {
+                                displayMessage({
+                                    type: 'SYSTEM_MESSAGE',
+                                    text: `Спроба перепідключення №${attempt} через ${
+                                        delay / 1000
+                                    } секунд...`,
+                                })
+                            },
+                        })
+                        chatWsClient.connect()
+
+                        // Можна також ініціалізувати клієнта для сповіщень, якщо потрібно
+                        // notificationWsClient = new WebSocketClient({...});
+                        // notificationWsClient.connect();
+                    } else {
+                        alert(`Помилка генерації токена: ${data.message}`)
+                    }
+                } catch (error) {
+                    console.error('Помилка під час генерації токена:', error)
+                    alert('Не вдалося згенерувати токен. Перевірте консоль.')
+                }
+            })
+
+            sendButton.addEventListener('click', () => {
+                const messageText = messageInput.value.trim()
+                if (messageText && chatWsClient && chatWsClient.isOpen()) {
+                    const message = {
+                        type: 'sendMessage',
+                        payload: {
+                            roomName: activeRoomId.replace('chat:', ''), // Відправляємо назву кімнати без префікса
+                            text: messageText,
+                        },
+                    }
+                    chatWsClient.send(JSON.stringify(message))
+                    messageInput.value = ''
+                }
+            })
+
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendButton.click()
+                }
+            })
+
+            joinRoomButton.addEventListener('click', () => {
+                const newRoomName = newRoomIdInput.value.trim()
+                if (newRoomName && chatWsClient && chatWsClient.isOpen()) {
+                    const fullRoomId = `chat:${newRoomName}`
+                    if (joinedRooms.has(fullRoomId)) {
+                        alert(`Ви вже приєднались до кімнати "${newRoomName}".`)
+                        switchRoom(fullRoomId)
+                        return
+                    }
+                    const message = {
+                        type: 'joinRoom',
+                        payload: {
+                            roomName: newRoomName,
+                        },
+                    }
+                    chatWsClient.send(JSON.stringify(message))
+                    newRoomIdInput.value = ''
+                }
+            })
+
+            // Ініціалізуємо головну кімнату при завантаженні (перед підключенням)
+            addRoomToUI('chat:main_lobby')
+        </script>
+    </body>
+</html>
