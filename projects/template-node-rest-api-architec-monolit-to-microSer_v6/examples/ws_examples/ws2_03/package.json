@@ -1,0 +1,22 @@
+{
+    "name": "websocket-auto-namespaces",
+    "version": "1.0.0",
+    "description": "Automated WebSocket Namespaces and Rooms Example",
+    "main": "server.js",
+    "type": "module",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "keywords": [
+        "websocket",
+        "ws",
+        "namespace",
+        "rooms",
+        "automation"
+    ],
+    "author": "Your Name",
+    "license": "ISC",
+    "dependencies": {
+        "ws": "^8.18.0"
+    }
+}

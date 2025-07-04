@@ -1,0 +1,489 @@
+Так, звичайно! Інтеграція Server-Sent Events (SSE) та організація спілкування між REST API і WebSocket - це чудові кроки для створення повноцінної, гнучкої та інтерактивної архітектури.
+
+Давайте розглянемо кожен з цих аспектів детальніше.
+
+1. Інтеграція Server-Sent Events (SSE)
+Server-Sent Events - це односпрямований механізм для надсилання оновлень від сервера до клієнта через постійне HTTP-з'єднання. На відміну від WebSockets, SSE є простішим для реалізації, оскільки він базується на стандартному HTTP. Він ідеально підходить для ситуацій, коли клієнту потрібно отримувати постійні потокові оновлення (наприклад, новинні стрічки, показники моніторингу, прогрес довготривалих операцій), але не потрібно надсилати багато даних назад до сервера.
+
+Коли використовувати SSE:
+Односпрямований потік даних від сервера до клієнта: Клієнт отримує оновлення, але не надсилає відповіді.
+
+Простіша реалізація: Використовує стандартний HTTP, легше обробляє проксі та фаєрволи.
+
+Автоматичне перепідключення: Браузери автоматично намагаються перепідключитися при розриві з'єднання.
+
+Додавання SSE до server.js
+Ми додамо новий ендпоінт /events на сервері, який буде надсилати оновлення всім підключеним клієнтам SSE.
+
+Модифікації в server.js:
+
+JavaScript
+
+// server.js (фрагмент з доповненнями для SSE)
+
+// ... (існуючі імпорти та ініціалізація Express, Winston, JWT) ...
+
+// Set для зберігання всіх активних з'єднань SSE
+const sseClients = new Set();
+
+/**
+ * Ендпоінт для Server-Sent Events.
+ * Кожен клієнт, що підключається до цього ендпоінту, отримує потік подій.
+ */
+app.get('/events', (req, res) => {
+    // Встановлюємо необхідні заголовки для SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    // Додатково: дозволяємо CORS, якщо клієнт знаходиться на іншому домені/порті
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    // Додаємо об'єкт res до списку SSE клієнтів
+    sseClients.add(res);
+    appLogger.info(`Новий клієнт SSE підключився. Всього SSE клієнтів: ${sseClients.size}`);
+
+    // Надсилаємо початкове повідомлення, якщо потрібно
+    res.write(`data: Connected to SSE stream.\n\n`);
+
+    // Обробка відключення клієнта SSE
+    req.on('close', () => {
+        sseClients.delete(res);
+        appLogger.info(`Клієнт SSE відключився. Залишилось SSE клієнтів: ${sseClients.size}`);
+    });
+});
+
+/**
+ * Функція для надсилання події всім підключеним SSE клієнтам.
+ * @param {string} eventName - Назва події (наприклад, 'update', 'notification').
+ * @param {object} data - Дані, які будуть надіслані.
+ */
+function sendSseEvent(eventName, data) {
+    const message = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;
+    sseClients.forEach(client => {
+        try {
+            client.write(message);
+        } catch (e) {
+            appLogger.error(`Помилка надсилання SSE до клієнта: ${e.message}`);
+            // Можливо, клієнт вже відключився, видаляємо його
+            sseClients.delete(client);
+        }
+    });
+    if (sseClients.size > 0) {
+        appLogger.debug(`Надіслано SSE подію '${eventName}' до ${sseClients.size} клієнтів.`);
+    }
+}
+
+// Приклад використання SSE: надсилаємо системне оновлення кожні 10 секунд
+setInterval(() => {
+    sendSseEvent('system_status', {
+        timestamp: new Date().toISOString(),
+        message: 'Сервер працює нормально.',
+        totalWsClients: wss.clients.size, // Кількість активних WS клієнтів
+        totalSseClients: sseClients.size, // Кількість активних SSE клієнтів
+    });
+}, 10000); // Кожні 10 секунд
+
+// ... (існуючий код для WebSocket Server та RoomManager) ...
+
+// Запуск HTTP/WebSocket сервера (у кінці server.js)
+server.listen(PORT, () => {
+    appLogger.info(`Сервер запущено на http://localhost:${PORT}`);
+    appLogger.info(`Ендпоінт автентифікації: POST http://localhost:${PORT}/auth`);
+    appLogger.info(`WebSocket сервер готовий до підключень на ws://localhost:${PORT}/ws/<namespace>?token=<jwt_token>`);
+    appLogger.info(`SSE ендпоінт для подій: GET http://localhost:${PORT}/events`);
+    // ... (інші повідомлення про запуск) ...
+});
+Додавання SSE до public/client.js
+Клієнтська частина буде використовувати EventSource API для підключення до SSE ендпоінту та обробки подій.
+
+Модифікації в public/client.js:
+
+JavaScript
+
+// public/client.js (фрагмент з доповненнями для SSE)
+
+// ... (існуючі імпорти та визначення WebSocketClient, EventEmitter, JSDoc) ...
+
+// Додаємо елементи UI для SSE (якщо потрібно відображати статус)
+// const sseStatusDiv = document.getElementById('sse-status');
+
+let eventSource = null; // Змінна для екземпляра EventSource
+
+/**
+ * Ініціалізує Server-Sent Events.
+ */
+function initializeSse() {
+    if (eventSource) {
+        eventSource.close();
+        appLogger.info("Закриваємо існуюче SSE з'єднання.");
+    }
+
+    appLogger.info("Підключення до SSE ендпоінту: /events");
+    eventSource = new EventSource('http://localhost:3000/events'); // Або ваш реальний URL
+
+    eventSource.onopen = (event) => {
+        appLogger.info('SSE з\'єднання встановлено.', event);
+        appendMessage('Система', 'SSE з\'єднання встановлено. Очікування системних оновлень.', 'system_message');
+        // if (sseStatusDiv) sseStatusDiv.textContent = 'SSE Status: Connected';
+    };
+
+    eventSource.onerror = (event) => {
+        appLogger.error('SSE помилка:', event);
+        appendMessage('Помилка', 'SSE з\'єднання перервано або виникла помилка.', 'error');
+        // if (sseStatusDiv) sseStatusDiv.textContent = 'SSE Status: Disconnected (Error)';
+        // EventSource автоматично намагається перепідключитися
+    };
+
+    // Обробник для кастомної події 'system_status'
+    eventSource.addEventListener('system_status', (event) => {
+        const data = JSON.parse(event.data);
+        appendMessage('Система [SSE]', `Серверний статус: ${data.message} (WS: ${data.totalWsClients}, SSE: ${data.totalSseClients})`, 'system_message');
+        appLogger.debug('Отримано SSE system_status:', data);
+    });
+
+    // Обробник для загальної події 'message' (для повідомлень без конкретного типу)
+    eventSource.onmessage = (event) => {
+        appLogger.debug('Отримано SSE загальне повідомлення:', event.data);
+        // appendMessage('Система [SSE - Загальне]', event.data, 'system_message');
+    };
+}
+
+// Викличте initializeSse() десь при завантаженні сторінки або після автентифікації
+document.addEventListener('DOMContentLoaded', () => {
+    initializeUI();
+    initializeSse(); // Запускаємо SSE при завантаженні сторінки
+});
+
+// ... (існуючий код client.js) ...
+2. Організація спілкування між REST API та WebSocket
+Це ключовий аспект для створення динамічного застосунку. Часто REST API використовується для початкового стану, автентифікації, отримання даних, які не потребують реального часу. WebSockets/SSE використовуються для подій у реальному часі. Спілкування між ними відбувається на сервері.
+
+Паттерни взаємодії:
+REST API -> WebSocket (Серверний бік):
+
+Сценарій: REST API отримує запит (наприклад, збереження нового об'єкта в базі даних), і після успішного виконання потрібно повідомити клієнтів через WebSocket про цю зміну.
+
+Реалізація: Ваш REST-ендпоінт після обробки запиту викликає функцію, яка використовує екземпляри WebSocketServer або RoomManager для надсилання повідомлення відповідним клієнтам.
+
+Приклад в server.js:
+
+Додамо REST API ендпоінт для "глобального оголошення", який потім розсилає повідомлення через WebSocket.
+
+JavaScript
+
+// server.js (фрагмент з доповненнями REST -> WS)
+
+// ... (існуючий код) ...
+
+/**
+ * REST API ендпоінт для надсилання глобального оголошення.
+ * Тільки адміністратори можуть використовувати цей ендпоінт.
+ */
+app.post('/admin/announce', async (req, res) => {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ message: 'Необхідний токен автентифікації.' });
+    }
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        // Перевірка ролі адміністратора
+        if (!decoded.roles.includes('admin')) {
+            appLogger.warn(`Користувач ${decoded.username} спробував зробити оголошення без прав адміна.`);
+            return res.status(403).json({ message: 'Недостатньо прав для цієї дії.' });
+        }
+
+        const { message } = req.body;
+        if (!message) {
+            return res.status(400).json({ message: 'Повідомлення не може бути порожнім.' });
+        }
+
+        // Отримуємо менеджер для чат-неймспейсу
+        const chatManager = getNamespaceManager('chat');
+        if (chatManager) {
+            const announcement = {
+                type: 'global_announcement',
+                content: `[Оголошення від Адміна ${decoded.username}] ${message}`
+            };
+            // Надсилаємо оголошення всім клієнтам у неймспейсі 'chat'
+            const sentCount = chatManager.broadcastToAllClients(announcement);
+            appLogger.info(`Адмін ${decoded.username} надіслав глобальне оголошення ${sentCount} клієнтам.`);
+            res.status(200).json({ message: 'Оголошення надіслано успішно.', sentClients: sentCount });
+        } else {
+            appLogger.warn("Не знайдено RoomManager для 'chat' неймспейсу.");
+            res.status(500).json({ message: 'Не вдалося знайти менеджер чату.' });
+        }
+
+    } catch (err) {
+        appLogger.error(`Помилка при обробці /admin/announce: ${err.message}`);
+        res.status(401).json({ message: 'Недійсний або прострочений токен.' });
+    }
+});
+
+// ... (існуючий код) ...
+WebSocket -> REST API (Серверний бік):
+
+Сценарій: Клієнт надсилає команду через WebSocket (наприклад, "зберегти профіль", "зареєструватися"), яка, по суті, є викликом REST API на сервері.
+
+Реалізація: Обробник WebSocket-повідомлень на сервері аналізує отримане повідомлення і, залежно від його типу, викликає внутрішню функцію або сервіс, який, своєю чергою, взаємодіє з REST API логікою (наприклад, функцією, що обробляє POST-запити до /users). Це дозволяє повторно використовувати логіку.
+
+Приклад в server.js (у обробнику ws.on('message')):
+
+JavaScript
+
+// server.js (фрагмент з доповненнями WS -> REST)
+
+// ... (у функції wss.on('connection'), всередині ws.on('message')) ...
+
+// Додаємо новий тип повідомлення 'api_request'
+case 'api_request':
+    const { endpoint, method, payload } = parsedMessage;
+    appLogger.debug(`[${ws.namespace}] Клієнт ${ws.username} запросив API: ${method} ${endpoint}`);
+
+    // Важливо: Це спрощена демонстрація. У реальному застосунку
+    // ви б тут мали більш складну логіку маршрутизації та обробки,
+    // а також перевірку прав доступу до API на основі ролей користувача.
+    if (endpoint === '/profile/update' && method === 'POST') {
+        // Припустимо, у нас є функція для оновлення профілю в нашій бізнес-логіці
+        // яка зазвичай викликається через REST API
+        try {
+            // Імітуємо виклик внутрішнього API
+            const updatedProfile = await updateProfileInDatabase(ws.id, payload);
+            ws.send(JSON.stringify({
+                type: 'api_response',
+                status: 'success',
+                endpoint: endpoint,
+                data: updatedProfile
+            }));
+            appLogger.info(`Профіль користувача ${ws.username} оновлено через WS запит.`);
+        } catch (apiError) {
+            ws.send(JSON.stringify({
+                type: 'api_response',
+                status: 'error',
+                endpoint: endpoint,
+                message: apiError.message
+            }));
+            appLogger.error(`Помилка оновлення профілю для ${ws.username}: ${apiError.message}`);
+        }
+    } else {
+        ws.send(JSON.stringify({
+            type: 'error',
+            message: `Невідомий або недозволений API запит: ${method} ${endpoint}`
+        }));
+    }
+    break;
+
+// ... (інші case-и) ...
+
+// Приклад функції, яка імітує взаємодію з базою даних або іншим сервісом
+async function updateProfileInDatabase(userId, data) {
+    // Тут була б реальна логіка взаємодії з БД
+    return new Promise(resolve => setTimeout(() => {
+        appLogger.debug(`Імітація оновлення профілю для ${userId} з даними: ${JSON.stringify(data)}`);
+        resolve({ userId, ...data, lastUpdated: new Date().toISOString() });
+    }, 500));
+}
+SSE -> WebSocket / REST API (Серверний бік - для ініціації):
+
+Сценарій: SSE використовується для надсилання загальних, широкомовних оновлень, які не залежать від конкретного клієнта або його кімнати. Але SSE сам по собі не є механізмом для надсилання команд.
+
+Реалізація: SSE в основному служить для сповіщень. Якщо клієнт отримує сповіщення через SSE і потребує інтеракції, він використовує WebSocket (для чату/команд) або REST API (для складних запитів/мутацій). Наприклад, SSE повідомляє: "Нові дані доступні". Клієнт: "Гаразд, завантажую нові дані через REST API GET /data" або "Підписуюсь на WS для оновлень".
+
+Оновлення public/client.js для використання REST API (для адмін-оголошення)
+Тепер адмін може надсилати оголошення через REST API, а клієнти отримуватимуть їх через WebSocket.
+
+JavaScript
+
+// public/client.js (у кінці файлу, після існуючого коду)
+
+// Додамо UI елементи для адмін-оголошень
+// Наприклад, додайте до HTML у section для адмінів:
+/*
+<div class="section" id="admin-section">
+    <h2>Адмін Панель (Потрібні права адміна)</h2>
+    <div class="input-group">
+        <label for="admin-message-input">Оголошення:</label>
+        <input type="text" id="admin-message-input" placeholder="Глобальне оголошення для чату">
+        <button id="send-admin-announcement-btn" disabled>Надіслати Оголошення</button>
+    </div>
+</div>
+*/
+const adminMessageInput = document.getElementById('admin-message-input');
+const sendAdminAnnouncementBtn = document.getElementById('send-admin-announcement-btn');
+
+if (sendAdminAnnouncementBtn) { // Перевірка, чи елементи існують (якщо додані в HTML)
+    sendAdminAnnouncementBtn.addEventListener('click', async () => {
+        if (!myJwtToken) {
+            alert('Будь ласка, автентифікуйтесь.');
+            return;
+        }
+        const message = adminMessageInput.value.trim();
+        if (!message) {
+            alert('Будь ласка, введіть оголошення.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/admin/announce', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${myJwtToken}` // Важливо: надсилаємо токен
+                },
+                body: JSON.stringify({ message })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                appendMessage('Система', `Оголошення адміна надіслано: ${data.message}`, 'system_message');
+                adminMessageInput.value = '';
+            } else {
+                appendMessage('Помилка Адміна', `Не вдалося надіслати оголошення: ${data.message}`, 'error');
+            }
+        } catch (error) {
+            appLogger.error('Помилка надсилання адмін-оголошення:', error);
+            appendMessage('Помилка Адміна', `Мережева помилка: ${error.message}`, 'error');
+        }
+    });
+
+    // Оновлення стану кнопки адміна при завантаженні та зміні токена
+    document.addEventListener('DOMContentLoaded', updateAdminButtonState);
+    loginBtn.addEventListener('click', updateAdminButtonState); // Після логіну
+}
+
+function updateAdminButtonState() {
+    // В ідеалі тут має бути перевірка ролі з розшифрованого JWT токена на клієнті
+    // Але для простоти ми просто дозволимо надсилати, а сервер відхилить без ролі 'admin'
+    if (sendAdminAnnouncementBtn) {
+        sendAdminAnnouncementBtn.disabled = !myJwtToken || !adminMessageInput.value.trim();
+    }
+}
+adminMessageInput?.addEventListener('input', updateAdminButtonState); // Додаємо слухач, якщо елемент існує
+
+// Оновимо initializeUI, щоб врахувати адмін-кнопку
+function initializeUI() {
+    // ... (існуючий код initializeUI) ...
+    if (adminMessageInput) adminMessageInput.disabled = false; // Початковий стан
+    updateAdminButtonState(); // Встановлюємо початковий стан кнопки адміна
+}
+
+Оновлений public/index.html для адмін-панелі
+Щоб ви могли протестувати надсилання оголошень, додайте цей блок до вашого index.html. Розмістіть його, наприклад, після секції "Connection to WebSocket".
+
+HTML
+
+<div class="section" id="admin-section">
+            <h2>Адмін Панель (Потрібні права адміна)</h2>
+            <div class="input-group">
+                <label for="admin-message-input">Оголошення:</label>
+                <input type="text" id="admin-message-input" placeholder="Глобальне оголошення для чату">
+                <button id="send-admin-announcement-btn">Надіслати Оголошення</button>
+            </div>
+            <div class="input-group">
+                <label for="profile-update-input">Оновити профіль:</label>
+                <input type="text" id="profile-update-input" placeholder="Наприклад, { 'avatar': 'new_img.png' }">
+                <button id="send-profile-update-btn">Оновити Профіль (WS-API)</button>
+            </div>
+        </div>
+
+Приклад WebSocket -> REST API (для оновлення профілю)
+Додамо кнопку до клієнта, яка буде надсилати WS-повідомлення, яке, своєю чергою, викличе внутрішню REST-логіку на сервері.
+
+Додаємо до public/index.html (у секцію адміна або окремо):
+
+HTML
+
+<div class="input-group">
+                <label for="profile-update-input">Оновити профіль:</label>
+                <input type="text" id="profile-update-input" placeholder="Наприклад, { 'avatar': 'new_img.png' }">
+                <button id="send-profile-update-btn" disabled>Оновити Профіль (WS-API)</button>
+            </div>
+Додаємо до public/client.js:
+
+JavaScript
+
+// public/client.js
+
+// ... (додаємо до DOM-елементів) ...
+const profileUpdateInput = document.getElementById('profile-update-input');
+const sendProfileUpdateBtn = document.getElementById('send-profile-update-btn');
+
+// ... (у функції initializeUI) ...
+    if (profileUpdateInput) profileUpdateInput.disabled = true;
+    if (sendProfileUpdateBtn) sendProfileUpdateBtn.disabled = true;
+
+
+// ... (після всіх існуючих обробників кнопок) ...
+
+if (sendProfileUpdateBtn) {
+    sendProfileUpdateBtn.addEventListener('click', () => {
+        if (!chatWebSocket || !chatWebSocket.isOpen()) {
+            alert('Спочатку підключіться до сервера.');
+            return;
+        }
+        const updatePayloadString = profileUpdateInput.value.trim();
+        if (!updatePayloadString) {
+            alert('Будь ласка, введіть дані для оновлення профілю (JSON).');
+            return;
+        }
+
+        try {
+            const payload = JSON.parse(updatePayloadString);
+            chatWebSocket.send(JSON.stringify({
+                type: 'api_request',
+                endpoint: '/profile/update',
+                method: 'POST',
+                payload: payload
+            }));
+            appendMessage('Система', 'Надіслано запит на оновлення профілю через WS-API.', 'system_message');
+            profileUpdateInput.value = '';
+        } catch (e) {
+            alert('Невірний формат JSON для оновлення профілю.');
+            appLogger.error('Failed to parse profile update JSON:', e);
+        }
+    });
+
+    // Оновлення стану кнопки
+    profileUpdateInput.addEventListener('input', updateButtonStates);
+}
+
+// ... (у функції updateButtonStates) ...
+    if (sendProfileUpdateBtn) {
+        sendProfileUpdateBtn.disabled = !chatWebSocket || !chatWebSocket.isOpen() || !profileUpdateInput.value.trim();
+    }
+Загальна схема архітектури
+REST API (HTTP):
+
+Автентифікація (/auth)
+
+Отримання початкових даних (наприклад, списку доступних кімнат, профілю користувача при завантаженні сторінки)
+
+Виконання одноразових, не-реального-часу операцій (наприклад, реєстрація, зміна пароля, завантаження файлів).
+
+Може ініціювати розсилку WebSocket-повідомлень (як у прикладі з адмін-оголошенням), якщо дія REST API має вплив, який потрібно відобразити в реальному часі.
+
+WebSockets (WS):
+
+Двоспрямований, повнодуплексний зв'язок.
+
+Ідеально підходить для інтерактивного чату, багатокористувацьких ігор, спільних редакторів, де потрібна швидка реакція та постійний обмін даними.
+
+Може викликати внутрішню логіку, яка зазвичай обробляється REST API, але для зручності передається через WS (як у прикладі з оновленням профілю).
+
+Server-Sent Events (SSE):
+
+Односпрямований потік від сервера до клієнта.
+
+Використовується для універсальних широкомовних оновлень, сповіщень, системних повідомлень, де клієнт не потребує відправляти відповіді.
+
+Ефективний для моніторингу статусу, новинних стрічок, прогрес-барів.
+
+Коли що використовувати:
+REST API: Запити "Запитай раз і отримай відповідь" (Request-Response). Для CRUD-операцій з ресурсами, автентифікації, великих завантажень.
+
+WebSockets: Коли потрібен інтерактивний, низьколатентний, двоспрямований обмін даними в реальному часі. Дуже корисний для чату, ігор, живих дашбордів з інтерактивністю.
+
+SSE: Коли вам потрібні односпрямовані потокові оновлення від сервера до клієнта, і ви хочете уникнути складності WebSocket, якщо двоспрямований зв'язок не потрібен. Хороша альтернатива поллінгу.
+
+Така комбінація дозволяє вам вибрати найбільш відповідну технологію для кожного конкретного завдання, оптимізуючи продуктивність і спрощуючи розробку.

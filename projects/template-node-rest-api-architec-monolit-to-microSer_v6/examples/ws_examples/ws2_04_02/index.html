@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Pure WS Namespaces</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                background-color: #f4f4f4;
+            }
+            #container {
+                max-width: 800px;
+                margin: 0 auto;
+                background: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                display: flex;
+                gap: 20px;
+            }
+            .namespace-panel {
+                flex: 1;
+                border: 1px solid #ddd;
+                padding: 15px;
+                border-radius: 5px;
+            }
+            .namespace-panel h3 {
+                margin-top: 0;
+            }
+            .namespace-panel ul {
+                list-style-type: none;
+                padding: 0;
+                max-height: 250px;
+                overflow-y: scroll;
+                border: 1px solid #eee;
+                padding: 8px;
+                margin-bottom: 10px;
+                background-color: #f9f9f9;
+            }
+            .namespace-panel input[type='text'],
+            .namespace-panel button {
+                width: calc(100% - 22px);
+                padding: 8px;
+                margin-bottom: 5px;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+            }
+            .namespace-panel button {
+                background-color: #007bff;
+                color: white;
+                cursor: pointer;
+                border: none;
+            }
+            .namespace-panel button:hover {
+                background-color: #0056b3;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="container">
+            <div class="namespace-panel">
+                <h3>Chat Namespace (/chat)</h3>
+                <input
+                    type="text"
+                    id="chat-room-id"
+                    placeholder="Enter Chat Room ID (e.g., general)"
+                />
+                <button id="join-chat-room">Join Room</button>
+                <ul id="chat-messages"></ul>
+                <input type="text" id="chat-input" placeholder="Message to room..." />
+                <button id="send-chat-message">Send Chat</button>
+            </div>
+
+            <div class="namespace-panel">
+                <h3>Admin Namespace (/admin)</h3>
+                <input
+                    type="text"
+                    id="admin-token-input"
+                    placeholder="Admin Token"
+                    value="SUPER_SECRET_ADMIN_TOKEN"
+                />
+                <button id="connect-admin">Connect Admin</button>
+                <ul id="admin-messages"></ul>
+                <input type="text" id="admin-alert-input" placeholder="Alert message..." />
+                <button id="send-admin-alert">Send Alert</button>
+            </div>
+        </div>
+
+        <script>
+            // Функція для додавання повідомлень до відповідного списку
+            function appendMessage(listElementId, text) {
+                const list = document.getElementById(listElementId)
+                const item = document.createElement('li')
+                item.textContent = text
+                list.appendChild(item)
+                list.scrollTop = list.scrollHeight
+            }
+
+            // --- Chat Namespace Client ---
+            let chatWs
+            let currentChatRoomId = ''
+
+            document.getElementById('join-chat-room').addEventListener('click', () => {
+                currentChatRoomId = document.getElementById('chat-room-id').value.trim()
+                if (!currentChatRoomId) {
+                    alert('Please enter a chat room ID.')
+                    return
+                }
+                if (chatWs && chatWs.readyState === WebSocket.OPEN) {
+                    chatWs.send(
+                        JSON.stringify({
+                            type: 'join_room',
+                            payload: { roomId: currentChatRoomId },
+                        }),
+                    )
+                } else {
+                    appendMessage(
+                        'chat-messages',
+                        '[ERROR] Chat WebSocket not connected. Attempting to connect...',
+                    )
+                    connectChatWs()
+                }
+            })
+
+            document.getElementById('send-chat-message').addEventListener('click', () => {
+                const messageText = document.getElementById('chat-input').value.trim()
+                if (!messageText || !currentChatRoomId) {
+                    return
+                }
+                if (chatWs && chatWs.readyState === WebSocket.OPEN) {
+                    chatWs.send(
+                        JSON.stringify({
+                            type: 'chat_message',
+                            payload: { roomId: currentChatRoomId, text: messageText },
+                        }),
+                    )
+                    document.getElementById('chat-input').value = ''
+                }
+            })
+
+            function connectChatWs() {
+                chatWs = new WebSocket('ws://localhost:3000/chat')
+                chatWs.onopen = () => {
+                    appendMessage('chat-messages', '[SYSTEM] Connected to /chat namespace.')
+                    if (currentChatRoomId) {
+                        chatWs.send(
+                            JSON.stringify({
+                                type: 'join_room',
+                                payload: { roomId: currentChatRoomId },
+                            }),
+                        )
+                    }
+                }
+                chatWs.onmessage = (event) => {
+                    const data = JSON.parse(event.data)
+                    switch (data.type) {
+                        case 'system':
+                            appendMessage('chat-messages', `[SYSTEM] ${data.message}`)
+                            break
+                        case 'user_joined_room':
+                            appendMessage(
+                                'chat-messages',
+                                `[SYSTEM] ${data.payload.username} joined room ${data.payload.roomId}.`,
+                            )
+                            break
+                        case 'chat_message':
+                            appendMessage(
+                                'chat-messages',
+                                `[${data.payload.roomId}] ${data.payload.senderName}: ${data.payload.text}`,
+                            )
+                            break
+                        case 'system_alert':
+                            appendMessage(
+                                'chat-messages',
+                                `[ADMIN ALERT] ${data.payload.message} (from ${data.payload.sender})`,
+                            )
+                            break
+                        case 'error':
+                            appendMessage('chat-messages', `[ERROR] ${data.message}`)
+                            break
+                    }
+                }
+                chatWs.onclose = () => {
+                    appendMessage(
+                        'chat-messages',
+                        '[SYSTEM] Disconnected from /chat. Reconnecting in 3s...',
+                    )
+                    setTimeout(connectChatWs, 3000)
+                }
+                chatWs.onerror = (err) => {
+                    console.error('Chat WS Error:', err)
+                    appendMessage('chat-messages', '[ERROR] Chat WS error.')
+                }
+            }
+            connectChatWs() // Connect on page load
+
+            // --- Admin Namespace Client ---
+            let adminWs
+
+            document.getElementById('connect-admin').addEventListener('click', () => {
+                const adminToken = document.getElementById('admin-token-input').value.trim()
+                if (!adminToken) {
+                    alert('Please enter an admin token.')
+                    return
+                }
+                if (adminWs && adminWs.readyState === WebSocket.OPEN) {
+                    appendMessage('admin-messages', '[SYSTEM] Admin WS already connected.')
+                } else {
+                    connectAdminWs(adminToken)
+                }
+            })
+
+            document.getElementById('send-admin-alert').addEventListener('click', () => {
+                const alertMsg = document.getElementById('admin-alert-input').value.trim()
+                if (!alertMsg) {
+                    return
+                }
+                if (adminWs && adminWs.readyState === WebSocket.OPEN) {
+                    adminWs.send(
+                        JSON.stringify({ type: 'send_alert', payload: { alertMessage: alertMsg } }),
+                    )
+                    document.getElementById('admin-alert-input').value = ''
+                } else {
+                    appendMessage(
+                        'admin-messages',
+                        '[ERROR] Admin WS not connected. Cannot send alert.',
+                    )
+                }
+            })
+
+            function connectAdminWs(token) {
+                adminWs = new WebSocket(`ws://localhost:3000/admin?token=${token}`)
+                adminWs.onopen = () => {
+                    appendMessage('admin-messages', '[SYSTEM] Connected to /admin namespace.')
+                }
+                adminWs.onmessage = (event) => {
+                    const data = JSON.parse(event.data)
+                    switch (data.type) {
+                        case 'system':
+                            appendMessage('admin-messages', `[SYSTEM] ${data.message}`)
+                            break
+                        case 'error':
+                            appendMessage('admin-messages', `[ERROR] ${data.message}`)
+                            break
+                    }
+                }
+                adminWs.onclose = (event) => {
+                    appendMessage(
+                        'admin-messages',
+                        `[SYSTEM] Disconnected from /admin (Code: ${event.code}).`,
+                    )
+                    if (event.code === 1008) {
+                        // Unauthorized
+                        appendMessage(
+                            'admin-messages',
+                            '[ERROR] Authentication failed for Admin. Check token.',
+                        )
+                    }
+                }
+                adminWs.onerror = (err) => {
+                    console.error('Admin WS Error:', err)
+                    appendMessage('admin-messages', '[ERROR] Admin WS error.')
+                }
+            }
+        </script>
+    </body>
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Pure WS Chat</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                background-color: #f4f4f4;
+            }
+            #container {
+                max-width: 600px;
+                margin: 0 auto;
+                background: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            }
+            #messages {
+                list-style-type: none;
+                padding: 0;
+                max-height: 400px;
+                overflow-y: scroll;
+                border: 1px solid #ddd;
+                padding: 10px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+                background-color: #e9e9e9;
+            }
+            #messages li {
+                padding: 8px 0;
+                border-bottom: 1px dotted #ccc;
+            }
+            #messages li:last-child {
+                border-bottom: none;
+            }
+            #form {
+                display: flex;
+                gap: 10px;
+                margin-top: 15px;
+            }
+            #input {
+                flex-grow: 1;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+            }
+            button {
+                padding: 10px 15px;
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            button:hover {
+                background-color: #0056b3;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="container">
+            <h2>Pure WS Chat</h2>
+            <div>
+                <input
+                    type="text"
+                    id="chat-id-input"
+                    placeholder="Enter Chat ID (e.g., chat_general)"
+                />
+                <button id="join-chat-button">Join Chat</button>
+            </div>
+            <ul id="messages"></ul>
+            <form id="form">
+                <input id="input" autocomplete="off" placeholder="Type a message..." />
+                <button>Send</button>
+            </form>
+        </div>
+
+        <script>
+            const messages = document.getElementById('messages')
+            const form = document.getElementById('form')
+            const input = document.getElementById('input')
+            const chatIdInput = document.getElementById('chat-id-input')
+            const joinChatButton = document.getElementById('join-chat-button')
+
+            let ws
+            let currentChatId = ''
+
+            function appendMessage(text) {
+                const item = document.createElement('li')
+                item.textContent = text
+                messages.appendChild(item)
+                messages.scrollTop = messages.scrollHeight
+            }
+
+            function connectWebSocket() {
+                // В реальному додатку: передавати токен для автентифікації
+                // const token = 'your_jwt_token';
+                // ws = new WebSocket(`ws://localhost:3000/?token=${token}`);
+                ws = new WebSocket('ws://localhost:3000') // З'єднання до нашого сервера
+
+                ws.onopen = () => {
+                    appendMessage('[SYSTEM] Connected to WebSocket server.')
+                    if (currentChatId) {
+                        ws.send(
+                            JSON.stringify({
+                                type: 'join_chat',
+                                payload: { chatId: currentChatId },
+                            }),
+                        )
+                    }
+                }
+
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data)
+                    switch (data.type) {
+                        case 'system':
+                            appendMessage(`[SYSTEM] ${data.message}`)
+                            break
+                        case 'chat_message':
+                            appendMessage(
+                                `[${data.payload.chatId}] ${data.payload.senderName}: ${data.payload.text}`,
+                            )
+                            break
+                        case 'user_joined_chat':
+                            appendMessage(
+                                `[SYSTEM] ${data.payload.username} joined chat ${data.payload.chatId}`,
+                            )
+                            break
+                        case 'user_left_chat':
+                            appendMessage(
+                                `[SYSTEM] ${data.payload.username} left chat ${data.payload.chatId}`,
+                            )
+                            break
+                        case 'typing_indicator':
+                            // Ігноруємо себе
+                            if (data.payload.socketId !== ws.id) {
+                                appendMessage(
+                                    `[SYSTEM] ${data.payload.username} is typing in ${data.payload.chatId}...`,
+                                )
+                            }
+                            break
+                        case 'error':
+                            appendMessage(`[ERROR] ${data.message}`)
+                            break
+                        default:
+                            appendMessage(`[UNKNOWN] ${JSON.stringify(data)}`)
+                    }
+                }
+
+                ws.onclose = () => {
+                    appendMessage(
+                        '[SYSTEM] Disconnected from WebSocket server. Reconnecting in 3 seconds...',
+                    )
+                    // Проста логіка перепідключення (для продакшену використовувати більш складну)
+                    setTimeout(connectWebSocket, 3000)
+                }
+
+                ws.onerror = (error) => {
+                    console.error('WebSocket Error:', error)
+                    appendMessage('[SYSTEM] WebSocket error occurred.')
+                }
+            }
+
+            // Ініціалізація з'єднання при завантаженні сторінки
+            connectWebSocket()
+
+            joinChatButton.addEventListener('click', () => {
+                const requestedChatId = chatIdInput.value.trim()
+                if (requestedChatId && ws && ws.readyState === WebSocket.OPEN) {
+                    currentChatId = requestedChatId
+                    ws.send(
+                        JSON.stringify({ type: 'join_chat', payload: { chatId: currentChatId } }),
+                    )
+                } else if (!ws || ws.readyState !== WebSocket.OPEN) {
+                    appendMessage('[ERROR] WebSocket not connected yet. Please wait.')
+                } else {
+                    alert('Please enter a Chat ID.')
+                }
+            })
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault()
+                if (input.value && ws && ws.readyState === WebSocket.OPEN && currentChatId) {
+                    const messagePayload = {
+                        type: 'chat_message',
+                        payload: {
+                            chatId: currentChatId,
+                            text: input.value,
+                        },
+                    }
+                    ws.send(JSON.stringify(messagePayload))
+                    input.value = ''
+                } else if (!currentChatId) {
+                    alert('Please join a chat first.')
+                }
+            })
+
+            // Приклад для індикатора набору тексту
+            let typingTimeout
+            input.addEventListener('input', () => {
+                if (currentChatId && ws && ws.readyState === WebSocket.OPEN) {
+                    // Відправляємо подію "typing"
+                    ws.send(
+                        JSON.stringify({
+                            type: 'typing_indicator',
+                            payload: { chatId: currentChatId },
+                        }),
+                    )
+
+                    // Очищаємо попередній таймер і встановлюємо новий
+                    clearTimeout(typingTimeout)
+                    typingTimeout = setTimeout(() => {
+                        // Можливо, тут відправити подію "stop_typing", але для чистого ws складніше керувати
+                        // хто саме набирає текст, бо немає автоматичних кімнат
+                    }, 3000) // Відправляємо "typing" кожні 3 секунди, поки користувач набирає
+                }
+            })
+        </script>
+    </body>
+</html>

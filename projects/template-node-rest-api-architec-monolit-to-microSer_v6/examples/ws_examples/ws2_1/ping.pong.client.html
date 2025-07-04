@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>WebSocket Heartbeat Client</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+            }
+            #messages {
+                border: 1px solid #ccc;
+                padding: 10px;
+                height: 300px;
+                overflow-y: scroll;
+                margin-bottom: 10px;
+            }
+            input[type='text'] {
+                width: 80%;
+                padding: 8px;
+            }
+            button {
+                padding: 8px 12px;
+            }
+            .status {
+                margin-top: 10px;
+                font-weight: bold;
+            }
+            .connected {
+                color: green;
+            }
+            .disconnected {
+                color: red;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>WebSocket Heartbeat Client</h1>
+        <div class="status">Status: <span id="statusText">Disconnected</span></div>
+        <div id="messages"></div>
+        <input type="text" id="messageInput" placeholder="Type a message" />
+        <button id="sendButton">Send</button>
+
+        <script>
+            const statusText = document.getElementById('statusText')
+            const messagesDiv = document.getElementById('messages')
+            const messageInput = document.getElementById('messageInput')
+            const sendButton = document.getElementById('sendButton')
+
+            let ws
+
+            function connectWebSocket() {
+                ws = new WebSocket('ws://localhost:8080')
+
+                ws.onopen = () => {
+                    console.log('WebSocket Connected!')
+                    statusText.textContent = 'Connected'
+                    statusText.className = 'connected'
+                    appendMessage('System: Connected to WebSocket server.')
+                }
+
+                ws.onmessage = (event) => {
+                    // Сервер може надсилати Ping, але браузер автоматично відповідає Pong.
+                    // Тут ми обробляємо лише повідомлення додатку.
+                    console.log('Received:', event.data)
+                    appendMessage(`Server: ${event.data}`)
+                }
+
+                ws.onclose = (event) => {
+                    console.log('WebSocket Disconnected:', event.code, event.reason)
+                    statusText.textContent = 'Disconnected'
+                    statusText.className = 'disconnected'
+                    appendMessage(
+                        `System: Disconnected. Code: ${event.code}, Reason: ${event.reason}`,
+                    )
+                    // Спроба перепідключення після короткої затримки, якщо це не було ініційовано нами
+                    if (event.code !== 1000) {
+                        // 1000 - Normal Closure
+                        setTimeout(connectWebSocket, 5000) // Спроба перепідключення через 5 секунд
+                    }
+                }
+
+                ws.onerror = (error) => {
+                    console.error('WebSocket Error:', error)
+                    statusText.textContent = 'Error'
+                    statusText.className = 'disconnected'
+                    appendMessage('System: WebSocket Error occurred.')
+                }
+            }
+
+            function sendMessage() {
+                const message = messageInput.value
+                if (ws && ws.readyState === WebSocket.OPEN && message) {
+                    ws.send(message)
+                    appendMessage(`You: ${message}`)
+                    messageInput.value = ''
+                } else {
+                    appendMessage('System: Not connected or message is empty.')
+                }
+            }
+
+            function appendMessage(text) {
+                const p = document.createElement('p')
+                p.textContent = text
+                messagesDiv.appendChild(p)
+                messagesDiv.scrollTop = messagesDiv.scrollHeight // Прокрутка до низу
+            }
+
+            sendButton.addEventListener('click', sendMessage)
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage()
+                }
+            })
+
+            // Ініціалізація з'єднання при завантаженні сторінки
+            connectWebSocket()
+
+            // Опціонально: клієнтський пінг (зазвичай не потрібно, якщо сервер пінгів)
+            // setInterval(() => {
+            //     if (ws && ws.readyState === WebSocket.OPEN) {
+            //         // ws.send('ping_from_client'); // Можна відправляти як звичайне текстове повідомлення
+            //         // Або, якщо ви використовуєте бібліотеку, яка підтримує кадри:
+            //         // ws.ping(); // Якщо клієнтська бібліотека має такий метод
+            //     }
+            // }, 25000); // Кожні 25 секунд
+        </script>
+    </body>
+</html>

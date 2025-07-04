@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>WebSocket Chat Example</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                margin: 0;
+                padding: 20px;
+                background-color: #f0f2f5;
+            }
+            #chat-container {
+                display: flex;
+                flex-direction: column;
+                flex-grow: 1;
+                background-color: #fff;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                overflow: hidden;
+            }
+            #messages {
+                flex-grow: 1;
+                padding: 15px;
+                overflow-y: auto;
+                border-bottom: 1px solid #eee;
+            }
+            #messages div {
+                margin-bottom: 8px;
+                line-height: 1.4;
+            }
+            #messages .system-message {
+                color: #888;
+                font-style: italic;
+            }
+            #messages .user-message strong {
+                color: #333;
+            }
+            #input-area {
+                display: flex;
+                padding: 15px;
+                border-top: 1px solid #eee;
+            }
+            #message-input {
+                flex-grow: 1;
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                margin-right: 10px;
+                font-size: 16px;
+            }
+            #send-button {
+                padding: 10px 15px;
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 16px;
+            }
+            #send-button:hover {
+                background-color: #0056b3;
+            }
+            #connection-status {
+                margin-bottom: 10px;
+                font-weight: bold;
+            }
+            #controls {
+                margin-top: 20px;
+                padding: 15px;
+                background-color: #fff;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+            #room-controls {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 10px;
+            }
+            #room-input {
+                flex-grow: 1;
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+            }
+            .room-button {
+                padding: 8px 12px;
+                background-color: #28a745;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            .room-button:hover {
+                background-color: #218838;
+            }
+            .status-online {
+                color: green;
+            }
+            .status-offline {
+                color: red;
+            }
+            .status-reconnecting {
+                color: orange;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>WebSocket Chat Client</h1>
+
+        <div id="connection-status">Status: <span class="status-offline">Disconnected</span></div>
+
+        <div id="controls">
+            <label for="username-input">Your Username:</label>
+            <input
+                type="text"
+                id="username-input"
+                placeholder="Enter your username"
+                value="Guest"
+            /><br /><br />
+            <button id="connect-button">Connect</button>
+            <button id="disconnect-button" disabled>Disconnect</button>
+            <hr />
+            <h3>Rooms</h3>
+            <div id="room-controls">
+                <input
+                    type="text"
+                    id="room-input"
+                    placeholder="Enter room name (e.g., general)"
+                    value="main_lobby"
+                />
+                <button id="join-room-button" class="room-button">Join Room</button>
+                <button id="leave-room-button" class="room-button">Leave Room</button>
+                <button id="get-users-button" class="room-button">Get Users</button>
+            </div>
+            <div id="current-rooms">Current rooms: Main Lobby</div>
+        </div>
+
+        <div id="chat-container">
+            <div id="messages"></div>
+            <div id="input-area">
+                <input type="text" id="message-input" placeholder="Type your message..." disabled />
+                <button id="send-button" disabled>Send</button>
+            </div>
+        </div>
+
+        <script>
+            const statusSpan = document.getElementById('connection-status').querySelector('span')
+            const connectButton = document.getElementById('connect-button')
+            const disconnectButton = document.getElementById('disconnect-button')
+            const messageInput = document.getElementById('message-input')
+            const sendButton = document.getElementById('send-button')
+            const messagesDiv = document.getElementById('messages')
+            const usernameInput = document.getElementById('username-input')
+            const roomInput = document.getElementById('room-input')
+            const joinRoomButton = document.getElementById('join-room-button')
+            const leaveRoomButton = (document = document.getElementById('leave-room-button'))
+            const getUsersButton = document.getElementById('get-users-button')
+            const currentRoomsDiv = document.getElementById('current-rooms')
+
+            let wsManager = null // Тепер це буде менеджер з'єднання, а не прямий WebSocket об'єкт
+            let token = null // JWT token will be stored here
+            let currentJoinedRooms = new Set(['chat:main_lobby']) // Track rooms client is in
+
+            // --- Improved WebSocket Connection Function ---
+            function createWebSocketConnection({
+                url,
+                token,
+                onMessage,
+                onOpen,
+                onClose,
+                onError,
+                onReconnect,
+                autoReconnect = true,
+                baseDelay = 1000,
+                maxDelay = 30000,
+                maxRetries = Infinity,
+                checkInterval = 30000,
+                pingInterval = 15000,
+                pongTimeout = 5000,
+            }) {
+                let socket,
+                    isManuallyClosed = false,
+                    currentRetries = 0,
+                    currentToken = token,
+                    lastDelay = baseDelay,
+                    checkTimer,
+                    clientPingTimer,
+                    clientPongTimer
+                const messageQueue = []
+
+                // Helper to safely parse JSON
+                function parseJsonSafe(data) {
+                    try {
+                        return JSON.parse(data)
+                    } catch {
+                        return null
+                    }
+                }
+
+                // Exponential backoff with decorrelated jitter
+                function getDecorrelatedJitterDelay() {
+                    const minDelay = baseDelay
+                    const maxDelayThisTry = lastDelay * 3
+                    const delay = Math.min(
+                        maxDelay,
+                        Math.floor(Math.random() * (maxDelayThisTry - minDelay + 1)) + minDelay,
+                    )
+                    lastDelay = delay
+                    return delay
+                }
+
+                // Send messages from the queue when connection is open
+                function flushQueue() {
+                    while (messageQueue.length && isOpen()) socket.send(messageQueue.shift())
+                }
+
+                // Start client-side ping
+                function startClientPing() {
+                    // Clear any existing timers
+                    stopClientPing()
+
+                    clientPingTimer = setInterval(() => {
+                        if (isOpen()) {
+                            // Send a custom ping message (optional, server's PING/PONG is usually sufficient)
+                            // This client-side ping is primarily for testing client's own health or custom application-level heartbeats
+                            // For standard WebSocket PING/PONG, the browser handles responses to server PINGs automatically.
+                            // However, this client-side ping *could* be used to trigger a server-side PONG,
+                            // if the server is configured to respond to custom "ping" messages.
+                            // In our current server setup, the server sends official PING frames which the browser handles.
+                            // So, this client-side 'ping' message might be redundant for basic liveness.
+                            // If you want application-level heartbeats, this is where you'd send them.
+                            // socket.send(JSON.stringify({ type: 'ping' })); // Uncomment if you want client to send custom ping messages
+
+                            // Set a timeout to close if no pong (or any message) received
+                            clientPongTimer = setTimeout(() => {
+                                console.warn(
+                                    'Client: No pong or message received within pongTimeout. Closing socket.',
+                                )
+                                socket?.close(1000, 'Pong timeout') // Close connection gracefully
+                            }, pongTimeout)
+                        }
+                    }, pingInterval)
+                }
+
+                // Stop client-side ping and pong timers
+                function stopClientPing() {
+                    clearInterval(clientPingTimer)
+                    clearTimeout(clientPongTimer)
+                }
+
+                // Connect to WebSocket
+                function connect() {
+                    socket = new WebSocket(`${url}?token=${currentToken}`)
+                    socket.onopen = () => {
+                        currentRetries = 0
+                        lastDelay = baseDelay
+                        onOpen?.()
+                        flushQueue()
+                        startClientPing() // Start client-side ping after connection opens
+                        console.log('WebSocket client: Connected')
+                    }
+
+                    socket.onmessage = (e) => {
+                        // Reset pong timer on ANY message from server, indicating server is alive
+                        clearTimeout(clientPongTimer)
+                        startClientPing() // Restart ping timer
+
+                        const parsed = parseJsonSafe(e.data)
+                        // Server sends standard PING/PONG, browser handles them.
+                        // If your server sends custom JSON 'ping'/'pong' messages, handle them here.
+                        // In our current server setup, the server uses native WebSocket PING frames,
+                        // so we won't see a 'type: "pong"' here from the server's native responses.
+                        // If you added custom JSON ping/pong to your server, you'd handle it.
+                        // For now, any message means the connection is alive.
+
+                        onMessage?.(e)
+                    }
+
+                    socket.onclose = (event) => {
+                        stopClientPing() // Stop ping on close
+                        onClose?.(event.code, event.reason)
+                        if (!isManuallyClosed && autoReconnect && currentRetries < maxRetries) {
+                            currentRetries++
+                            const delay = getDecorrelatedJitterDelay()
+                            onReconnect?.(currentRetries, delay)
+                            console.warn(
+                                `WebSocket client: Connection closed. Reconnecting in ${delay}ms (attempt ${currentRetries}).`,
+                            )
+                            setTimeout(connect, delay)
+                        } else if (isManuallyClosed) {
+                            console.log('WebSocket client: Manually closed.')
+                        } else {
+                            console.error(
+                                'WebSocket client: Max retries reached or auto-reconnect disabled. Connection permanently closed.',
+                            )
+                        }
+                    }
+
+                    socket.onerror = (err) => {
+                        onError?.(err)
+                        console.error('WebSocket client: Error:', err)
+                        // An error usually precedes a close event, so no need to call socket.close() here.
+                        // The onclose handler will take care of reconnect logic.
+                    }
+                }
+
+                function isOpen() {
+                    return socket?.readyState === WebSocket.OPEN
+                }
+
+                // Initial connection attempt
+                connect()
+
+                return {
+                    // Send a message, queue if not open
+                    send: (msg) => {
+                        if (isOpen()) {
+                            socket.send(msg)
+                            return true
+                        } else {
+                            messageQueue.push(msg)
+                            console.log('WebSocket client: Connection not open, message queued.')
+                            return false
+                        }
+                    },
+                    // Manually close the connection, stopping auto-reconnect
+                    close: () => {
+                        isManuallyClosed = true
+                        stopClientPing() // Ensure timers are cleared
+                        if (
+                            socket?.readyState === WebSocket.OPEN ||
+                            socket?.readyState === WebSocket.CONNECTING
+                        ) {
+                            socket.close(1000, 'Client initiated disconnect')
+                        } else {
+                            console.warn('WebSocket client: Socket not open for closing.')
+                        }
+                    },
+                    // Update token and force reconnect (e.g., after token refresh)
+                    updateToken: (newToken) => {
+                        currentToken = newToken
+                        console.log(
+                            'WebSocket client: Token updated. Reconnecting to apply new token.',
+                        )
+                        if (isOpen()) {
+                            socket.close(1000, 'Token refreshed, reconnecting') // Force close to trigger reconnect with new token
+                        } else {
+                            // If not open, next auto-reconnect will use the new token
+                            isManuallyClosed = false // Allow reconnect
+                            connect() // Attempt immediate reconnect
+                        }
+                    },
+                    isOpen,
+                    rawSocket: () => socket,
+                }
+            }
+            // --- End Improved WebSocket Connection Function ---
+
+            function addMessage(msg, type = 'system') {
+                const div = document.createElement('div')
+                div.classList.add(type === 'system' ? 'system-message' : 'user-message')
+                div.innerHTML = msg
+                messagesDiv.appendChild(div)
+                messagesDiv.scrollTop = messagesDiv.scrollHeight // Scroll to bottom
+            }
+
+            function updateRoomList() {
+                currentRoomsDiv.textContent =
+                    'Current rooms: ' +
+                    Array.from(currentJoinedRooms)
+                        .map((r) => r.replace('chat:', ''))
+                        .join(', ')
+            }
+
+            async function generateToken(username) {
+                try {
+                    const response = await fetch('/api/auth/generate-token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: username.toLowerCase(),
+                            username: username,
+                        }),
+                    })
+                    const data = await response.json()
+                    if (data.token) {
+                        return data.token
+                    } else {
+                        addMessage(
+                            'Error generating token: ' + (data.message || 'Unknown error'),
+                            'error',
+                        )
+                        return null
+                    }
+                } catch (error) {
+                    addMessage('Failed to generate token: ' + error.message, 'error')
+                    return null
+                }
+            }
+
+            connectButton.addEventListener('click', async () => {
+                const username = usernameInput.value.trim()
+                if (!username) {
+                    alert('Please enter a username.')
+                    return
+                }
+
+                token = await generateToken(username)
+                if (!token) {
+                    return // Token generation failed
+                }
+
+                // Use the improved createWebSocketConnection function
+                wsManager = createWebSocketConnection({
+                    url: `ws://localhost:3000/ws/chat`, // Base URL without token
+                    token: token,
+                    onOpen: () => {
+                        statusSpan.textContent = 'Connected'
+                        statusSpan.classList.remove('status-offline', 'status-reconnecting')
+                        statusSpan.classList.add('status-online')
+                        connectButton.disabled = true
+                        disconnectButton.disabled = false
+                        messageInput.disabled = false
+                        sendButton.disabled = false
+                        joinRoomButton.disabled = false
+                        leaveRoomButton.disabled = false
+                        getUsersButton.disabled = false
+                        addMessage('Connected to WebSocket service.')
+                        // Re-join main lobby if it was cleared on disconnect
+                        // Important: The server will automatically join to MAIN_CHAT_ROOM
+                        // on connection. So, no need to explicitly send JOIN_ROOM for it.
+                        // We only need to ensure `currentJoinedRooms` reflects this.
+                        currentJoinedRooms.clear()
+                        currentJoinedRooms.add('chat:main_lobby')
+                        updateRoomList()
+                    },
+                    onMessage: (event) => {
+                        const data = JSON.parse(event.data)
+                        switch (data.type) {
+                            case 'CHAT_CONNECTED':
+                                addMessage(
+                                    `[SERVER] ${data.message} Joined room: ${data.room.replace(
+                                        'chat:',
+                                        '',
+                                    )}`,
+                                )
+                                break
+                            case 'CHAT_NEW_MESSAGE':
+                                addMessage(
+                                    `<strong>[${data.room.replace('chat:', '')}] ${
+                                        data.username
+                                    }</strong>: ${data.text}`,
+                                )
+                                break
+                            case 'CHAT_USER_JOINED':
+                                addMessage(
+                                    `[SERVER] ${data.username} joined room ${data.room.replace(
+                                        'chat:',
+                                        '',
+                                    )}.`,
+                                )
+                                if (data.userId === usernameInput.value.toLowerCase()) {
+                                    // Check if it's *this* client that joined
+                                    currentJoinedRooms.add(data.room)
+                                    updateRoomList()
+                                }
+                                break
+                            case 'CHAT_USER_LEFT':
+                                addMessage(
+                                    `[SERVER] ${data.username} left room ${data.room.replace(
+                                        'chat:',
+                                        '',
+                                    )}.`,
+                                )
+                                if (
+                                    data.userId === usernameInput.value.toLowerCase() &&
+                                    data.room !== 'chat:main_lobby'
+                                ) {
+                                    currentJoinedRooms.delete(data.room)
+                                    updateRoomList()
+                                }
+                                break
+                            case 'JOIN_ROOM_SUCCESS':
+                                addMessage(`[SERVER] ${data.message}`)
+                                currentJoinedRooms.add(data.room)
+                                updateRoomList()
+                                break
+                            case 'LEAVE_ROOM_SUCCESS':
+                                addMessage(`[SERVER] ${data.message}`)
+                                currentJoinedRooms.delete(data.room)
+                                updateRoomList()
+                                break
+                            case 'USERS_IN_ROOM':
+                                const userList = data.users.map((u) => u.username).join(', ')
+                                addMessage(
+                                    `[SERVER] Users in ${data.room.replace('chat:', '')} (${
+                                        data.count
+                                    }): ${userList || 'None'}`,
+                                )
+                                break
+                            case 'ERROR':
+                                addMessage(`[ERROR] ${data.message}`, 'error')
+                                break
+                            default:
+                                addMessage(`[RAW MESSAGE] ${event.data}`)
+                                break
+                        }
+                    },
+                    onClose: (code, reason) => {
+                        statusSpan.textContent = `Disconnected (${code})`
+                        statusSpan.classList.remove('status-online', 'status-reconnecting')
+                        statusSpan.classList.add('status-offline')
+                        connectButton.disabled = false
+                        disconnectButton.disabled = true
+                        messageInput.disabled = true
+                        sendButton.disabled = true
+                        joinRoomButton.disabled = true
+                        leaveRoomButton.disabled = true
+                        getUsersButton.disabled = true
+                        addMessage(
+                            `Disconnected from WebSocket service. Code: ${code}, Reason: ${
+                                reason || 'N/A'
+                            }`,
+                        )
+                        // Only clear rooms if not auto-reconnecting or if it's the final disconnect
+                        if (
+                            !wsManager.isOpen() &&
+                            (!wsManager.autoReconnect ||
+                                wsManager.currentRetries >= wsManager.maxRetries)
+                        ) {
+                            currentJoinedRooms.clear()
+                            currentJoinedRooms.add('chat:main_lobby') // Reset to main lobby on final disconnect
+                        }
+                        updateRoomList()
+                    },
+                    onError: (error) => {
+                        addMessage('WebSocket Error: ' + error.message, 'error')
+                        console.error('WebSocket Error:', error)
+                    },
+                    onReconnect: (retries, delay) => {
+                        statusSpan.textContent = `Reconnecting (${retries})...`
+                        statusSpan.classList.remove('status-online', 'status-offline')
+                        statusSpan.classList.add('status-reconnecting')
+                        addMessage(
+                            `Attempting to reconnect in ${delay}ms (attempt ${retries})...`,
+                            'system',
+                        )
+                        // On reconnect, we need to re-join rooms if they were left due to disconnect
+                        // The server auto-joins to MAIN_CHAT_ROOM.
+                        // For other rooms, the client needs to re-send JOIN_ROOM.
+                        // A more robust solution might involve the server remembering client's rooms.
+                        // For this example, we'll rely on the server auto-joining main and client re-sending for others.
+                        setTimeout(() => {
+                            Array.from(currentJoinedRooms).forEach((room) => {
+                                if (room !== 'chat:main_lobby' && wsManager && wsManager.isOpen()) {
+                                    console.log(`Re-joining room: ${room}`)
+                                    wsManager.send(
+                                        JSON.stringify({
+                                            type: 'JOIN_ROOM',
+                                            payload: { roomName: room.replace('chat:', '') },
+                                        }),
+                                    )
+                                }
+                            })
+                        }, delay + 100) // Give a little buffer after reconnect delay
+                    },
+                    autoReconnect: true, // Enable auto-reconnect
+                    baseDelay: 1000,
+                    maxDelay: 60000, // Max 60 seconds delay
+                    maxRetries: Infinity, // Keep retrying indefinitely
+                    checkInterval: 30000, // Client's internal check for socket state
+                    pingInterval: 15000, // Client sends custom ping message every 15s (if uncommented)
+                    pongTimeout: 5000, // Client waits 5s for any message/pong before closing
+                })
+            })
+
+            disconnectButton.addEventListener('click', () => {
+                if (wsManager) {
+                    wsManager.close()
+                }
+            })
+
+            sendButton.addEventListener('click', () => {
+                sendMessage()
+            })
+
+            messageInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    sendMessage()
+                }
+            })
+
+            function sendMessage() {
+                if (wsManager && wsManager.isOpen()) {
+                    const messageText = messageInput.value.trim()
+                    if (messageText) {
+                        const targetRoom = roomInput.value.trim()
+                        if (targetRoom) {
+                            const fullTargetRoom = `chat:${targetRoom}`
+                            if (currentJoinedRooms.has(fullTargetRoom)) {
+                                wsManager.send(
+                                    JSON.stringify({
+                                        type: 'SEND_MESSAGE',
+                                        payload: {
+                                            roomName: targetRoom,
+                                            text: messageText,
+                                        },
+                                    }),
+                                )
+                                messageInput.value = ''
+                            } else {
+                                addMessage(
+                                    `You are not in room "${targetRoom}". Please join it first.`,
+                                    'error',
+                                )
+                            }
+                        } else {
+                            addMessage('Please specify a room to send message to.', 'error')
+                        }
+                    }
+                } else {
+                    addMessage('Not connected to WebSocket server.', 'error')
+                }
+            }
+
+            joinRoomButton.addEventListener('click', () => {
+                const roomToJoin = roomInput.value.trim()
+                if (wsManager && wsManager.isOpen() && roomToJoin) {
+                    wsManager.send(
+                        JSON.stringify({
+                            type: 'JOIN_ROOM',
+                            payload: { roomName: roomToJoin },
+                        }),
+                    )
+                } else {
+                    addMessage('Not connected or room name is empty.', 'error')
+                }
+            })
+
+            leaveRoomButton.addEventListener('click', () => {
+                const roomToLeave = roomInput.value.trim()
+                if (wsManager && wsManager.isOpen() && roomToLeave) {
+                    wsManager.send(
+                        JSON.stringify({
+                            type: 'LEAVE_ROOM',
+                            payload: { roomName: roomToLeave },
+                        }),
+                    )
+                } else {
+                    addMessage('Not connected or room name is empty.', 'error')
+                }
+            })
+
+            getUsersButton.addEventListener('click', () => {
+                const roomName = roomInput.value.trim()
+                if (wsManager && wsManager.isOpen() && roomName) {
+                    wsManager.send(
+                        JSON.stringify({
+                            type: 'GET_USERS_IN_ROOM',
+                            payload: { roomName: roomName },
+                        }),
+                    )
+                } else {
+                    addMessage('Not connected or room name is empty.', 'error')
+                }
+            })
+
+            // Initialize UI state
+            messageInput.disabled = true
+            sendButton.disabled = true
+            joinRoomButton.disabled = true
+            leaveRoomButton.disabled = true
+            getUsersButton.disabled = true
+            updateRoomList()
+        </script>
+    </body>
+</html>
