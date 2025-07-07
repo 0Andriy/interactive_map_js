@@ -74,7 +74,7 @@ export const namespaceConfig = {
  */
 export async function setupHeartbeat(
     wssInstance,
-    { pingInterval = 30000, pongTimeout = 10000, checkDelayPerClient = 50 } = {},
+    { pingInterval = 60000, pongTimeout = 10000, checkDelayPerClient = 10 } = {},
     logger = console,
 ) {
     // Обробник нових з'єднань: ініціалізуємо стан для кожного клієнтського WebSocket.
