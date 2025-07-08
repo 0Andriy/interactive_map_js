@@ -38,7 +38,22 @@ const handleChatConnection = async (ws) => {
 
     // Автоматично приєднуємо клієнта до основної кімнати при підключенні
     // (без повернення даних з колбеку, оскільки це обробляється вітальним повідомленням)
-    await roomManager.joinRoom(MAIN_CHAT_ROOM, ws)
+    await roomManager.joinRoom(
+        MAIN_CHAT_ROOM,
+        ws,
+        async (roomName, activeClients) => {
+            return {
+                type: 'CHAT_NEW_MESSAGE',
+                username: ws.username,
+                userId: ws.userId,
+                room: MAIN_CHAT_ROOM, // Вказуємо кімнату, звідки надійшло повідомлення
+                text: `qweqwe`,
+                timestamp: Date.now(),
+            }
+        },
+        30 * 1000,
+        true,
+    )
 
     ws.send(
         JSON.stringify({

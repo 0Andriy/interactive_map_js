@@ -8,7 +8,7 @@ import crypto from 'crypto'
 
 /**
  * @typedef {object} RoomConfig
- * @property {Set<string>} clients - Множина УНІКАЛЬНИХ ID WebSocket клієнтів (конектів) у цій кімнаті.
+ * @property {Set<CustomWebSocket>} clients - Множина підключених WebSocket клієнтів (конектів) у цій кімнаті.
  * @property {NodeJS.Timeout | null} intervalId - ID інтервалу для періодичних оновлень, якщо він активний.
  * @property {Function | null} updateCallback - Асинхронна функція, яка викликається для отримання даних для оновлення.
  * @property {number} updateIntervalMs - Інтервал у мілісекундах для оновлень.
@@ -50,17 +50,7 @@ class RoomsManager {
     constructor({ logger = console }) {
         /**
          * @private
-         * @type {Map<string, CustomWebSocket>}
-         * Зберігає об'єкти CustomWebSocket за їхнім унікальним id конекту. (clients)
-         * Це дозволяє швидко отримати об'єкт WebSocket за його id.
-         * Ключ: id конекту (string)
-         * Значення: CustomWebSocket
-         */
-        this.clients = new Map()
-
-        /**
-         * @private
-         * @type {Map<string, RoomConfig>}
+         * @type {Map<string, RoomConfig>} або Map: chat_id -> Set<socket.id>
          * Зберігає інформацію про кімнати.
          * Ключ: roomName (string)
          * Значення: Об'єкт конфігурації кімнати (RoomConfig).
@@ -75,6 +65,16 @@ class RoomsManager {
          * Значення: Set<string> - Назви кімнат, до яких належить цей конект.
          */
         this.clientRoomsMap = new Map()
+
+        /**
+         * @private
+         * @type {Map<string, CustomWebSocket>}
+         * Зберігає об'єкти CustomWebSocket за їхнім унікальним id конекту. (clients)
+         * Це дозволяє швидко отримати об'єкт WebSocket за його id.
+         * Ключ: id конекту (string)
+         * Значення: CustomWebSocket
+         */
+        this.connectionsById = new Map()
 
         /**
          * @private
@@ -106,7 +106,7 @@ class RoomsManager {
             return 'Invalid Client Object'
         }
         const connId = clientWebSocket.id || 'N/A'
-        const userId = clientWebSocket.userId ? ` (UserID: ${clientWebSocket.userId})` : ''
+        const userId = clientWebSocket.userId ? ` (User: ${clientWebSocket.userId})` : ''
         const username = clientWebSocket.username ? ` (Username: ${clientWebSocket.username})` : ''
 
         return `Connection ID: ${connId}${userId}${username}`
@@ -188,24 +188,15 @@ class RoomsManager {
         const clientIdentifier = this.#getClientIdentifier(clientWebSocket)
 
         // Перевіряємо, чи конект вже є в кімнаті, щоб уникнути дублікатів у Set
-        if (room.clients.has(clientWebSocket.id)) {
+        if (room.clients.has(clientWebSocket)) {
             this.logger.debug(`Конект ${clientIdentifier} вже знаходиться в кімнаті '${roomName}'.`)
             return false
         }
 
         // 1. Додаємо конект до загальної мапи активних конектів
-        this.clients.set(clientWebSocket.id, clientWebSocket)
+        this.connectionsById.set(clientWebSocket.id, clientWebSocket)
 
-        // 2. Додаємо конект до кімнати
-        room.clients.add(clientWebSocket.id)
-
-        // 3. Оновлюємо clientRoomsMap: додаємо кімнату до списку кімнат конекту
-        if (!this.clientRoomsMap.has(clientWebSocket.id)) {
-            this.clientRoomsMap.set(clientWebSocket.id, new Set())
-        }
-        this.clientRoomsMap.get(clientWebSocket.id).add(roomName)
-
-        // 4. Додаємо id конекту до мапи userConnectionsMap (якщо є userId)
+        // 2. Додаємо id конекту до мапи userConnectionsMap (якщо є userId)
         if (clientWebSocket.userId) {
             if (!this.userConnectionsMap.has(clientWebSocket.userId)) {
                 this.userConnectionsMap.set(clientWebSocket.userId, new Set())
@@ -215,6 +206,15 @@ class RoomsManager {
                 `Конект ${clientWebSocket.id} додано до користувача ${clientWebSocket.userId}.`,
             )
         }
+
+        // 3. Додаємо конект до кімнати
+        room.clients.add(clientWebSocket)
+
+        // 4. Оновлюємо clientRoomsMap: додаємо кімнату до списку кімнат конекту
+        if (!this.clientRoomsMap.has(clientWebSocket.id)) {
+            this.clientRoomsMap.set(clientWebSocket.id, new Set())
+        }
+        this.clientRoomsMap.get(clientWebSocket.id).add(roomName)
 
         this.logger.debug(
             `Конект ${clientIdentifier} приєднався до кімнати '${roomName}'. Всього конектів у кімнаті: ${room.clients.size}`,
@@ -263,7 +263,7 @@ class RoomsManager {
             return false
         }
 
-        if (room.clients.delete(clientWebSocket.id)) {
+        if (room.clients.delete(clientWebSocket)) {
             this.logger.debug(
                 `Конект ${clientIdentifier} покинув кімнату '${roomName}'. Залишилось конектів: ${room.clients.size}`,
             )
@@ -309,24 +309,24 @@ class RoomsManager {
     }
 
     /**
-     * Приватний допоміжний метод для підготовки даних для відправки.
+     * Приватний допоміжний метод для підготовки повідомлення для відправки.
      * Серіалізує об'єкти в JSON, залишає рядки та бінарні дані як є.
      * @private
-     * @param {string | object | Buffer | ArrayBuffer} data - Дані для підготовки до відправки.
+     * @param {string | object | Buffer | ArrayBuffer} message - Повідомлення для підготовки.
      * @returns {string | Buffer | ArrayBuffer} Готове для відправки навантаження.
      */
-    #prepareMessagePayload(data) {
+    #prepareMessagePayload(message) {
         if (
-            typeof data === 'object' &&
-            data !== null &&
-            !Buffer.isBuffer(data) &&
-            !(data instanceof ArrayBuffer)
+            typeof message === 'object' &&
+            message !== null &&
+            !Buffer.isBuffer(message) &&
+            !(message instanceof ArrayBuffer)
         ) {
             // Якщо це об'єкт (але не бінарний буфер), серіалізуємо його в JSON рядок
-            return JSON.stringify(data)
+            return JSON.stringify(message)
         }
         // Якщо це рядок, Buffer або ArrayBuffer - надсилаємо як є
-        return data
+        return message
     }
 
     /**
@@ -337,16 +337,15 @@ class RoomsManager {
      * @param {CustomWebSocket} clientWebSocket - Об'єкт WebSocket клієнта, якому надсилається повідомлення.
      * @param {string | Buffer | ArrayBuffer} payloadToSend - Підготовлене навантаження для надсилання.
      * @param {string} [contextMessage=''] - Додатковий контекст для логування (наприклад, "Глобальна розсилка", "До кімнати 'X'").
-     * @param {Object} [options={}] - Optional options to pass to WebSocket.send() (e.g., { binary: true, compress: true }).
      * @returns {boolean} - True, якщо повідомлення успішно надіслано; false в іншому випадку.
      */
-    sendClientMessage(clientWebSocket, payloadToSend, contextMessage = '', options = {}) {
+    sendClientMessage(clientWebSocket, payloadToSend, contextMessage = '') {
         const clientIdentifier = this.#getClientIdentifier(clientWebSocket)
 
         // Перевіряємо, чи з'єднання активне (OPEN = 1, WebSocket.OPEN)
         if (clientWebSocket.readyState === WebSocket.OPEN) {
             try {
-                clientWebSocket.send(payloadToSend, options)
+                clientWebSocket.send(payloadToSend)
 
                 const logMessage =
                     Buffer.isBuffer(payloadToSend) || payloadToSend instanceof ArrayBuffer
@@ -386,12 +385,10 @@ class RoomsManager {
      * Автоматично видаляє неактивні конекти.
      *
      * @param {string} roomName - Назва кімнати.
-     * @param {string | object | Buffer | ArrayBuffer} data - Повідомлення для надсилання. Якщо об'єкт, буде серіалізовано в JSON.
-     * @param {Object} [options={}] - Optional options to pass to WebSocket.send() for each client.
-     * @param {string[]} [excludeClientIds=[]] - Масив ID клієнтів, яких потрібно виключити з розсилки.
+     * @param {string | object | Buffer | ArrayBuffer} message - Повідомлення для надсилання. Якщо об'єкт, буде серіалізовано в JSON.
      * @returns {number | null} Кількість конектів, яким було надіслано повідомлення, або `null`, якщо кімната не знайдена.
      */
-    sendMessageToRoom(roomName, data, options = {}, excludeClientIds = []) {
+    sendMessageToRoom(roomName, message) {
         const room = this.rooms.get(roomName)
         if (!room) {
             this.logger.warn(
@@ -400,37 +397,14 @@ class RoomsManager {
             return null
         }
 
-        const payloadToSend = this.#prepareMessagePayload(data)
+        const payloadToSend = this.#prepareMessagePayload(message)
         let sentCount = 0
         // Створюємо копію Set на випадок, якщо конекти будуть видалені під час ітерації
-        const clientIdsToProcess = Array.from(room.clients)
-        // Перетворення масиву excludeClientIds на Set для ефективного пошуку
-        const excludedIdsSet = new Set(excludeClientIds)
+        const clientsToProcess = Array.from(room.clients)
 
-        clientIdsToProcess.forEach((clientWebSocketId) => {
-            if (excludedIdsSet.has(clientWebSocketId)) {
-                this.logger.debug(
-                    `Конект '${clientWebSocketId}' виключено з розсилки в кімнаті '${roomName}'.`,
-                )
-                return // Пропускаємо цього клієнта
-            }
-
-            const clientWebSocket = this.clients.get(clientWebSocketId)
-
-            if (!clientWebSocket) {
-                room.clients.delete(clientWebSocketId)
-                this.logger.warn(
-                    `ID конекту '${clientWebSocketId}' знайдено в кімнаті '${roomName}' але немає в connectionsById. Видалення з кімнати.`,
-                )
-            }
-
+        clientsToProcess.forEach((clientWebSocket) => {
             if (
-                this.sendClientMessage(
-                    clientWebSocket,
-                    payloadToSend,
-                    `До кімнати '${roomName}'`,
-                    options,
-                )
+                this.sendClientMessage(clientWebSocket, payloadToSend, `До кімнати '${roomName}'`)
             ) {
                 sentCount++
             }
@@ -457,7 +431,7 @@ class RoomsManager {
      * @returns {void}
      */
     removeClientGlobally(connectionId) {
-        const clientWebSocket = this.clients.get(connectionId)
+        const clientWebSocket = this.connectionsById.get(connectionId)
         if (!clientWebSocket) {
             this.logger.debug(
                 `Конект з ID '${connectionId}' не знайдено для глобального видалення. Можливо, вже видалено.`,
@@ -493,7 +467,7 @@ class RoomsManager {
         }
 
         // 3. Видаляємо конект з основної мапи connectionsById
-        this.clients.delete(connectionId)
+        this.connectionsById.delete(connectionId)
 
         // Очищаємо прапорець обробника 'close', якщо об'єкт WS буде перевикористаний (що рідко відбувається після закриття)
         if (clientWebSocket.__closeHandlerRegistered) {
@@ -535,30 +509,7 @@ class RoomsManager {
                     return // Змінено на void
                 }
 
-                const activeRoomClients = new Set()
-                for (const clientId of room.clients) {
-                    const clientWs = this.clients.get(clientId)
-                    if (clientWs && clientWs.readyState === WebSocket.OPEN) {
-                        activeRoomClients.add(clientWs)
-                    } else {
-                        // Якщо конект неактивний, видаляємо його з кімнати, щоб підтримувати чистоту Set
-                        room.clients.delete(clientId)
-                        this.logger.debug(
-                            `Неактивний конект '${clientId}' видалено з кімнати '${roomName}' під час оновлення.`,
-                        )
-                    }
-                }
-
-                // Якщо після фільтрації не залишилось активних клієнтів, зупиняємо інтервал
-                if (activeRoomClients.size === 0) {
-                    this.#stopRoomDataUpdates(roomName)
-                    this.logger.info(
-                        `Інтервал для кімнати '${roomName}' зупинено, бо після чистки немає активних конектів.`,
-                    )
-                    return
-                }
-
-                const data = await updateCallback(roomName, activeRoomClients)
+                const data = await updateCallback(roomName, room.clients)
                 if (data === null || data === undefined) {
                     // Перевірка на null/undefined
                     this.logger.debug(
@@ -612,37 +563,21 @@ class RoomsManager {
 
     /**
      * Надсилає повідомлення всім активним конектам, підключеним до менеджера кімнат, незалежно від їхньої кімнати.
-     * Ітерує по `this.clients` для ефективнішої розсилки та активного видалення неактивних конектів.
+     * Ітерує по `this.connectionsById` для ефективнішої розсилки та активного видалення неактивних конектів.
      *
-     * @param {string | object | Buffer | ArrayBuffer} data - Повідомлення для надсилання. Якщо об'єкт, буде серіалізовано в JSON.
-     * @param {Object} [options={}] - Optional options to pass to WebSocket.send() for each client.
-     * @param {string[]} [excludeClientIds=[]] - Масив ID клієнтів, яких потрібно виключити з розсилки.
+     * @param {string | object | Buffer | ArrayBuffer} message - Повідомлення для надсилання. Якщо об'єкт, буде серіалізовано в JSON.
      * @returns {number} Кількість конектів, яким було надіслано повідомлення.
      */
-    broadcastToAllClients(data, options = {}, excludeClientIds = []) {
-        const payloadToSend = this.#prepareMessagePayload(data)
+    broadcastToAllClients(message) {
+        const payloadToSend = this.#prepareMessagePayload(message)
         let sentCount = 0
 
         // Ітеруємо по значенням connectionsById, які є об'єктами CustomWebSocket
         // Створюємо копію значень, щоб уникнути проблем, якщо конекти будуть видалені під час ітерації
-        const connectionsToProcess = Array.from(this.clients.values())
-        // Перетворення масиву на Set для оптимізації перевірки
-        const excludedIdsSet = new Set(excludeClientIds)
+        const connectionsToProcess = Array.from(this.connectionsById.values())
 
         for (const clientWebSocket of connectionsToProcess) {
-            if (excludedIdsSet.has(clientWebSocket.id)) {
-                this.logger.debug(`Конект '${clientWebSocket.id}' виключено з глобальної розсилки.`)
-                continue // Пропускаємо цього клієнта
-            }
-
-            if (
-                this.sendClientMessage(
-                    clientWebSocket,
-                    payloadToSend,
-                    'Глобальна розсилка',
-                    options,
-                )
-            ) {
+            if (this.sendClientMessage(clientWebSocket, payloadToSend, 'Глобальна розсилка')) {
                 sentCount++
             }
         }
@@ -653,20 +588,19 @@ class RoomsManager {
      * Надсилає повідомлення конкретному конекту за його унікальним ідентифікатором (`id`).
      *
      * @param {string} connectionId - Унікальний ідентифікатор конекту (id) для надсилання повідомлення.
-     * @param {string | object | Buffer | ArrayBuffer} data - Повідомлення для надсилання. Якщо об'єкт, буде серіалізовано в JSON.
-     * @param {Object} [options={}] - Optional options to pass to WebSocket.send().
+     * @param {string | object | Buffer | ArrayBuffer} message - Повідомлення для надсилання. Якщо об'єкт, буде серіалізовано в JSON.
      * @returns {boolean} - True, якщо повідомлення надіслано; false, якщо конект не знайдено, він неактивний або виникла помилка.
      */
-    sendMessageToClient(connectionId, data, options = {}) {
-        const targetClient = this.clients.get(connectionId) // Шукаємо конект за його ID
+    sendMessageToClient(connectionId, message) {
+        const targetClient = this.connectionsById.get(connectionId) // Шукаємо конект за його ID
 
         if (!targetClient) {
             this.logger.warn(`Конект з ID '${connectionId}' не знайдений.`)
             return false
         }
 
-        const payloadToSend = this.#prepareMessagePayload(data)
-        return this.sendClientMessage(targetClient, payloadToSend, 'Приватне повідомлення', options)
+        const payloadToSend = this.#prepareMessagePayload(message)
+        return this.sendClientMessage(targetClient, payloadToSend, 'Приватне повідомлення')
     }
 
     /**
@@ -675,18 +609,17 @@ class RoomsManager {
      * Неактивні конекти автоматично видаляються.
      *
      * @param {string} userId - Унікальний ідентифікатор користувача.
-     * @param {string | object | Buffer | ArrayBuffer} data - Повідомлення для надсилання. Якщо об'єкт, буде серіалізовано в JSON.
-     * @param {Object} [options={}] - Optional options to pass to WebSocket.send().
+     * @param {string | object | Buffer | ArrayBuffer} message - Повідомлення для надсилання. Якщо об'єкт, буде серіалізовано в JSON.
      * @returns {number} Кількість конектів, яким було надіслано повідомлення.
      */
-    sendMessageToUser(userId, data, options = {}) {
+    sendMessageToUser(userId, message) {
         const userConnectionIds = this.userConnectionsMap.get(userId)
         if (!userConnectionIds || userConnectionIds.size === 0) {
             this.logger.warn(`Користувач з ID '${userId}' не має активних конектів.`)
             return 0
         }
 
-        const payloadToSend = this.#prepareMessagePayload(data)
+        const payloadToSend = this.#prepareMessagePayload(message)
         let sentCount = 0
 
         // Створюємо копію Set, щоб безпечно ітерувати та модифікувати оригінальний Set,
@@ -694,7 +627,7 @@ class RoomsManager {
         const connectionIdsToProcess = new Set(userConnectionIds)
 
         for (const connectionId of connectionIdsToProcess) {
-            const clientWebSocket = this.clients.get(connectionId)
+            const clientWebSocket = this.connectionsById.get(connectionId)
 
             // Якщо конект вже був видалений з connectionsById, очищаємо його і з userConnectionIds
             if (!clientWebSocket) {
@@ -708,14 +641,7 @@ class RoomsManager {
                 continue
             }
 
-            if (
-                this.sendClientMessage(
-                    clientWebSocket,
-                    payloadToSend,
-                    `Користувачу '${userId}'`,
-                    options,
-                )
-            ) {
+            if (this.sendClientMessage(clientWebSocket, payloadToSend, `Користувачу '${userId}'`)) {
                 sentCount++
             }
         }
@@ -742,7 +668,8 @@ class RoomsManager {
 
         // Перевіряємо, чи є хоча б один конект користувача в Set клієнтів кімнати
         for (const connId of userConnectionIds) {
-            if (room.clients.has(connId)) {
+            const clientWebSocket = this.connectionsById.get(connId)
+            if (clientWebSocket && room.clients.has(clientWebSocket)) {
                 return true // Знайдено активний конект користувача в цій кімнаті
             }
         }
@@ -793,12 +720,7 @@ class RoomsManager {
      * @returns {RoomConfig | undefined} - Об'єкт конфігурації кімнати або `undefined`, якщо кімната не знайдена.
      */
     getRoom(roomName) {
-        const room = this.rooms.get(roomName)
-        if (!room) {
-            return undefined
-        }
-
-        return room
+        return this.rooms.get(roomName)
     }
 
     /**
@@ -808,7 +730,7 @@ class RoomsManager {
      * @returns {CustomWebSocket | undefined} Об'єкт CustomWebSocket або `undefined`, якщо конект не знайдено.
      */
     getConnectionById(connectionId) {
-        return this.clients.get(connectionId)
+        return this.connectionsById.get(connectionId)
     }
 
     /**
@@ -818,8 +740,7 @@ class RoomsManager {
      * @returns {Set<string> | undefined} Набір id конектів користувача або `undefined`, якщо користувач не має активних конектів.
      */
     getUserConnections(userId) {
-        const connections = this.userConnectionsMap.get(userId)
-        return connections ? connections : undefined
+        return this.userConnectionsMap.get(userId)
     }
 }
 

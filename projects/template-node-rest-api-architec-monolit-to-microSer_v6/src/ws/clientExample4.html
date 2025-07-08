@@ -306,7 +306,8 @@
             </div>
         </div>
 
-        <script>
+        <script type="module">
+            import WebSocketClient from './WebSocketClientWs.js'
             // === DOM Елементи ===
             const userIdInput = document.getElementById('user-id')
             const usernameInput = document.getElementById('username')
@@ -407,7 +408,7 @@
             }
 
             // === Клас WebSocketClient ===
-            class WebSocketClient {
+            /*class WebSocketClient {
                 constructor({
                     url,
                     token,
@@ -596,7 +597,7 @@
                     clearInterval(this.clientPingTimer)
                     clearTimeout(this.clientPongTimer)
                 }
-            }
+            }*/
 
             // === Функції для управління кімнатами та UI ===
 

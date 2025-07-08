@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>WS Client Test</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                background-color: #f4f4f4;
+                color: #333;
+            }
+            h1 {
+                color: #0056b3;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                background-color: #fff;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            }
+            button,
+            input[type='text'] {
+                padding: 10px 15px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                margin-right: 5px;
+                margin-bottom: 10px;
+            }
+            button {
+                background-color: #007bff;
+                color: white;
+                cursor: pointer;
+            }
+            button:hover {
+                background-color: #0056b3;
+            }
+            input[type='text'] {
+                width: calc(100% - 130px);
+            }
+            #messages {
+                list-style: none;
+                padding: 0;
+                max-height: 400px;
+                overflow-y: auto;
+                border: 1px solid #eee;
+                border-radius: 4px;
+                margin-top: 20px;
+            }
+            #messages li {
+                padding: 8px 10px;
+                border-bottom: 1px solid #eee;
+            }
+            #messages li:last-child {
+                border-bottom: none;
+            }
+            .message-info {
+                color: #888;
+                font-size: 0.9em;
+            }
+            .message-error {
+                color: red;
+                font-weight: bold;
+            }
+            .message-system {
+                color: #007bff;
+                font-weight: bold;
+            }
+            .message-self {
+                color: #28a745;
+            }
+            .message-other {
+                color: #333;
+            }
+            .section {
+                border: 1px solid #ccc;
+                padding: 15px;
+                margin-bottom: 20px;
+                border-radius: 5px;
+            }
+            .section h2 {
+                margin-top: 0;
+                color: #0056b3;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>WebSocket Client Test</h1>
+            <p>
+                Status:
+                <span id="wsStatus" style="font-weight: bold; color: gray">Disconnected</span>
+            </p>
+            <p>Your Client ID: <span id="clientId">N/A</span></p>
+            <p>Your User ID: <span id="userId">N/A</span></p>
+            <p>Your Username: <span id="username">N/A</span></p>
+
+            <div class="section">
+                <h2>Connection</h2>
+                <button id="connectWs">Connect WS</button>
+                <button id="disconnectWs">Disconnect WS</button>
+                <button id="authenticate">Authenticate (Token: my-secret-auth-token)</button>
+            </div>
+
+            <div class="section">
+                <h2>Rooms</h2>
+                <input
+                    type="text"
+                    id="roomNameInput"
+                    placeholder="Enter room name (e.g., lobby, game-alpha)"
+                />
+                <button id="joinRoom">Join Room</button>
+                <button id="leaveRoom">Leave Room</button>
+                <input type="text" id="roomMessageInput" placeholder="Message for room" />
+                <button id="sendRoomMessage">Send to Room</button>
+                <p>Joined Rooms: <span id="joinedRooms"></span></p>
+            </div>
+
+            <div class="section">
+                <h2>Namespaces</h2>
+                <input
+                    type="text"
+                    id="namespaceNameInput"
+                    placeholder="Enter namespace name (e.g., admin, notifications)"
+                />
+                <button id="addNamespace">Add Namespace</button>
+                <button id="removeNamespace">Remove Namespace</button>
+                <input type="text" id="namespaceMessageInput" placeholder="Message for namespace" />
+                <button id="sendNamespaceMessage">Send to Namespace</button>
+                <p>Active Namespaces: <span id="activeNamespaces"></span></p>
+            </div>
+
+            <div class="section">
+                <h2>Global Messages</h2>
+                <input type="text" id="globalMessageInput" placeholder="Global broadcast message" />
+                <button id="broadcastGlobal">Broadcast Global</button>
+            </div>
+
+            <div class="section">
+                <h2>Messages Log</h2>
+                <ul id="messages"></ul>
+            </div>
+        </div>
+
+        <script>
+            let ws
+            let clientId = 'N/A'
+            let userId = 'N/A'
+            let username = 'N/A'
+            let joinedRooms = new Set()
+            let activeNamespaces = new Set(['default_global_ns']) // Початковий неймспейс
+
+            const wsStatusSpan = document.getElementById('wsStatus')
+            const clientIdSpan = document.getElementById('clientId')
+            const userIdSpan = document.getElementById('userId')
+            const usernameSpan = document.getElementById('username')
+            const joinedRoomsSpan = document.getElementById('joinedRooms')
+            const activeNamespacesSpan = document.getElementById('activeNamespaces')
+            const messagesList = document.getElementById('messages')
+
+            function updateUI() {
+                clientIdSpan.textContent = clientId
+                userIdSpan.textContent = userId
+                usernameSpan.textContent = username
+                joinedRoomsSpan.textContent = Array.from(joinedRooms).join(', ') || 'None'
+                activeNamespacesSpan.textContent = Array.from(activeNamespaces).join(', ') || 'None'
+                wsStatusSpan.textContent =
+                    ws && ws.readyState === ws.OPEN ? 'Connected' : 'Disconnected'
+                wsStatusSpan.style.color = ws && ws.readyState === ws.OPEN ? 'green' : 'red'
+            }
+
+            function addMessage(text, type = 'info') {
+                const li = document.createElement('li')
+                li.textContent = `[${new Date().toLocaleTimeString()}] ${text}`
+                li.className = `message-${type}`
+                messagesList.prepend(li) // Додаємо на початок
+                // Обмеження кількості повідомлень, щоб не перевантажувати DOM
+                if (messagesList.children.length > 50) {
+                    messagesList.removeChild(messagesList.lastChild)
+                }
+            }
+
+            document.getElementById('connectWs').addEventListener('click', connectWs)
+            document.getElementById('disconnectWs').addEventListener('click', () => {
+                if (ws && ws.readyState === ws.OPEN) {
+                    ws.close(1000, 'Client initiated disconnect')
+                }
+            })
+            document.getElementById('authenticate').addEventListener('click', () => {
+                if (ws && ws.readyState === ws.OPEN) {
+                    ws.send(
+                        JSON.stringify({
+                            type: 'authenticate',
+                            payload: { token: 'my-secret-auth-token' },
+                        }),
+                    )
+                    addMessage('Sending authentication request...', 'info')
+                } else {
+                    addMessage('Not connected to WS server.', 'error')
+                }
+            })
+
+            document.getElementById('joinRoom').addEventListener('click', () => {
+                const roomName = document.getElementById('roomNameInput').value
+                if (ws && ws.readyState === ws.OPEN && roomName) {
+                    ws.send(JSON.stringify({ type: 'joinRoom', payload: { roomName } }))
+                    addMessage(`Attempting to join room: ${roomName}`, 'info')
+                } else {
+                    addMessage('Not connected or room name is empty.', 'error')
+                }
+            })
+
+            document.getElementById('leaveRoom').addEventListener('click', () => {
+                const roomName = document.getElementById('roomNameInput').value
+                if (ws && ws.readyState === ws.OPEN && roomName) {
+                    ws.send(JSON.stringify({ type: 'leaveRoom', payload: { roomName } }))
+                    addMessage(`Attempting to leave room: ${roomName}`, 'info')
+                } else {
+                    addMessage('Not connected or room name is empty.', 'error')
+                }
+            })
+
+            document.getElementById('sendRoomMessage').addEventListener('click', () => {
+                const roomName = document.getElementById('roomNameInput').value
+                const message = document.getElementById('roomMessageInput').value
+                if (ws && ws.readyState === ws.OPEN && roomName && message) {
+                    ws.send(
+                        JSON.stringify({
+                            type: 'sendMessageToRoom',
+                            payload: { roomName, message },
+                        }),
+                    )
+                    addMessage(`Sent to room ${roomName}: "${message}"`, 'self')
+                    document.getElementById('roomMessageInput').value = ''
+                } else {
+                    addMessage('Not connected, room name, or message is empty.', 'error')
+                }
+            })
+
+            document.getElementById('addNamespace').addEventListener('click', () => {
+                const namespaceName = document.getElementById('namespaceNameInput').value
+                if (ws && ws.readyState === ws.OPEN && namespaceName) {
+                    ws.send(JSON.stringify({ type: 'addNamespace', payload: { namespaceName } }))
+                    addMessage(`Attempting to add namespace: ${namespaceName}`, 'info')
+                } else {
+                    addMessage('Not connected or namespace name is empty.', 'error')
+                }
+            })
+
+            document.getElementById('removeNamespace').addEventListener('click', () => {
+                const namespaceName = document.getElementById('namespaceNameInput').value
+                if (ws && ws.readyState === ws.OPEN && namespaceName) {
+                    ws.send(JSON.stringify({ type: 'removeNamespace', payload: { namespaceName } }))
+                    addMessage(`Attempting to remove namespace: ${namespaceName}`, 'info')
+                } else {
+                    addMessage('Not connected or namespace name is empty.', 'error')
+                }
+            })
+
+            document.getElementById('sendNamespaceMessage').addEventListener('click', () => {
+                const namespaceName = document.getElementById('namespaceNameInput').value
+                const message = document.getElementById('namespaceMessageInput').value
+                if (ws && ws.readyState === ws.OPEN && namespaceName && message) {
+                    ws.send(
+                        JSON.stringify({
+                            type: 'publishToNamespace',
+                            payload: { namespaceName, message },
+                        }),
+                    )
+                    addMessage(`Sent to namespace ${namespaceName}: "${message}"`, 'self')
+                    document.getElementById('namespaceMessageInput').value = ''
+                } else {
+                    addMessage('Not connected, namespace name, or message is empty.', 'error')
+                }
+            })
+
+            document.getElementById('broadcastGlobal').addEventListener('click', () => {
+                const message = document.getElementById('globalMessageInput').value
+                if (ws && ws.readyState === ws.OPEN && message) {
+                    ws.send(JSON.stringify({ type: 'broadcastGlobal', payload: { message } }))
+                    addMessage(`Sent global broadcast: "${message}"`, 'self')
+                    document.getElementById('globalMessageInput').value = ''
+                } else {
+                    addMessage('Not connected or message is empty.', 'error')
+                }
+            })
+
+            function connectWs() {
+                if (ws && (ws.readyState === ws.OPEN || ws.readyState === ws.CONNECTING)) {
+                    addMessage('Already connected or connecting.', 'info')
+                    return
+                }
+                ws = new WebSocket(`ws://localhost:${8080}`)
+
+                ws.onopen = () => {
+                    console.log('Connected to WebSocket server')
+                    addMessage('Connected to WS server.', 'system')
+                    updateUI()
+                }
+
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data)
+                    console.log('Received:', data)
+
+                    switch (data.type) {
+                        case 'welcome':
+                            clientId = data.payload.clientId
+                            addMessage(
+                                `Welcome! Your Client ID: ${clientId}. ${data.payload.message}`,
+                                'system',
+                            )
+                            break
+                        case 'authenticated':
+                            userId = data.payload.userId
+                            username = data.payload.username
+                            addMessage(
+                                `Authenticated as ${username} (User ID: ${userId}).`,
+                                'system',
+                            )
+                            break
+                        case 'authFailed':
+                            addMessage(`Authentication failed: ${data.payload}.`, 'error')
+                            break
+                        case 'roomJoined':
+                            joinedRooms.add(data.payload.roomName)
+                            addMessage(`Joined room: ${data.payload.roomName}`, 'system')
+                            break
+                        case 'roomLeft':
+                            joinedRooms.delete(data.payload.roomName)
+                            addMessage(`Left room: ${data.payload.roomName}`, 'system')
+                            break
+                        case 'roomMessage':
+                            if (data.sender === username) {
+                                addMessage(
+                                    `[Room ${data.room}] ${data.sender}: ${data.message}`,
+                                    'self',
+                                )
+                            } else if (data.sender === 'system') {
+                                addMessage(`[Room ${data.room}] ${data.message}`, 'system')
+                            } else {
+                                addMessage(
+                                    `[Room ${data.room}] ${data.sender}: ${data.message}`,
+                                    'other',
+                                )
+                            }
+                            break
+                        case 'namespaceAdded':
+                            activeNamespaces.add(data.payload.namespaceName)
+                            addMessage(
+                                `Added to namespace: ${data.payload.namespaceName}`,
+                                'system',
+                            )
+                            break
+                        case 'namespaceRemoved':
+                            activeNamespaces.delete(data.payload.namespaceName)
+                            addMessage(
+                                `Removed from namespace: ${data.payload.namespaceName}`,
+                                'system',
+                            )
+                            break
+                        case 'namespaceMessage':
+                            addMessage(
+                                `[Namespace ${data.namespace}] ${data.sender}: ${data.message}`,
+                                'other',
+                            )
+                            break
+                        case 'globalMessage':
+                            addMessage(`[GLOBAL] ${data.sender}: ${data.message}`, 'other')
+                            break
+                        case 'roomEvent': // Від періодичних завдань у кімнаті
+                            addMessage(
+                                `[Room ${data.room}] Event: ${data.event} at ${data.timestamp}`,
+                                'info',
+                            )
+                            break
+                        case 'gameStateUpdate': // Від періодичних завдань у кімнаті
+                            addMessage(
+                                `[Game ${data.room}] State Update: Players: ${data.state.players}, Status: ${data.state.status}`,
+                                'info',
+                            )
+                            break
+                        case 'roomAnnouncement':
+                            addMessage(
+                                `[Room ${data.room}] ANNOUNCEMENT: ${data.message}`,
+                                'system',
+                            )
+                            break
+                        case 'error':
+                            addMessage(`Error: ${data.payload}`, 'error')
+                            break
+                        default:
+                            addMessage(`Unknown message type: ${JSON.stringify(data)}`, 'info')
+                    }
+                    updateUI()
+                }
+
+                ws.onclose = (event) => {
+                    console.log(
+                        `Disconnected from WebSocket server. Code: ${event.code}, Reason: ${event.reason}`,
+                    )
+                    addMessage(
+                        `Disconnected from WS server. Code: ${event.code}, Reason: ${event.reason}`,
+                        'error',
+                    )
+                    clientId = 'N/A'
+                    userId = 'N/A'
+                    username = 'N/A'
+                    joinedRooms.clear()
+                    activeNamespaces = new Set(['default_global_ns'])
+                    updateUI()
+                }
+
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error)
+                    addMessage(`WS Error: ${error.message}`, 'error')
+                }
+            }
+
+            // Підключаємося автоматично при завантаженні сторінки
+            connectWs()
+            updateUI()
+        </script>
+    </body>
+</html>
