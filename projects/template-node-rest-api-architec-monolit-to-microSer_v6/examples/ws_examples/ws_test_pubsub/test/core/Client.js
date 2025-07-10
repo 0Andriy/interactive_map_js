@@ -22,6 +22,7 @@ class Client {
         this.username = username || `Guest_${this.id.toString().substring(7, 12)}`
         this.ws = ws
         this.logger = logger
+        this.connectedAt = new Date()
 
         this.logger.debug(
             `Client connection "${this.id}" for User "${this.username}" (ID: ${this.userId}) created.`,
@@ -30,16 +31,18 @@ class Client {
 
     /**
      * Відправляє повідомлення цьому конкретному підключенню через WebSocket.
-     * @param {object} payload - Об'єкт повідомлення для відправки.
+     * @param {object|string} payload - Об'єкт повідомлення для відправки.
      */
-    send(payload) {
+    send(payload, options = {}) {
         if (this.ws && this.ws.readyState === this.ws.OPEN) {
             try {
-                this.ws.send(JSON.stringify(payload))
+                const payload = typeof data === 'string' ? data : JSON.stringify(data)
+                this.ws.send(payload, options)
+
                 this.logger.debug(
                     `[To Client Conn: ${this.id} | User: ${this.username} (${
                         this.userId
-                    })]: ${JSON.stringify(payload)}`,
+                    })]: ${payload.substring(0, 100)}...`,
                 )
             } catch (error) {
                 this.logger.error(
@@ -50,6 +53,17 @@ class Client {
             this.logger.warn(
                 `Attempted to send message to closed/unready client connection ${this.id} for User ${this.username} (${this.userId}).`,
             )
+        }
+    }
+
+    /**
+     * Закриває WebSocket з'єднання.
+     * Не викликайте напряму, якщо ви використовуєте `Server.disconnectClient`.
+     */
+    close() {
+        if (this.ws.readyState === this.ws.OPEN || this.ws.readyState === this.ws.CONNECTING) {
+            this.ws.close()
+            this.logger.info(`З'єднання для клієнта ${this.id} закрито.`)
         }
     }
 }
