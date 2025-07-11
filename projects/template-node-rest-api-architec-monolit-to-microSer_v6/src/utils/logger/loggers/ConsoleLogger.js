@@ -17,13 +17,50 @@ class ConsoleLogger extends ILogger {
     /**
      * Створює екземпляр ConsoleLogger.
      */
-    constructor() {
+    constructor(prefix = '', level = 'debug') {
         super()
+
+        /**
+         * Константа для ієрархії рівнів
+         * @type {object}
+         */
+        this.LOG_LEVELS = {
+            log: 0,
+            error: 0,
+            warn: 1,
+            info: 2,
+            http: 3,
+            verbose: 4,
+            debug: 5,
+            silly: 6,
+        }
+
+        /**
+         * Об'єкт CONSOLE_METHODS визначено для кожного нового екземпляра
+         * для оптимізації можна винести вище за межі класа для визначеня один раз на рівні модуля
+         * @type {object}
+         */
+        this.CONSOLE_METHODS = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info,
+            http: console.info,
+            verbose: console.debug,
+            debug: console.debug,
+            silly: console.debug,
+        }
+
+        /**
+         * Бажаний рівень логування
+         */
+        this.level = this.LOG_LEVELS[level] || this.LOG_LEVELS.info
+
         /**
          * Префікс для всіх повідомлень, що виводяться цим логером.
          * @type {string}
          */
-        this.prefix = '[ConsoleLogger]'
+        this.prefix = prefix
     }
 
     /**
@@ -34,16 +71,23 @@ class ConsoleLogger extends ILogger {
      * @param {...any} args - Додаткові аргументи.
      * @returns {Array<any>} Масив аргументів для `console.log` або `console.error`.
      */
-    _formatMessage(level, message, ...args) {
-        const time = new Date().toISOString()
-        // Використовуємо %o для об'єктів, щоб console їх правильно розширювала
-        const formattedMessage = `${this.prefix} [${time}] [${level.toUpperCase()}] ${message}`
-
-        // Якщо є додаткові аргументи, додаємо їх до масиву
-        if (args.length > 0) {
-            return [formattedMessage, ...args]
+    // Допоміжний метод для вибору правильного методу console
+    _log(level, message, ...args) {
+        // Логіка філтрації
+        const messageLevel = this.LOG_LEVELS[level]
+        if (messageLevel === undefined || messageLevel > this.level) {
+            return // Не виводимо повідомлення, якщо його рівень вищий
         }
-        return [formattedMessage]
+
+        const time = new Date().toISOString()
+        const prefix = this.prefix ? `[${this.prefix}]` : ''
+        const formattedMessage = `${time} [${level.toUpperCase()}]${prefix} ${message}`
+
+        // Вибираємо метод або використовуємо console.log за замовчуванням
+        const consoleMethod = this.CONSOLE_METHODS[level] || console.log
+
+        // Розгортаємо масив для виклику
+        consoleMethod(formattedMessage, ...args)
     }
 
     /**
@@ -52,7 +96,7 @@ class ConsoleLogger extends ILogger {
      * @param {...any} args - Додаткові аргументи для `console.log`.
      */
     log(message, ...args) {
-        console.debug(...this._formatMessage('log', message, ...args))
+        this._log('log', message, ...args)
     }
 
     /**
@@ -61,25 +105,7 @@ class ConsoleLogger extends ILogger {
      * @param {...any} args - Додаткові аргументи для `console.info`.
      */
     info(message, ...args) {
-        console.debug(...this._formatMessage('info', message, ...args))
-    }
-
-    /**
-     * Логує попередження в консоль.
-     * @param {string} message - Повідомлення попередження.
-     * @param {...any} args - Додаткові аргументи для `console.warn`.
-     */
-    warn(message, ...args) {
-        console.debug(...this._formatMessage('warn', message, ...args))
-    }
-
-    /**
-     * Логує повідомлення про помилку в консоль.
-     * @param {string} message - Повідомлення про помилку.
-     * @param {...any} args - Додаткові аргументи для `console.error`.
-     */
-    error(message, ...args) {
-        console.debug(...this._formatMessage('error', message, ...args))
+        this._log('info', message, ...args)
     }
 
     /**
@@ -88,7 +114,25 @@ class ConsoleLogger extends ILogger {
      * @param {...any} args - Додаткові аргументи для `console.debug`.
      */
     debug(message, ...args) {
-        console.debug(...this._formatMessage('debug', message, ...args))
+        this._log('debug', message, ...args)
+    }
+
+    /**
+     * Логує попередження в консоль.
+     * @param {string} message - Повідомлення попередження.
+     * @param {...any} args - Додаткові аргументи для `console.warn`.
+     */
+    warn(message, ...args) {
+        this._log('warn', message, ...args)
+    }
+
+    /**
+     * Логує повідомлення про помилку в консоль.
+     * @param {string} message - Повідомлення про помилку.
+     * @param {...any} args - Додаткові аргументи для `console.error`.
+     */
+    error(message, ...args) {
+        this._log('error', message, ...args)
     }
 
     /**
@@ -98,7 +142,7 @@ class ConsoleLogger extends ILogger {
      * @param {...any} args - Додаткові аргументи.
      */
     http(message, ...args) {
-        console.debug(...this._formatMessage('http', message, ...args))
+        this._log('http', message, ...args)
     }
 
     /**
@@ -108,7 +152,7 @@ class ConsoleLogger extends ILogger {
      * @param {...any} args - Додаткові аргументи.
      */
     verbose(message, ...args) {
-        console.debug(...this._formatMessage('verbose', message, ...args))
+        this._log('verbose', message, ...args)
     }
 
     /**
@@ -118,7 +162,7 @@ class ConsoleLogger extends ILogger {
      * @param {...any} args - Додаткові аргументи.
      */
     silly(message, ...args) {
-        console.debug(...this._formatMessage('silly', message, ...args))
+        this._log('silly', message, ...args)
     }
 
     /**
@@ -129,10 +173,11 @@ class ConsoleLogger extends ILogger {
      * @returns {ILogger} Дочірній екземпляр логера.
      */
     getLoggerForService(serviceName) {
-        const childLogger = new ConsoleLogger()
-        childLogger.prefix = `${this.prefix}[${serviceName}]`
+        const newPrefix = this.prefix ? `[${serviceName}] -> ${this.prefix}` : `[${serviceName}]`
+        const childLogger = new ConsoleLogger(newPrefix)
         return childLogger
     }
 }
 
+//
 export default ConsoleLogger

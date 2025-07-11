@@ -168,7 +168,7 @@ class RealtimeServer {
         const namespace = this.#namespaces.get(namespaceId)
         if (namespace) {
             // Отримуємо всі кімнати в цьому просторі імен
-            const rooms = Array.from(namespace.#rooms.values()) // Доступ до приватного поля для ітерації
+            const rooms = Array.from(namespace.getAllRooms().values()) // Доступ до приватного поля для ітерації
             for (const room of rooms) {
                 if (await room.hasUser(userId)) {
                     await room.removeUser(userId)

@@ -49,21 +49,90 @@ class Namespace {
         this.#wsAdapter = wsAdapter
         this.#pubSub = pubSub
         this.#storage = storage
-
         this.#leaderElection = leaderElection
+
         this.#logger.log(
             `Namespace '${this.#id}' created.${
                 this.#leaderElection ? ' Leader Election enabled.' : ''
             }`,
         )
-
-        this.#logger.log(`Namespace '${this.#id}' created.`)
         this.#setupPubSubListeners()
         this.#loadRoomsFromStorage() // Завантажуємо кімнати при старті
     }
 
     get id() {
         return this.#id
+    }
+
+    getAllRooms() {
+        return this.#rooms
+    }
+
+    /**
+     * Отримує кімнату за її ID.
+     * @param {string} roomId - Ідентифікатор кімнати.
+     * @returns {Room|undefined}
+     */
+    getRoom(roomId) {
+        return this.#rooms.get(roomId)
+    }
+
+    /**
+     * Створює або повертає існуючу кімнату.
+     * @param {string} roomId - Ідентифікатор кімнати.
+     * @param {object} [config={}] - Додаткова конфігурація для кімнати.
+     * @returns {Room}
+     */
+    async getOrCreateRoom(roomId, config = {}) {
+        if (!this.#rooms.has(roomId)) {
+            const room = new Room(
+                roomId,
+                this.#id,
+                { ...this.#roomConfigDefaults, ...config },
+                this.#logger,
+                this.#globalTaskScheduler,
+                this.#wsAdapter,
+                this.#storage,
+                async (roomIdToRemove) => this.removeRoom(roomIdToRemove), // Callback для видалення
+            )
+            this.#rooms.set(roomId, room)
+            this.#logger.log(`Room '${roomId}' created in namespace '${this.#id}'.`)
+
+            // Публікуємо подію про створення кімнати, щоб інші інстанси знали
+            if (this.#pubSub) {
+                await this.#pubSub.publish(`namespace:${this.#id}`, {
+                    type: 'roomCreated',
+                    namespaceId: this.#id,
+                    roomId: roomId,
+                })
+            }
+        }
+        return this.#rooms.get(roomId)
+    }
+
+    /**
+     * Видаляє кімнату.
+     * @param {string} roomId - Ідентифікатор кімнати.
+     * @returns {Promise<boolean>} True, якщо кімната була видалена.
+     */
+    async removeRoom(roomId) {
+        const room = this.#rooms.get(roomId)
+        if (room) {
+            await room.destroy() // Очистити локальні ресурси та зі сховища
+            this.#rooms.delete(roomId)
+            this.#logger.log(`Room '${roomId}' removed from namespace '${this.#id}'.`)
+
+            // Публікуємо подію про видалення кімнати
+            if (this.#pubSub) {
+                await this.#pubSub.publish(`namespace:${this.#id}`, {
+                    type: 'roomRemoved',
+                    namespaceId: this.#id,
+                    roomId: roomId,
+                })
+            }
+            return true
+        }
+        return false
     }
 
     /**
@@ -134,73 +203,6 @@ class Namespace {
                 // ... інші типи подій (користувач приєднався/покинув кімнату на іншому інстансі тощо)
             }
         })
-    }
-
-    /**
-     * Створює або повертає існуючу кімнату.
-     * @param {string} roomId - Ідентифікатор кімнати.
-     * @param {object} [config={}] - Додаткова конфігурація для кімнати.
-     * @returns {Room}
-     */
-    async getOrCreateRoom(roomId, config = {}) {
-        if (!this.#rooms.has(roomId)) {
-            const room = new Room(
-                roomId,
-                this.#id,
-                { ...this.#roomConfigDefaults, ...config },
-                this.#logger,
-                this.#globalTaskScheduler,
-                this.#wsAdapter,
-                this.#storage,
-                async (roomIdToRemove) => this.removeRoom(roomIdToRemove), // Callback для видалення
-            )
-            this.#rooms.set(roomId, room)
-            this.#logger.log(`Room '${roomId}' created in namespace '${this.#id}'.`)
-
-            // Публікуємо подію про створення кімнати, щоб інші інстанси знали
-            if (this.#pubSub) {
-                await this.#pubSub.publish(`namespace:${this.#id}`, {
-                    type: 'roomCreated',
-                    namespaceId: this.#id,
-                    roomId: roomId,
-                })
-            }
-        }
-        return this.#rooms.get(roomId)
-    }
-
-    /**
-     * Отримує кімнату за її ID.
-     * @param {string} roomId - Ідентифікатор кімнати.
-     * @returns {Room|undefined}
-     */
-    getRoom(roomId) {
-        return this.#rooms.get(roomId)
-    }
-
-    /**
-     * Видаляє кімнату.
-     * @param {string} roomId - Ідентифікатор кімнати.
-     * @returns {Promise<boolean>} True, якщо кімната була видалена.
-     */
-    async removeRoom(roomId) {
-        const room = this.#rooms.get(roomId)
-        if (room) {
-            await room.destroy() // Очистити локальні ресурси та зі сховища
-            this.#rooms.delete(roomId)
-            this.#logger.log(`Room '${roomId}' removed from namespace '${this.#id}'.`)
-
-            // Публікуємо подію про видалення кімнати
-            if (this.#pubSub) {
-                await this.#pubSub.publish(`namespace:${this.#id}`, {
-                    type: 'roomRemoved',
-                    namespaceId: this.#id,
-                    roomId: roomId,
-                })
-            }
-            return true
-        }
-        return false
     }
 
     // /**
@@ -325,6 +327,85 @@ class Namespace {
         this.#rooms.clear()
 
         this.#logger.log(`Namespace '${this.#id}' destroyed.`)
+    }
+
+    async handleClientMessage(userId, message, ws) {
+        this.#logger.debug(
+            `Namespace '${this.#id}': Handling client message from '${userId}':`,
+            message,
+        )
+
+        switch (message.type) {
+            case 'joinRoom':
+                const roomToJoin = await this.getOrCreateRoom(message.roomId)
+                const added = await roomToJoin.addUser(userId)
+                if (added) {
+                    this.#wsAdapter.sendMessageToUser(userId, {
+                        type: 'roomJoined',
+                        roomId: message.roomId,
+                        namespaceId: this.#id,
+                    })
+                    await this.publishRoomMessage(message.roomId, userId, {
+                        status: 'userJoined',
+                        userId: userId,
+                    })
+                }
+                break
+            case 'leaveRoom':
+                const roomToLeave = this.getRoom(message.roomId)
+                if (roomToLeave) {
+                    const removed = await roomToLeave.removeUser(userId)
+                    if (removed) {
+                        this.#wsAdapter.sendMessageToUser(userId, {
+                            type: 'roomLeft',
+                            roomId: message.roomId,
+                            namespaceId: this.#id,
+                        })
+                        await this.publishRoomMessage(message.roomId, userId, {
+                            status: 'userLeft',
+                            userId: userId,
+                        })
+                    }
+                }
+                break
+            case 'roomMessage':
+                const targetRoom = this.getRoom(message.roomId)
+                if (targetRoom && (await targetRoom.hasUser(userId))) {
+                    await this.publishRoomMessage(message.roomId, userId, message.payload)
+                } else {
+                    this.#logger.warn(
+                        `User '${userId}' tried to send message to non-existent or unauthorized room '${
+                            message.roomId
+                        }' in namespace '${this.#id}'.`,
+                    )
+                }
+                break
+            case 'chat_message':
+                if (this.#id === 'chat') {
+                    const chatRoom = this.getRoom(message.roomId)
+                    if (chatRoom && (await chatRoom.hasUser(userId))) {
+                        this.#logger.log(
+                            `[Chat] User ${userId} sent: ${message.text} in room ${message.roomId}`,
+                        )
+                        await this.publishRoomMessage(message.roomId, userId, {
+                            text: message.text,
+                            type: 'chatMessage',
+                        })
+                    }
+                } else {
+                    this.#logger.warn(
+                        `'chat_message' received in non-chat namespace '${this.#id}'.`,
+                    )
+                }
+                break
+            default:
+                this.#logger.warn(
+                    `Namespace '${this.#id}': Unknown message type '${
+                        message.type
+                    }' from user '${userId}'.`,
+                )
+                break
+        }
     }
 }
 

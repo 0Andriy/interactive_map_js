@@ -106,11 +106,12 @@ class ServiceFactory {
     }
 
     /**
-     * Підключає всі ініціалізовані сервіси.
+     * Підключає всі необхідні сервіси.
      */
     async connectAll() {
         const pubSub = this.#instances.pubSub || this.getPubSub()
         const storage = this.#instances.storage || this.getStorage()
+        const leaderElection = this.#instances.leaderElection || this.getLeaderElection()
 
         if (pubSub.connect) {
             await pubSub.connect()
@@ -118,13 +119,20 @@ class ServiceFactory {
         if (storage.connect) {
             await storage.connect()
         }
+        if (leaderElection) {
+            await leaderElection.start()
+        }
         this.#logger.log('All services connected.')
     }
 
     /**
-     * Закриває всі ініціалізовані сервіси.
+     * Закриває всі сервіси.
      */
     async closeAll() {
+        if (this.#instances.leaderElection) {
+            await this.#instances.leaderElection.stop()
+            this.#instances.leaderElection = null
+        }
         if (this.#instances.pubSub) {
             await this.#instances.pubSub.close()
             this.#instances.pubSub = null

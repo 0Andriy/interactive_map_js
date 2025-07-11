@@ -112,6 +112,7 @@ class LeaderElection {
                 const currentLeaderId = await this.#storage.get(this.#leaderKey)
                 if (currentLeaderId === this.#instanceId) {
                     // Це має бути оброблено гілкою 'acquired' раніше, але для надійності:
+                    // оновлюємо, якщо ми - поточний лідер, а команда NX не спрацювала
                     await this.#storage.set(this.#leaderKey, this.#instanceId, this.#ttlMs / 1000)
                     if (!this.#isLeader) {
                         // Якщо з якихось причин попередній acquired не спрацював коректно
