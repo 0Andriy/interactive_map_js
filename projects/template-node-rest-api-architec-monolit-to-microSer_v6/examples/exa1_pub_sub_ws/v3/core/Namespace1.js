@@ -6,10 +6,11 @@
 
 import { Room } from './Room.js'
 import { TaskScheduler } from './TaskScheduler.js'
-import { IPubSub } from '../pub_sub/IPubSub.js'
-import { IStorage } from '../storage/IStorage.js'
+import { IPubSub } from '../interfaces/IPubSub.js'
+import { IStorage } from '../interfaces/IStorage.js'
 import { WsAdapter } from '../WsAdapter.js'
 import { LeaderElection } from '../LeaderElection.js'
+import { ILogger } from '../interfaces/ILogger.js'
 
 /**
  * @class Namespace
@@ -28,6 +29,8 @@ import { LeaderElection } from '../LeaderElection.js'
  * @property {Function} #pubSubListener - Приватне посилання на функцію зворотного виклику для відписки.
  * @property {string} #namespaceChannel - Назва каналу Pub/Sub для цього простору імен.
  * @property {string} #ROOMS_SET_KEY - Ключ для сховища, що містить ID всіх кімнат.
+ * @property {object} #handlers - Об'єкт з користувацькими обробниками.
+ * @property {object} #defaultHandlers - Об'єкт з дефолтними обробниками.
  */
 class Namespace {
     #id
@@ -121,7 +124,7 @@ class Namespace {
     /**
      * Створює або повертає існуючу кімнату.
      * Якщо кімната не існує в локальному кеші, створює новий об'єкт та публікує подію
-     * про створення для інших інстансів.
+     * про створення для інших інстансів. Також додає ID кімнати до глобального сховища.
      * @async
      * @param {string} roomId - Ідентифікатор кімнати.
      * @param {object} [config={}] - Додаткова конфігурація для кімнати.
@@ -155,6 +158,7 @@ class Namespace {
     /**
      * Видаляє кімнату з локального кешу та ініціює її знищення.
      * Публікує подію про видалення для інших інстансів.
+     * Також видаляє ID кімнати з глобального сховища.
      * @async
      * @param {string} roomId - Ідентифікатор кімнати.
      * @returns {Promise<boolean>} True, якщо кімната була видалена.
@@ -185,12 +189,13 @@ class Namespace {
      * @param {object} payload - Корисне навантаження повідомлення.
      * @param {object} options - Опції для надсилання повідомлення.
      * @param {string[]} [options.excludeUsers=[]] - Масив ID користувачів, яким не слід надсилати повідомлення.
+     * @param {object} [options.wsSendOptions={}] - Опції, які будуть передані у ws.send().
      */
     async broadcast(type, payload, options = {}) {
         this.#logger.debug(`Broadcasting message '${type}' to namespace '${this.#id}' via Pub/Sub.`)
         // Публікуємо подію у спеціальний канал для широкомовної розсилки.
         // Далі її обробить слухач на кожному інстансі.
-        await this.#pubSub.publish(`${this.#namespaceChannel}:broadcast`, {
+        await this.#pubSub.publish(this.#namespaceChannel + ':broadcast', {
             type,
             payload,
             options,
@@ -253,8 +258,9 @@ class Namespace {
                     `Namespace '${this.#id}': Room '${data.roomId}' removed on another instance.`,
                 )
                 // Видаляємо кімнату з локального кешу.
+                // destroy() тут не викликаємо, оскільки це робиться інстансом, який ініціював видалення.
+                // Просто видаляємо з локального кешу.
                 if (this.#rooms.has(data.roomId)) {
-                    this.#rooms.get(data.roomId).destroy()
                     this.#rooms.delete(data.roomId)
                 }
                 break
@@ -290,24 +296,28 @@ class Namespace {
     /**
      * Реєструє глобальну періодичну задачу для цього простору імен.
      * @param {string} taskId - Унікальний ідентифікатор задачі.
-     * @param {Function} taskFn - Функція, яка буде виконуватися.
      * @param {object} config - Конфігурація задачі.
      * @param {boolean} [config.runOnlyOnLeader=false] - Чи запускати задачу тільки на інстансі-лідері.
+     * @param {number} config.intervalMs - Інтервал виконання задачі.
+     * @param {Function} taskFn - Функція, яка буде виконуватися.
      * @param {object} [params={}] - Параметри для taskFn.
      */
-    addGlobalScheduledTask(taskId, taskFn, config = {}, params = {}) {
-        const uniqueTaskId = `${this.#namespaceChannel}:${taskId}`
+    addGlobalScheduledTask(taskId, config, taskFn, params = {}) {
+        const uniqueTaskId = `${this.#namespaceChannel}:globalTask:${taskId}`
 
         const wrappedTaskFn = async (taskParams) => {
-            if (config.runOnlyOnLeader) {
-                if (!this.#leaderElection || !this.#leaderElection.isLeader()) {
-                    this.#logger.debug(
-                        `Task '${taskId}' skipped: not the leader or LeaderElection not configured.`,
-                    )
-                    return { status: 'skipped_not_leader' }
-                }
-                this.#logger.debug(`Task '${taskId}' running as leader.`)
+            if (
+                config.runOnlyOnLeader &&
+                (!this.#leaderElection || !this.#leaderElection.isLeader())
+            ) {
+                this.#logger.debug(
+                    `Global task '${taskId}' skipped: not the leader or LeaderElection not configured.`,
+                )
+                return { status: 'skipped_not_leader' }
             }
+            this.#logger.debug(
+                `Global task '${taskId}' running as leader: ${!!this.#leaderElection?.isLeader()}.`,
+            )
             return await taskFn(taskParams)
         }
 
@@ -316,10 +326,11 @@ class Namespace {
             namespace: this,
             wsAdapter: this.#wsAdapter,
             storage: this.#storage,
+            pubSub: this.#pubSub,
             leaderElection: this.#leaderElection,
         }
 
-        this.#globalTaskScheduler.scheduleTask(uniqueTaskId, wrappedTaskFn, config, taskParams)
+        this.#globalTaskScheduler.scheduleTask(uniqueTaskId, config, wrappedTaskFn, taskParams)
         this.#logger.info(
             `Global task '${taskId}' scheduled for namespace '${
                 this.#id
@@ -332,7 +343,7 @@ class Namespace {
      * @param {string} taskId - Ідентифікатор задачі.
      */
     stopGlobalScheduledTask(taskId) {
-        const uniqueTaskId = `${this.#namespaceChannel}:${taskId}`
+        const uniqueTaskId = `${this.#namespaceChannel}:globalTask:${taskId}`
         this.#globalTaskScheduler.stopTask(uniqueTaskId)
     }
 
@@ -344,6 +355,10 @@ class Namespace {
         this.#globalTaskScheduler.stopAllTasks()
         if (this.#pubSub) {
             await this.#pubSub.unsubscribe(this.#namespaceChannel, this.#pubSubListener)
+            await this.#pubSub.unsubscribe(
+                this.#namespaceChannel + ':broadcast',
+                this.#pubSubListener,
+            ) // Відписка від broadcast каналу
         }
 
         const roomDestroyPromises = Array.from(this.#rooms.values()).map((room) => room.destroy())
@@ -359,17 +374,33 @@ class Namespace {
      */
     #createDefaultHandlers() {
         return {
-            onConnect: async (namespace, userId) => {
+            /**
+             * Дефолтний обробник підключення нового клієнта до неймспейсу.
+             * @param {Namespace} namespace - Поточний інстанс Namespace.
+             * @param {WebSocket} ws - Об'єкт WebSocket з'єднання.
+             * @param {string} userId - ID користувача.
+             */
+            onConnect: async (namespace, ws, userId) => {
                 this.#logger.debug(`Default onConnect handler called for user '${userId}'.`)
+                // Можливо, тут відправити початкове повідомлення клієнту, наприклад, "connected"
                 namespace.#wsAdapter.sendMessageToSocket(ws.id, {
                     type: 'connected',
                     message: 'Welcome to the server!',
                 })
             },
-            onMessage: async (namespace, userId, message) => {
+            /**
+             * Дефолтний обробник повідомлень від клієнта.
+             * @param {Namespace} namespace - Поточний інстанс Namespace.
+             * @param {WebSocket} ws - Об'єкт WebSocket з'єднання.
+             * @param {string} userId - ID користувача.
+             * @param {object} message - Вхідне повідомлення від клієнта.
+             * @returns {Promise<boolean>} True, якщо повідомлення оброблено.
+             */
+            onMessage: async (namespace, ws, userId, message) => {
                 switch (message.type) {
                     case 'joinRoom': {
-                        const roomToJoin = await this.getOrCreateRoom(message.roomId)
+                        const roomToJoin = await namespace.getOrCreateRoom(message.roomId)
+                        // Додаємо користувача до кімнати, передаючи socketId
                         const added = await roomToJoin.addUser(userId, ws.id)
                         if (added) {
                             // Відправляємо користувачеві, що він приєднався
@@ -382,22 +413,29 @@ class Namespace {
                                 { to: [userId] },
                             )
 
-                            // Відправляємо іншим користувачам, що користувач приєднався
+                            // Відправляємо іншим користувачам у кімнаті, що користувач приєднався
                             await roomToJoin.send(
                                 'userJoined',
                                 {
                                     userId: userId,
                                 },
-                                {},
-                                [userId],
+                                {}, // Options
+                                [userId], // excludeUsers
                             )
+                        } else {
+                            // Якщо не вдалося приєднатися (наприклад, кімната повна)
+                            namespace.#wsAdapter.sendMessageToSocket(ws.id, {
+                                type: 'roomJoinFailed',
+                                roomId: message.roomId,
+                                reason: 'Room is full or another error.',
+                            })
                         }
-
                         return true
                     }
                     case 'leaveRoom': {
-                        const roomToLeave = this.getRoom(message.roomId)
+                        const roomToLeave = namespace.getRoom(message.roomId)
                         if (roomToLeave) {
+                            // Видаляємо користувача з кімнати, передаючи socketId
                             const removed = await roomToLeave.removeUser(userId, ws.id)
                             if (removed) {
                                 // Відправляємо користувачеві, що він покинув кімнату
@@ -416,26 +454,44 @@ class Namespace {
                                     {
                                         userId: userId,
                                     },
-                                    {},
-                                    [userId],
+                                    {}, // Options
+                                    [userId], // excludeUsers
                                 )
                             }
                         }
-
                         return true
                     }
                     case 'roomMessage': {
                         const targetRoom = this.getRoom(message.roomId)
-                        if (targetRoom && (await targetRoom.hasUser(userId))) {
-                            await targetRoom.send('roomMessage', message.payload)
+                        // Перевіряємо, чи сокет належить до цієї кімнати локально,
+                        // і чи користувач присутній у сховищі.
+                        if (
+                            targetRoom &&
+                            this.#wsAdapter.getSocketRooms(ws.id).has(message.roomId) &&
+                            (await targetRoom.hasUser(userId))
+                        ) {
+                            await targetRoom.send(
+                                'roomMessage',
+                                {
+                                    from: userId,
+                                    text: message.payload.text,
+                                },
+                                {},
+                                [userId],
+                            ) // Не надсилати назад тому, хто надіслав
                         } else {
                             this.#logger.warn(
-                                `User '${userId}' tried to send message to non-existent or unauthorized room '${
+                                `User '${userId}' (Socket ID: ${
+                                    ws.id
+                                }) tried to send message to non-existent or unauthorized room '${
                                     message.roomId
                                 }' in namespace '${this.#id}'.`,
                             )
+                            namespace.#wsAdapter.sendMessageToSocket(ws.id, {
+                                type: 'error',
+                                message: `Cannot send message: Room '${message.roomId}' not found or you are not in it.`,
+                            })
                         }
-
                         return true
                     }
                     default:
@@ -443,17 +499,13 @@ class Namespace {
                         return false
                 }
             },
-            onDisconnect: async (namespace, userId) => {
-                // const rooms = namespace.getAllRooms()
-                // for (const room of rooms.values()) {
-                //     if (await room.hasUser(userId)) {
-                //         await room.removeUser(userId)
-                //     }
-                // }
-                // this.#logger.info(
-                //     `User '${userId}' disconnected and was removed from all rooms in namespace '${namespace.id}'.`,
-                // )
-
+            /**
+             * Дефолтний обробник відключення клієнта.
+             * @param {Namespace} namespace - Поточний інстанс Namespace.
+             * @param {WebSocket} ws - Об'єкт WebSocket з'єднання.
+             * @param {string} userId - ID користувача.
+             */
+            onDisconnect: async (namespace, ws, userId) => {
                 this.#logger.debug(
                     `Default onDisconnect handler for user '${userId}' (Socket ID: ${ws.id}) in namespace '${namespace.id}'.`,
                 )
@@ -478,43 +530,54 @@ class Namespace {
 
     /**
      * @async
+     * @param {string} namespaceId - ID простору імен (з WsAdapter).
+     * @param {WebSocket} ws - Об'єкт WebSocket з'єднання.
      * @param {string} userId - ID користувача, що підключився.
      */
-    async handleClientConnect(userId) {
-        await this.#defaultHandlers.onConnect(this, userId)
+    async handleClientConnect(namespaceId, ws, userId) {
+        await this.#defaultHandlers.onConnect(this, ws, userId)
         if (this.#handlers.onConnect) {
             this.#logger.debug(`Calling custom onConnect handler for user '${userId}'.`)
-            await this.#handlers.onConnect(this, userId)
+            await this.#handlers.onConnect(this, ws, userId)
         }
     }
 
     /**
      * @async
+     * @param {string} namespaceId - ID простору імен (з WsAdapter).
+     * @param {WebSocket} ws - Об'єкт WebSocket з'єднання.
      * @param {string} userId - Ідентифікатор користувача.
      * @param {object} message - Вхідне повідомлення від клієнта.
      */
-    async handleClientMessage(userId, message) {
+    async handleClientMessage(namespaceId, ws, userId, message) {
         this.#logger.debug(
-            `Namespace '${this.#id}': Handling client message from '${userId}':`,
+            `Namespace '${this.#id}': Handling client message from '${userId}' (Socket ID: ${
+                ws.id
+            }):`,
             message,
         )
-        let defaultHandled = await this.#defaultHandlers.onMessage(this, userId, message)
+        let defaultHandled = await this.#defaultHandlers.onMessage(this, ws, userId, message)
         if (this.#handlers.onMessage) {
-            await this.#handlers.onMessage(this, userId, message, defaultHandled)
+            // Передаємо результат defaultHandled, щоб custom handler знав, чи потрібно йому обробляти
+            await this.#handlers.onMessage(this, ws, userId, message, defaultHandled)
         }
     }
 
     /**
      * @async
+     * @param {string} namespaceId - ID простору імен (з WsAdapter).
+     * @param {WebSocket} ws - Об'єкт WebSocket з'єднання.
      * @param {string} userId - ID користувача, що відключився.
      */
-    async handleClientDisconnect(userId) {
+    async handleClientDisconnect(namespaceId, ws, userId) {
         this.#logger.debug(
-            `Handling client disconnect for user '${userId}' in namespace '${this.#id}'.`,
+            `Handling client disconnect for user '${userId}' (Socket ID: ${ws.id}) in namespace '${
+                this.#id
+            }'.`,
         )
-        await this.#defaultHandlers.onDisconnect(this, userId)
+        await this.#defaultHandlers.onDisconnect(this, ws, userId)
         if (this.#handlers.onDisconnect) {
-            await this.#handlers.onDisconnect(this, userId)
+            await this.#handlers.onDisconnect(this, ws, userId)
         }
     }
 }
