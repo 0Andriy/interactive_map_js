@@ -1,4 +1,4 @@
-// client.js
+// Client.js
 
 import { v4 as uuidv4 } from 'uuid' // Для генерації унікальних ID з'єднань
 
@@ -16,6 +16,7 @@ class ConnectedClient {
 
     /**
      * @private
+     * Об'єкт WS підключення WebSocket
      * @type {WebSocket}
      */
     #ws
@@ -29,10 +30,17 @@ class ConnectedClient {
 
     /**
      * @private
-     * Ідентифікатор користувача (після успішної автентифікації).
-     * @type {string | null}
+     * Об'єкт, що містить інформацію про користувача (наприклад, userId, username, roles).
+     * За замовчуванням порожній об'єкт, може бути заповнений після автентифікації.
+     * @type {object}
      */
-    #userId
+    #user = {}
+
+    /**
+     * @private
+     * @type {Namespace | null}
+     */
+    #namespace = null
 
     /**
      * @private
@@ -42,70 +50,50 @@ class ConnectedClient {
     #rooms
 
     /**
+     * @type {boolean}
+     * Прапорець, що вказує, чи користувач автентифікований для цього з'єднання.
+     */
+    isAuthenticated = false
+
+    /**
+     * @type {Date}
+     * Час встановлення з'єднання.
+     */
+    joinedAt
+
+    /**
      * @param {WebSocket} ws - Екземпляр WebSocket з'єднання.
      * @param {object} logger - Об'єкт логера з методами info, warn, error, debug.
-     * @param {string | null} [userId=null] - Унікальний ідентифікатор користувача. Може бути null, якщо користувач ще не автентифікований.
+     * @param {object | null} [initialUserData=null] - Початкові дані користувача. Може бути null, якщо користувач ще не автентифікований.
+     * Очікується об'єкт з ключем 'userId'.
      */
-    constructor(ws, logger, userId = null) {
-        /**
-         * Унікальний ідентифікатор для цього конкретного WebSocket-з'єднання.
-         * Це відрізняє одне з'єднання від іншого, навіть якщо вони належать одному користувачу.
-         * @type {string}
-         */
-        this.#connectionId = uuidv4()
+    constructor(ws, logger, initialUserData = null) {
+        if (!(ws instanceof WebSocket)) {
+            throw new Error('Invalid WebSocket instance provided to ConnectedClient constructor.')
+        }
+        if (!logger) {
+            throw new Error('Invalid logger object provided to ConnectedClient constructor.')
+        }
 
-        /**
-         * Зберігаємо екземпляр WebSocket для надсилання/отримання повідомлень.
-         * Можна додати властивості до сирого обєкта 'ws' для легкого доступу
-         * @type {WebSocket}
-         */
+        this.#connectionId = uuidv4()
+        //
         this.#ws = ws
         this.#ws.id = this.#connectionId
 
-        /**
-         * Об'єкт логера, що дозволяє логувати події з різними рівнями.
-         * @type {object}
-         */
         this.#logger = logger
-
-        /**
-         * ID користувача, до якого належить це з'єднання.
-         * Буде встановлено після автентифікації.
-         * @type {string | null}
-         */
-        this.#userId = userId
-
-        /**
-         * Прапорець, що вказує, чи користувач автентифікований для цього з'єднання.
-         * @type {boolean}
-         */
-        this.isAuthenticated = false
-
-        /**
-         * Set кімнат, до яких належить це з'єднання.
-         * Set забезпечує унікальність і швидкий пошук.
-         * @type {Set<string>}
-         */
+        this.#namespace = null
         this.#rooms = new Set()
-
-        /**
-         * Час встановлення з'єднання.
-         * @type {Date}
-         */
         this.joinedAt = new Date()
+
+        if (initialUserData && typeof initialUserData === 'object' && initialUserData.userId) {
+            this.authenticate(initialUserData)
+        }
 
         this.#logger.info(`[ConnectedClient:${this.#connectionId}] Initialized.`, {
             connectionId: this.#connectionId,
-            userId: this.#userId, // Може бути null на початку
+            userId: this.userId, // Може бути null на початку
+            isAuthenticated: this.isAuthenticated,
         })
-    }
-
-    /**
-     * Повертає базовий WebSocket екземпляр.
-     * @returns {WebSocket}
-     */
-    get ws() {
-        return this.#ws
     }
 
     /**
@@ -117,20 +105,60 @@ class ConnectedClient {
     }
 
     /**
+     * Повертає базовий WebSocket екземпляр.
+     * @returns {WebSocket}
+     */
+    get ws() {
+        return this.#ws
+    }
+
+    /**
+     * Повертає поточний стан сирого WebSocket-з'єднання.
+     * @returns {number} Стан WebSocket. (0: CONNECTING, 1: OPEN, 2: CLOSING, 3: CLOSED)
+     */
+    get readyState() {
+        return this.#ws.readyState
+    }
+
+    /**
+     * Перевіряє, чи є з'єднання відкритим.
+     * @returns {boolean} True, якщо з'єднання відкрите.
+     */
+    isOpen() {
+        return this.#ws.readyState === WebSocket.OPEN
+    }
+
+    /**
      * Повертає ідентифікатор користувача, якщо він автентифікований.
      * @returns {string | null}
      */
     get userId() {
-        return this.#userId
+        return this.#user.userId || null
     }
 
     /**
-     * Встановлює ідентифікатор користувача після успішної автентифікації.
-     * @param {string} id - ID користувача.
+     * Повертає повний об'єкт даних користувача.
+     * @returns {object}
      */
-    setUserId(id) {
-        this.#userId = id
-        this.#logger.info(`Client ${this.#connectionId} authenticated as userId: ${this.#userId}`)
+    get user() {
+        // Повертаємо копію, щоб уникнути прямих змін приватного поля ззовні
+        return { ...this.#user }
+    }
+
+    /**
+     * Встановлює Namespace, до якого належить цей клієнт.
+     * @param {Namespace} namespace - Екземпляр Namespace.
+     */
+    setNamespace(namespace) {
+        this.#namespace = namespace
+    }
+
+    /**
+     * Повертає Namespace, до якого належить цей клієнт.
+     * @returns {Namespace | null}
+     */
+    get namespace() {
+        return this.#namespace
     }
 
     /**
@@ -138,7 +166,7 @@ class ConnectedClient {
      * @returns {Set<string>}
      */
     get rooms() {
-        return this.#rooms
+        return new Set(this.#rooms) // Повертаємо копію Set для інкапсуляції
     }
 
     /**
@@ -146,12 +174,13 @@ class ConnectedClient {
      * @param {string} roomName - Назва кімнати.
      */
     joinRoom(roomName) {
-        if (this.rooms.has(roomName)) {
+        if (this.#rooms.has(roomName)) {
             this.#logger.debug(
                 `[ConnectedClient:${this.#connectionId}] Already in room: ${roomName}.`,
                 {
                     connectionId: this.#connectionId,
                     roomName: roomName,
+                    userId: this.userId,
                 },
             )
             return
@@ -160,7 +189,8 @@ class ConnectedClient {
         this.#logger.info(`[ConnectedClient:${this.#connectionId}] Joined room: ${roomName}`, {
             connectionId: this.#connectionId,
             roomName: roomName,
-            currentRooms: Array.from(this.rooms),
+            currentRooms: Array.from(this.#rooms),
+            userId: this.userId,
         })
     }
 
@@ -169,11 +199,12 @@ class ConnectedClient {
      * @param {string} roomName - Назва кімнати.
      */
     leaveRoom(roomName) {
-        if (this.rooms.delete(roomName)) {
+        if (this.#rooms.delete(roomName)) {
             this.#logger.info(`[ConnectedClient:${this.#connectionId}] Left room: ${roomName}`, {
                 connectionId: this.#connectionId,
                 roomName: roomName,
-                currentRooms: Array.from(this.rooms),
+                currentRooms: Array.from(this.#rooms),
+                userId: this.userId,
             })
         } else {
             this.#logger.warn(
@@ -183,6 +214,7 @@ class ConnectedClient {
                 {
                     connectionId: this.#connectionId,
                     roomName: roomName,
+                    userId: this.userId,
                 },
             )
         }
@@ -207,18 +239,18 @@ class ConnectedClient {
         if (this.#ws.readyState === this.#ws.OPEN) {
             try {
                 const dataToSend = typeof message === 'object' ? JSON.stringify(message) : message
-                this.#ws.send(dataToSend, options, (err) => {
-                    if (err) {
-                        // Цей колбек обробляє помилки, які можуть виникнути асинхронно
+                this.#ws.send(dataToSend, options, (error) => {
+                    if (error) {
                         this.#logger.error(
                             `[ConnectedClient:${this.#connectionId}] Asynchronous send error: ${
                                 err.message
                             }`,
                             {
                                 connectionId: this.#connectionId,
-                                error: err.message,
+                                error: error, // Логуємо весь об'єкт помилки
                                 message: message,
                                 options: options,
+                                userId: this.userId,
                             },
                         )
                     }
@@ -226,21 +258,21 @@ class ConnectedClient {
                 this.#logger.debug(`[ConnectedClient:${this.#connectionId}] Message sent.`, {
                     connectionId: this.#connectionId,
                     messageType: typeof message,
-                    messageSize: typeof dataToSend === 'string' ? dataToSend.length : 'N/A', // Додаємо розмір повідомлення
+                    messageSize: typeof dataToSend === 'string' ? dataToSend.length : 'N/A',
                     options: options,
-                    userId: this.#userId, // Додаємо userId для контексту логування
+                    userId: this.userId,
                 })
             } catch (error) {
-                // Цей блок обробляє синхронні помилки (наприклад, JSON.stringify помилки)
                 this.#logger.error(
                     `[ConnectedClient:${this.#connectionId}] Synchronous send error: ${
                         error.message
                     }`,
                     {
                         connectionId: this.#connectionId,
-                        error: error.message,
+                        error: error,
                         message: message,
                         options: options,
+                        userId: this.userId,
                     },
                 )
             }
@@ -254,48 +286,62 @@ class ConnectedClient {
                 {
                     connectionId: this.#connectionId,
                     wsReadyState: this.#ws.readyState,
-                    userId: this.#userId,
-                    message: message, // Включимо повідомлення для контексту
+                    userId: this.userId,
+                    message: message,
                 },
             )
         }
     }
 
     /**
-     * Встановлює ID користувача після автентифікації.
-     * @param {string} userId - Унікальний ідентифікатор користувача.
+     * Встановлює дані користувача після автентифікації.
+     * @param {object} userData - Об'єкт з даними користувача. Обов'язково повинен містити 'userId'.
      */
-    authenticate(userId) {
-        if (this.isAuthenticated && this.#userId === userId) {
-            this.#logger.debug(
+    authenticate(userData) {
+        if (typeof userData !== 'object' || userData === null || !userData.userId) {
+            this.#logger.error(
                 `[ConnectedClient:${
                     this.#connectionId
-                }] Already authenticated as ${userId}. No change needed.`,
-                { connectionId: this.#connectionId, userId: userId },
+                }] Invalid user data provided for authentication.`,
+                { connectionId: this.#connectionId, providedData: userData },
             )
-            return
+            return false // Повертаємо false при невдалій автентифікації
         }
-        if (this.isAuthenticated && this.#userId !== userId) {
+
+        if (this.isAuthenticated && this.#user.userId === userData.userId) {
+            this.#logger.debug(
+                `[ConnectedClient:${this.#connectionId}] Already authenticated as ${
+                    userData.userId
+                }. No change needed.`,
+                { connectionId: this.#connectionId, userId: userData.userId },
+            )
+            return true
+        }
+
+        if (this.isAuthenticated && this.#user.userId !== userData.userId) {
             this.#logger.warn(
                 `[ConnectedClient:${this.#connectionId}] Re-authenticating connection from ${
-                    this.#userId
-                } to ${userId}. This might indicate a logic error or re-login.`,
+                    this.#user.userId
+                } to ${userData.userId}. This might indicate a logic error or re-login.`,
                 {
                     connectionId: this.#connectionId,
-                    oldUserId: this.#userId,
-                    newUserId: userId,
+                    oldUserId: this.#user.userId,
+                    newUserId: userData.userId,
                 },
             )
         }
-        this.#userId = userId
+
+        this.#user = { ...userData } // Зберігаємо повний об'єкт даних користувача
         this.isAuthenticated = true
         this.#logger.info(
-            `[ConnectedClient:${this.#connectionId}] Authenticated as userId: ${this.#userId}`,
+            `[ConnectedClient:${this.#connectionId}] Authenticated as userId: ${this.#user.userId}`,
             {
                 connectionId: this.#connectionId,
-                userId: this.#userId,
+                userId: this.#user.userId,
+                userData: this.#user, // Логуємо повні дані користувача
             },
         )
+        return true
     }
 
     /**
@@ -304,23 +350,34 @@ class ConnectedClient {
      * @param {string} [reason=''] - Причина закриття.
      */
     close(code = 1000, reason = '') {
-        if (
-            this.#ws.readyState === WebSocket.OPEN ||
-            this.#ws.readyState === WebSocket.CONNECTING
-        ) {
+        if (this.#ws.readyState === WebSocket.OPEN) {
             this.#ws.close(code, reason)
             this.#logger.info(
                 `[Client:${
                     this.#connectionId
                 }] Connection closed by server. Code: ${code}, Reason: ${reason}`,
+                {
+                    connectionId: this.#connectionId,
+                    code: code,
+                    reason: reason,
+                    userId: this.userId,
+                },
             )
-        } else {
+        } else if (
+            this.#ws.readyState === WebSocket.CLOSING ||
+            this.#ws.readyState === WebSocket.CLOSED
+        ) {
             this.#logger.warn(
                 `[Client:${
                     this.#connectionId
                 }] Attempted to close already closed or closing connection. State: ${
                     this.#ws.readyState
                 }`,
+                {
+                    connectionId: this.#connectionId,
+                    wsReadyState: this.#ws.readyState,
+                    userId: this.userId,
+                },
             )
         }
     }

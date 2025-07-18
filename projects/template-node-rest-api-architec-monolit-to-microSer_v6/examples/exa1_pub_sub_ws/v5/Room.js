@@ -1,4 +1,4 @@
-// room.js
+// Room.js
 
 import { TaskScheduler } from './TaskScheduler.js'
 import ConnectedClient from './Client.js'
@@ -37,6 +37,13 @@ class Room {
 
     /**
      * @private
+     * Об'єкт логера.
+     * @type {object}
+     */
+    #logger
+
+    /**
+     * @private
      * Map для зберігання connectionId клієнтів у цій кімнаті.
      * Key: connectionId (string), Value: ConnectedClient (ConnectedClient instance)
      * @type {Map<string, ConnectedClient>}
@@ -52,17 +59,17 @@ class Room {
 
     /**
      * @private
-     * Об'єкт логера.
-     * @type {object}
-     */
-    #logger
-
-    /**
-     * @private
      * Планувальник задач для цієї конкретної кімнати.
      * @type {TaskScheduler}
      */
     #taskScheduler
+
+    /**
+     * @private
+     * Префікс, який додається до всіх taskId, що планується цією кімнатою.
+     * @type {string}
+     */
+    #taskPrefix
 
     /**
      * @private
@@ -86,11 +93,32 @@ class Room {
     #autoCleanupEmptyRoom
 
     /**
+     * @private
+     * Інтервал перевірки порожніх кімнат.
+     * @type {number}
+     */
+    #emptyRoomCleanupIntervalMs
+
+    /**
+     * @private
+     * Час, через який порожня кімната буде видалена.
+     * @type {number}
+     */
+    #emptyRoomLifetimeMs
+
+    /**
+     * @private
+     * Колбек, що викликається, коли кімната стає порожньою і її термін життя вичерпано.
+     * @type {function(string, string): void}
+     */
+    #onRoomEmptyAndExpired
+
+    /**
      * @param {string} name - Унікальне ім'я кімнати.
      * @param {string} namespace - Простір імен, до якого належить кімната.
      * @param {object} logger - Об'єкт логера з методами info, warn, error, debug.
      * @param {object} [options={}] - Додаткові опції кімнати.
-     * @param {number} [options.emptyRoomCleanupIntervalMs=DEFAULT_EMPTY_ROOM_CHECK_INTERVAL_MS] - Інтервал перевірки порожніх кімнат.
+     * @param {number} [options.emptyRoomCleanupIntervalMs=DEFAULT_EMPTY_ROOM_CHECK_INTERVAL_INTERVAL_MS] - Інтервал перевірки порожніх кімнат.
      * @param {number} [options.emptyRoomLifetimeMs=DEFAULT_EMPTY_ROOM_LIFETIME_MS] - Час, через який порожня кімната буде видалена.
      * @param {boolean} [options.autoCleanupEmptyRoom=true] - Чи слід автоматично видаляти кімнату, коли вона стає порожньою. За замовчуванням true.
      * @param {LeaderElection | null} [leaderElection=null] - Екземпляр LeaderElection для TaskScheduler.
@@ -111,6 +139,11 @@ class Room {
         if (!name || !namespace) {
             throw new Error('Room name and namespace are required.')
         }
+        if (!logger) {
+            throw new Error(
+                'Invalid logger object provided to Room constructor. It must have info, warn, error, debug methods.',
+            )
+        }
         if (autoCleanupEmptyRoom && typeof onRoomEmptyAndExpired !== 'function') {
             throw new Error(
                 'onRoomEmptyAndExpired callback function is required when autoCleanupEmptyRoom is true.',
@@ -122,12 +155,14 @@ class Room {
         this.#logger = logger
         this.#clients = new Map()
         this.#taskScheduler = new TaskScheduler(logger, leaderElection)
+        this.#taskPrefix = `room-${this.fullName}`
         this.#lastActivityTime = new Date()
 
-        this.emptyRoomCleanupIntervalMs = emptyRoomCleanupIntervalMs
-        this.emptyRoomLifetimeMs = emptyRoomLifetimeMs
+        // Зберігаємо параметри очищення як приватні поля
+        this.#emptyRoomCleanupIntervalMs = emptyRoomCleanupIntervalMs
+        this.#emptyRoomLifetimeMs = emptyRoomLifetimeMs
         this.#autoCleanupEmptyRoom = autoCleanupEmptyRoom
-        this.onRoomEmptyAndExpired = onRoomEmptyAndExpired
+        this.#onRoomEmptyAndExpired = onRoomEmptyAndExpired
 
         if (this.#autoCleanupEmptyRoom) {
             this.#scheduleEmptyRoomCleanup()
@@ -138,15 +173,16 @@ class Room {
         this.#logger.info(`[Room:${this.fullName}] Room created in namespace '${namespace}'.`, {
             roomName: name,
             namespace: namespace,
+            autoCleanup: this.#autoCleanupEmptyRoom,
         })
     }
 
     /**
-     * Повертає повне ім'я кімнати (namespace:name).
+     * Повертає повне ім'я кімнати (namespace:namespace_name:room:room_name).
      * @returns {string}
      */
     get fullName() {
-        return `${this.#namespace}:${this.#name}`
+        return `namespace:${this.#namespace}:room:${this.#name}`
     }
 
     /**
@@ -184,25 +220,39 @@ class Room {
     /**
      * Додає клієнта до кімнати.
      * @param {ConnectedClient} client - Екземпляр ConnectedClient.
+     * @throws {Error} Якщо надано недійсний тип клієнта.
      */
     addClient(client) {
+        // Валідація ConnectedClient
+        if (!(client instanceof ConnectedClient)) {
+            this.#logger.error(`[Room:${this.fullName}] Attempted to add an invalid client type.`, {
+                room: this.fullName,
+                invalidClient: client,
+            })
+            throw new Error('Only instances of ConnectedClient can be added to a Room.')
+        }
+
         if (this.#clients.has(client.connectionId)) {
             this.#logger.debug(
                 `[Room:${this.fullName}] Client ${client.connectionId} is already in this room.`,
                 {
                     connectionId: client.connectionId,
+                    userId: client.userId,
                     room: this.fullName,
                 },
             )
             return
         }
+
         this.#clients.set(client.connectionId, client)
         client.joinRoom(this.fullName) // Оновлюємо стан клієнта
+
         this.#updateActivityTime()
         this.#logger.info(
             `[Room:${this.fullName}] Client ${client.connectionId} joined. Total clients: ${this.size}`,
             {
                 connectionId: client.connectionId,
+                userId: client.userId,
                 room: this.fullName,
                 totalClients: this.size,
             },
@@ -218,11 +268,13 @@ class Room {
         if (client) {
             this.#clients.delete(connectionId)
             client.leaveRoom(this.fullName) // Оновлюємо стан клієнта
+
             this.#updateActivityTime()
             this.#logger.info(
                 `[Room:${this.fullName}] Client ${connectionId} left. Total clients: ${this.size}`,
                 {
                     connectionId: connectionId,
+                    userId: client.userId,
                     room: this.fullName,
                     totalClients: this.size,
                 },
@@ -231,8 +283,9 @@ class Room {
             if (this.#autoCleanupEmptyRoom && this.size === 0) {
                 this.#logger.debug(
                     `[Room:${this.fullName}] Room became empty after client ${connectionId} left. Triggering immediate cleanup check.`,
+                    { room: this.fullName },
                 )
-                this.#checkAndTriggerRoomRemoval()
+                this.#checkAndTriggerRoomRemoval() // Негайна перевірка на видалення
             }
         } else {
             this.#logger.debug(
@@ -279,7 +332,8 @@ class Room {
             }). Total messages from room: ${this.#messagesSentFromRoomCount}`,
             {
                 room: this.fullName,
-                message: message,
+                // Можлива серіалізація повідомлення для логування, якщо логер не робить цього автоматично
+                message: typeof message === 'object' ? JSON.stringify(message) : message,
                 exclude: excludeConnectionIds,
                 clientsSentTo: sentToCount,
                 totalMessagesFromRoom: this.#messagesSentFromRoomCount,
@@ -297,6 +351,7 @@ class Room {
     sendToUser(userId, message, options = {}) {
         let sentToCount = 0
         for (const client of this.#clients.values()) {
+            // Перевіряємо client.isAuthenticated для надійності
             if (client.userId === userId && client.isAuthenticated) {
                 client.send(message, options)
                 sentToCount++
@@ -313,7 +368,7 @@ class Room {
                 {
                     room: this.fullName,
                     userId: userId,
-                    message: message,
+                    message: typeof message === 'object' ? JSON.stringify(message) : message,
                     connectionsSent: sentToCount,
                     totalMessagesFromRoom: this.#messagesSentFromRoomCount,
                 },
@@ -330,28 +385,39 @@ class Room {
     }
 
     /**
+     * Приватний допоміжний метод для формування повного taskId з префіксом кімнати.
+     * @private
+     * @param {string} baseTaskId - Базовий ідентифікатор задачі (без префікса кімнати).
+     * @returns {string} Повний ідентифікатор задачі.
+     */
+    #getFullTaskId(baseTaskId) {
+        return `${this.#taskPrefix}-${baseTaskId}`
+    }
+
+    /**
      * Перевіряє, чи запущенна задача з даним taskId в цій кімнаті.
-     * @param {string} taskId - Унікальний ідентифікатор задачі.
+     * @param {string} taskId - Унікальний ідентифікатор задачі (БЕЗ префікса кімнати).
      * @returns {boolean}
      */
     hasTask(taskId) {
-        return this.#taskScheduler.hasTask(taskId)
+        return this.#taskScheduler.hasTask(this.#getFullTaskId(taskId))
     }
 
     /**
      * Планує періодичну задачу для цієї кімнати.
      * Цей метод спочатку перевіряє, чи задача з таким ID вже існує.
-     * @param {string} taskId - Унікальний ідентифікатор задачі.
+     * @param {string} taskId - Унікальний ідентифікатор задачі (БЕЗ префікса кімнати).
      * @param {function(object): any} executeFn - Функція, яка буде виконуватися.
      * @param {import('./TaskScheduler').TaskConfig} [config={}] - Об'єкт конфігурації задачі.
      * @param {object} [params={}] - Параметри, які будуть передані в executeFn.
      * @returns {boolean} - True, якщо задача була успішно запланована (або оновлена), false, якщо задача з таким ID вже існує і її не було оновлено.
      */
     scheduleTask(taskId, executeFn, config = {}, params = {}) {
-        // Додаємо перевірку перед плануванням
-        if (this.#taskScheduler.hasTask(taskId)) {
+        const fullTaskId = this.#getFullTaskId(taskId)
+
+        if (this.hasTask(taskId)) {
             this.#logger.warn(
-                `[Room:${this.fullName}] Task with ID '${taskId}' is already scheduled in this room. Skipping new scheduling.`,
+                `[Room:${this.fullName}] Task with ID '${fullTaskId}' (raw: ${taskId}) is already scheduled in this room. Skipping new scheduling.`,
                 {
                     room: this.fullName,
                     taskId: taskId,
@@ -361,6 +427,14 @@ class Room {
         }
 
         this.#taskScheduler.scheduleTask(taskId, executeFn, config, params)
+        this.#logger.debug(
+            `[Room:${this.fullName}] Scheduled task '${fullTaskId}' (raw: ${taskId}).`,
+            {
+                room: this.fullName,
+                fullTaskId: fullTaskId,
+                rawTaskId: taskId,
+            },
+        )
         return true // Повідомляємо, що задача була успішно запланована
     }
 
@@ -369,7 +443,16 @@ class Room {
      * @param {string} taskId - Ідентифікатор задачі.
      */
     stopTask(taskId) {
-        this.#taskScheduler.stopTask(taskId)
+        const fullTaskId = this.#getFullTaskId(taskId)
+        this.#taskScheduler.stopTask(fullTaskId)
+        this.#logger.debug(
+            `[Room:${this.fullName}] Stopped task '${fullTaskId}' (raw: ${taskId}).`,
+            {
+                room: this.fullName,
+                fullTaskId: fullTaskId,
+                rawTaskId: taskId,
+            },
+        )
     }
 
     /**
@@ -386,13 +469,14 @@ class Room {
      * @private
      */
     #scheduleEmptyRoomCleanup() {
-        this.#emptyRoomCleanupTaskId = `room-cleanup-${this.fullName}`
+        const baseTaskId = 'cleanup'
+        this.#emptyRoomCleanupTaskId = this.#getFullTaskId(baseTaskId)
 
         this.#taskScheduler.scheduleTask(
             this.#emptyRoomCleanupTaskId,
             () => this.#checkAndTriggerRoomRemoval(),
             {
-                intervalMs: this.emptyRoomCleanupIntervalMs,
+                intervalMs: this.#emptyRoomCleanupIntervalMs,
                 runOnActivation: false,
                 allowOverlap: false,
             },
@@ -401,7 +485,7 @@ class Room {
         this.#logger.debug(
             `[Room:${this.fullName}] Scheduled empty room cleanup task (ID: ${
                 this.#emptyRoomCleanupTaskId
-            }) every ${this.emptyRoomCleanupIntervalMs}ms.`,
+            }) every ${this.#emptyRoomCleanupIntervalMs}ms.`,
         )
     }
 
@@ -412,54 +496,91 @@ class Room {
      * @private
      */
     #checkAndTriggerRoomRemoval() {
-        if (!this.#autoCleanupEmptyRoom || this.size > 0) {
-            if (this.size > 0) {
-                this.#logger.debug(
-                    `[Room:${this.fullName}] Room is no longer empty, canceling cleanup check.`,
-                )
-            }
+        if (!this.#autoCleanupEmptyRoom) {
+            // Автоматичне очищення вимкнено, нічого не робимо
             return
         }
 
+        if (this.size > 0) {
+            this.#logger.debug(
+                `[Room:${this.fullName}] Room is no longer empty, canceling cleanup check.`,
+                { room: this.fullName },
+            )
+            // Оновлюємо час активності, щоб таймер простою починався знову,
+            // якщо кімната знову стане порожньою після тимчасового спорожнення.
+            this.#updateActivityTime()
+            return
+        }
+
+        // Якщо ми дійшли сюди, значить autoCleanupEmptyRoom = true І size = 0
         this.#logger.debug(
             `[Room:${
                 this.fullName
             }] Performing empty room cleanup check. Last activity: ${this.#lastActivityTime.toISOString()}`,
+            { room: this.fullName },
         )
         const timeElapsedSinceLastActivity = Date.now() - this.#lastActivityTime.getTime()
 
-        if (timeElapsedSinceLastActivity >= this.emptyRoomLifetimeMs) {
+        if (timeElapsedSinceLastActivity >= this.#emptyRoomLifetimeMs) {
             this.#logger.info(
                 `[Room:${this.fullName}] Room is empty and has expired after ${timeElapsedSinceLastActivity}ms. Triggering removal.`,
                 {
                     room: this.fullName,
                     emptyForMs: timeElapsedSinceLastActivity,
-                    thresholdMs: this.emptyRoomLifetimeMs,
+                    thresholdMs: this.#emptyRoomLifetimeMs,
                 },
             )
-            if (this.onRoomEmptyAndExpired) {
-                this.onRoomEmptyAndExpired(this.#name, this.#namespace)
+            if (this.#onRoomEmptyAndExpired) {
+                // Викликаємо приватний колбек
+                this.#onRoomEmptyAndExpired(this.#name, this.#namespace)
             }
         } else {
             this.#logger.debug(
                 `[Room:${this.fullName}] Room is empty but has not yet expired. Time left: ${
-                    this.emptyRoomLifetimeMs - timeElapsedSinceLastActivity
+                    this.#emptyRoomLifetimeMs - timeElapsedSinceLastActivity
                 }ms.`,
+                {
+                    room: this.fullName,
+                    emptyForMs: timeElapsedSinceLastActivity,
+                    thresholdMs: this.#emptyRoomLifetimeMs,
+                    timeLeftMs: this.#emptyRoomLifetimeMs - timeElapsedSinceLastActivity,
+                },
             )
         }
     }
 
     /**
-     * Очищає всі ресурси кімнати (зупиняє задачі).
+     * Очищає всі ресурси кімнати (зупиняє задачі та сповіщає клієнтів про вихід).
      * Викликається перед видаленням кімнати.
      */
     destroy() {
         this.#taskScheduler.stopAllTasks()
-        this.#clients.clear()
-        this.#logger.info(`[Room:${this.fullName}] Room destroyed. All tasks stopped.`, {
-            room: this.fullName,
-            messagesSentFromRoom: this.#messagesSentFromRoomCount,
-        })
+
+        // Повідомляємо всім клієнтам, що вони покидають цю кімнату
+        for (const client of this.#clients.values()) {
+            try {
+                client.leaveRoom(this.fullName)
+            } catch (error) {
+                this.#logger.error(
+                    `[Room:${this.fullName}] Error notifying client ${client.connectionId} about room destruction: ${error.message}`,
+                    {
+                        room: this.fullName,
+                        connectionId: client.connectionId,
+                        userId: client.userId,
+                        error: error,
+                    },
+                )
+            }
+        }
+        this.#clients.clear() // Очищаємо мапу клієнтів
+
+        this.#logger.info(
+            `[Room:${this.fullName}] Room destroyed. All tasks stopped and clients notified.`,
+            {
+                room: this.fullName,
+                messagesSentFromRoom: this.#messagesSentFromRoomCount,
+            },
+        )
     }
 }
 

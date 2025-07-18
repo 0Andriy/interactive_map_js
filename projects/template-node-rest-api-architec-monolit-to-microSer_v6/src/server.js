@@ -4,7 +4,7 @@ import https from 'https'
 
 import config from './config/config.js'
 // api
-import app from './app.js'
+import { createExpressApp } from './app.js'
 // Logger
 import logger from './utils/logger.js'
 // Database
@@ -19,6 +19,10 @@ import userModel from './api/v1/models/user.model.js'
 import roleModel from './api/v1/models/role.model.js'
 import userRoleModel from './api/v1/models/userRole.model.js'
 import refreshTokenModel from './api/v1/models/refreshToken.model.js'
+
+//
+
+const app = createExpressApp()
 
 // <=======================================================================>
 // <=========================  HTTP(S) server  ============================>

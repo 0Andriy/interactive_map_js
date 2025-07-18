@@ -6,6 +6,7 @@ import Namespace from './Namespace.js' // Наш клас Namespace
 import { setupHeartbeat } from './heartbeat.js' // Імпортуємо функцію Heartbeat
 // Припускаємо, що у вас є файл logger.js з функцією створення логера
 import { createLogger } from './logger.js'
+import AuthManager from './authManager.js' // Імпортуємо AuthManager
 
 /**
  * Клас, що є основним додатком WebSocket сервера.
@@ -50,6 +51,13 @@ class WebSocketApplication {
     #defaultNamespaceConfigs
 
     /**
+     * @private
+     * Екземпляр AuthManager для керування автентифікацією.
+     * @type {AuthManager}
+     */
+    #authManager
+
+    /**
      * @param {object} [options={}] - Опції для WebSocketApplication.
      * @param {number} [options.port] - Порт, на якому буде слухати WebSocket сервер. Використовується, якщо serverOptions.noServer не встановлено в true.
      * @param {object | null} [options.server=null] - Існуючий HTTP/HTTPS сервер. Обов'язково, якщо serverOptions.noServer: true.
@@ -72,6 +80,7 @@ class WebSocketApplication {
         this.#allConnectedClients = new Map()
         this.#namespaces = new Map()
         this.#defaultNamespaceConfigs = namespaceConfigs
+        this.#authManager = new AuthManager(this.#logger)
 
         // Встановлюємо опцію noServer в true, якщо надано існуючий сервер
         if (server) {
@@ -125,6 +134,14 @@ class WebSocketApplication {
      */
     get totalClients() {
         return this.#allConnectedClients.size
+    }
+
+    /**
+     * Повертає екземпляр AuthManager.
+     * @returns {AuthManager}
+     */
+    get authManager() {
+        return this.#authManager
     }
 
     /**
@@ -193,10 +210,31 @@ class WebSocketApplication {
     #handleConnection(ws, req) {
         const requestedPath = req.url ? req.url.split('?')[0] : '/' // Отримуємо шлях без query params
         const namespaceName = this.#extractNamespaceNameFromPath(requestedPath)
+        const authToken = queryParams.get('token')
 
         this.#logger.info(
-            `New client connected. Path: '${requestedPath}', Proposed Namespace: '${namespaceName}'`,
+            `New client connected. Path: '${requestedPath}', Proposed Namespace: '${namespaceName}, Token presence: ${!!authToken}'`,
         )
+
+        const client = new ConnectedClient(ws, this.#logger)
+        this.#allConnectedClients.set(client.connectionId, client)
+
+        const decodedToken = this.#authManager.validateToken(authToken)
+
+        if (!decodedToken || !decodedToken.userId) {
+            this.#logger.warn(
+                `Client ${client.connectionId} authentication failed or token invalid/missing. Disconnecting.`,
+            )
+            client.send({
+                type: 'AUTH_FAILED',
+                payload: 'Invalid or missing authentication token.',
+            })
+            client.close(4001, 'Authentication Failed') // Використовуємо кастомний код для автентифікації
+            this.#allConnectedClients.delete(client.connectionId) // Видаляємо, якщо автентифікація не пройшла
+            return
+        }
+
+        client.setUserId(decodedToken.userId)
 
         let namespace = this.#namespaces.get(namespaceName)
         if (!namespace) {
@@ -214,8 +252,6 @@ class WebSocketApplication {
             }
         }
 
-        const client = new ConnectedClient(ws, this.#logger)
-        this.#allConnectedClients.set(client.connectionId, client)
         namespace.addClient(client) // Додаємо клієнта до відповідного Namespace
 
         // Зберігаємо посилання на Namespace безпосередньо в об'єкті ws,
