@@ -25,30 +25,51 @@ import refreshTokenModel from './api/v1/models/refreshToken.model.js'
 // <=======================================================================>
 function createAndRunServer(protocol, port, host) {
     let server = null
-    let serverType = null
 
+    // <=======================================================================>
+    // <======== Створення відповідного сервера (HTTP або HTTPS) ==============>
+    // <=======================================================================>
     if (protocol === 'http') {
         server = http.createServer()
-        serverType = 'HTTP'
     } else {
         server = https.createServer(config.getSslOptions())
-        serverType = 'HTTPS'
     }
 
+    // <=======================================================================>
+    // <==============  Ініціалізація WebSocketManager  =======================>
+    // <=======================================================================>
+    const wssApp = initializeWebSocketServices(server)
+
+    // <=======================================================================>
+    // <======================  Create Express App  ===========================>
+    // <=======================================================================>
+    const expressApp = createExpressApp({ wsAppInstance: wssApp })
+    // Прив'язка Express-додатку до сервера
+    server.on('request', expressApp)
+
+    // <=======================================================================>
+    // <====================== Запуск сервера  ===========================>
+    // <=======================================================================>
     server.listen(port, host, () => {
         logger.info(
-            `${serverType} Server is running => ${protocol}://${
+            `${protocol.toUpperCase()} Server is running => ${protocol}://${
                 host || config.getLocalIp() || 'localhost'
             }:${port}`,
         )
+        // logger.info(
+        //     `WebSocket is also running on ${protocol === 'https' ? 'wss' : 'ws'}://${
+        //         host || 'localhost'
+        //     }:${port}`,
+        // )
     })
 
     // Додайте обробку помилок сервера
     server.on('error', (error) => {
-        logger.error(`Error starting ${serverType} server on port ${port}:`, error)
+        logger.error(`Error starting ${protocol.toUpperCase()} server on port ${port}:`, error)
         process.exit(1) // Завершити процес у разі критичної помилки
     })
 
+    //
     return server
 }
 
@@ -128,44 +149,21 @@ async function initApp() {
     //!
 
     // <=======================================================================>
-    // <===============  Ініціалізація HTTP Server  ===========================>
+    // <===============  Запуск HTTP Server  ===========================>
     // <=======================================================================>
-    let httpServer = null
-
     if (config.server.useHttp) {
-        httpServer = createAndRunServer(
-            expressApp,
-            'http',
-            config.server.ports.http,
-            config.server.host,
-        )
+        createAndRunServer('http', config.server.ports.http, config.server.host)
     }
 
     // <=======================================================================>
     // <=================  Ініціалізація HTTPS Server  ========================>
     // <=======================================================================>
-    let httpsServer = null
 
     if (config.server.useHttps) {
-        httpsServer = createAndRunServer(
-            expressApp,
-            'https',
-            config.server.ports.https,
-            config.server.host,
-        )
+        // Отримання опцій SSL з конфігурації
+        const sslOptions = config.getSslOptions()
+        createAndRunServer('https', config.server.ports.https, config.server.host)
     }
-
-    // <=======================================================================>
-    // <==============  Ініціалізація WebSocketManager  =======================>
-    // <=======================================================================>
-
-    const wssApp = initializeWebSocketServices(httpsServer ? httpsServer : httpServer)
-
-    // <=======================================================================>
-    // <======================  Create Express App  ===========================>
-    // <=======================================================================>
-
-    const expressApp = createExpressApp({ wsAppInstance: wssApp })
 
     // <=======================================================================>
     // <====================  Graceful shutdown  ==============================>
@@ -186,5 +184,4 @@ async function initApp() {
 // <=======================================================================>
 // <============================  Run   ===================================>
 // <=======================================================================>
-//
 initApp()
