@@ -77,6 +77,7 @@ const decodeJwtWithoutVerification = (token) => {
  */
 export async function loggingUserResolver(req, res, next) {
     let userIdentifier = 'anonymous' // Default identifier
+    let userLogin = null
     let userRoles = [] // User roles
     let source = 'none' // Where the data came from
 
@@ -138,6 +139,12 @@ export async function loggingUserResolver(req, res, next) {
 
     if (decodedAccessToken && decodedAccessToken.userId) {
         userIdentifier = decodedAccessToken.userId
+        userLogin =
+            decodedAccessToken.username ||
+            decodedAccessToken.login ||
+            decodedAccessToken.sub ||
+            decodedAccessToken.email ||
+            null
         userRoles = Array.isArray(decodedAccessToken.roles) ? decodedAccessToken.roles : []
         // `source` is already set inside `findAndDecodeToken`
     }
@@ -152,6 +159,12 @@ export async function loggingUserResolver(req, res, next) {
 
         if (decodedRefreshToken && decodedRefreshToken.userId) {
             userIdentifier = decodedRefreshToken.userId
+            userLogin =
+                decodedRefreshToken.username ||
+                decodedRefreshToken.login ||
+                decodedRefreshToken.sub ||
+                decodedRefreshToken.email ||
+                null
             userRoles = Array.isArray(decodedRefreshToken.roles) ? decodedRefreshToken.roles : []
             // `source` is already set inside `findAndDecodeToken`
         }
@@ -160,6 +173,7 @@ export async function loggingUserResolver(req, res, next) {
     // Attach the resolved user context to the request object for later logging
     req.logUserContext = {
         userId: userIdentifier,
+        userLogin: userLogin,
         userRoles: userRoles,
         tokenSource: source,
     }

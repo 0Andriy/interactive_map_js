@@ -28,7 +28,7 @@ import apiV1Routes from './api/v1/index.js'
 // <=======================================================================>
 // <=======================================================================>
 
-export async function createExpressApp({ wsAppInstance = null } = {}) {
+export async function createExpressApp({ wsAppInstance = null, staticFilesDir = 'public' } = {}) {
     // Створюємо екземпляр додатку
     const app = express()
 
@@ -158,9 +158,9 @@ export async function createExpressApp({ wsAppInstance = null } = {}) {
     // <=======================================================================>
 
     // Додаємо роздачу статичних файлів (зображення, стилі, скрипти) з папки 'public'
-    async function addStaticFiles(folderPath = 'public') {
+    async function addStaticFiles(staticFilesDir = 'public') {
         // Шлях до папки зі статичними файлами
-        const staticFolderPath = path.resolve(process.cwd(), folderPath)
+        const staticFolderPath = path.resolve(process.cwd(), staticFilesDir)
 
         try {
             // Перевіряємо доступність папки
@@ -174,7 +174,7 @@ export async function createExpressApp({ wsAppInstance = null } = {}) {
             )
         }
     }
-    await addStaticFiles('public')
+    await addStaticFiles(staticFilesDir)
 
     // <=======================================================================>
     // <========================== Routes (endpoints) =========================>

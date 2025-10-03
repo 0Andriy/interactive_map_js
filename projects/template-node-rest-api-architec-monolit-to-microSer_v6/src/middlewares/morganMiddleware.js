@@ -26,6 +26,7 @@ const morganMiddleware = morgan(
         const userContext = req.logUserContext || {} // Ensure the object exists
 
         return JSON.stringify({
+            // --- СТАНДАРТНА ІНФОРМАЦІЯ ПРО ВІДПОВІДЬ ---
             remote_address: tokens['remote-addr'](req, res), // Client's IP address
             remote_user: tokens['remote-user'](req, res), // Username (if available)
             // date: tokens['date'](req, res, 'iso'),         // Date in ISO format
@@ -37,9 +38,16 @@ const morganMiddleware = morgan(
             referrer: tokens.referrer(req, res), // Referrer URL
             user_agent: tokens['user-agent'](req, res), // Browser information
             response_time: `${tokens['response-time'](req, res)} ms`, // Request processing time
-            // Add user data
-            user_id: userContext.userId,
-            user_roles: userContext.userRoles,
+
+            // --- ДОДАНІ ДЕТАЛІ ЗАПИТУ ---
+            headers: req.headers || {}, // Заголовки
+            query: req.query || {}, // Query параметри
+            body: req.body || {}, // Тіло запиту
+
+            // --- ІНФОРМАЦІЯ ПРО КОРИСТУВАЧА ---
+            user: userContext,
+            user_id: userContext.userId || userContext.id, // Підтримка userId або просто id
+            user_roles: userContext.userRoles || userContext.roles,
             token_source: userContext.tokenSource,
         })
     },
