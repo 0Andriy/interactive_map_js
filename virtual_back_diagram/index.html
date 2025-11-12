@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Нескінченне Полотно з Лініями</title>
+        <link rel="stylesheet" href="src/style.css" />
+    </head>
+    <body>
+        <!-- Вікно перегляду (Viewport) -->
+        <div id="diagram-container">
+            <!-- Контейнер вмісту -->
+            <div id="canvas-area">
+                <!-- SVG-полотно для ліній (pointer-events: none у CSS) -->
+                <svg id="connector-canvas"></svg>
+
+                <!-- Приклади елементів на полотні -->
+                <div id="element1" class="diagram-element" style="top: 100px; left: 100px">
+                    Елемент 1
+                </div>
+                <div id="element2" class="diagram-element" style="top: 300px; left: 400px">
+                    Елемент 2
+                </div>
+                <div id="element3" class="diagram-element" style="top: 150px; left: 600px">
+                    Елемент 3
+                </div>
+            </div>
+        </div>
+
+        <script src="src/script.js"></script>
+    </body>
+</html>
+
+<!--
+* Стилі для SVG лінії та анімації "струму" */
+#connector-canvas path {
+    stroke-dasharray: 5, 5; /* Пунктир */
+    animation: dash 1s linear infinite; /* Анімація */
+    pointer-events: all; /* Дозволяє клікати на лінії */
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: -100; /* Зміщення пунктиру */
+    }
+} -->

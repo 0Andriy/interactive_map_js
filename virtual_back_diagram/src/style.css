@@ -1,0 +1,73 @@
+body {
+    margin: 0;
+    overflow: hidden; /* Приховуємо стандартні скроли браузера */
+    background-color: #f0f0ff;
+}
+
+#diagram-container {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden; /* Ключова властивість: вміст за межами цього блоку невидимий */
+    cursor: grab; /* Курсор "рука" для панорамування */
+}
+
+#diagram-container.is-dragging {
+    cursor: grabbing; /* Курсор "захоплена рука" під час перетягування */
+}
+
+#canvas-area {
+    position: absolute;
+    transform: translate(0px, 0px) scale(1);
+    transform-origin: 0 0;
+    width: 100%;
+    height: 100%;
+}
+
+#connector-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Дозволяє клікам "проходити" крізь SVG до блоків */
+}
+
+/* Стилі для тестових елементів */
+.diagram-element {
+    position: absolute;
+    padding: 10px 15px;
+    background-color: #ffffff;
+    border: 1px solid #333;
+    border-radius: 5px;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+    cursor: grab; /* Курсор "рука" для перетягування елемента */
+    pointer-events: auto; /* Дозволяє елементам приймати події миші */
+}
+
+
+
+/* Базовий стиль лінії */
+path.connector-line {
+    stroke: red;
+    stroke-width: 2;
+    fill: none;
+    pointer-events: all; /* Дозволяє клікати та наводити на лінію */
+    transition: stroke-width 0.2s;
+}
+
+path.connector-line:hover {
+    stroke-width: 4; /* Потовщення при наведенні */
+}
+
+/* Анімація "струму", застосовується тільки коли є клас .animated */
+path.connector-line.animated {
+    stroke-dasharray: 5, 5;
+    animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: -100;
+    }
+}
