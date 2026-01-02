@@ -1,0 +1,106 @@
+/**
+ * @file Реалізація локальної шини подій із підтримкою шаблонів (wildcards).
+ * @module core/PubSub
+ */
+
+/**
+ * @class PubSub
+ * @classdesc Забезпечує механізм публікації/підписки з підтримкою паттернів (напр. 'user.*').
+ */
+export class PubSub {
+    constructor() {
+        /**
+         * Карта підписників: pattern -> Set<callback>
+         * @type {Map<string, Set<Function>>}
+         * @private
+         */
+        this._subscribers = new Map()
+
+        /**
+         * Кеш скомпільованих регулярних виразів для оптимізації продуктивності.
+         * @type {Map<string, RegExp>}
+         * @private
+         */
+        this._regexCache = new Map()
+    }
+
+    /**
+     * Підписка на подію або паттерн (напр. 'chat.*').
+     * @param {string} pattern - Назва події або паттерн (напр. "orders.*", "chat:msg").
+     * @param {Function} callback - Функція обробник.
+     * @returns {Function} Функція для відписки (unsubscribe).
+     */
+    on(pattern, callback) {
+        if (typeof callback !== 'function') {
+            throw new TypeError('Callback must be a function')
+        }
+
+        if (!this._subscribers.has(pattern)) {
+            this._subscribers.set(pattern, new Set())
+            // Екрануємо крапку і перетворюємо * на .*
+            const regexStr = '^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$'
+            this._regexCache.set(pattern, new RegExp(regexStr))
+        }
+
+        this._subscribers.get(pattern).add(callback)
+        return () => this.off(pattern, callback)
+    }
+
+    /**
+     * Відписка від події.
+     * @param {string} pattern - Паттерн, на який була оформлена підписка.
+     * @param {Function} callback - Обробник, який треба видалити.
+     */
+    off(pattern, callback) {
+        const subs = this._subscribers.get(pattern)
+        if (subs) {
+            subs.delete(callback)
+            if (subs.size === 0) {
+                this._subscribers.delete(pattern)
+                this._regexCache.delete(pattern)
+            }
+        }
+    }
+
+    /**
+     * Асинхронно публікує дані у топік.
+     * Викликає всі обробники, чиї паттерни збігаються з топіком.
+     * @param {string} topic - Конкретний топік події (напр. "orders.created").
+     * @param {any} data - Дані повідомлення.
+     * @returns {Promise<void>}
+     */
+    async emit(topic, data) {
+        const tasks = []
+
+        for (const [pattern, subs] of this._subscribers.entries()) {
+            const regex = this._regexCache.get(pattern)
+
+            if (regex && regex.test(topic)) {
+                for (const callback of subs) {
+                    // Використовуємо проміси для паралельного виконання
+                    tasks.push(
+                        (async () => {
+                            try {
+                                await callback(data)
+                            } catch (error) {
+                                // Логування помилки, щоб вона не зупиняла інші таски
+                                console.error(`PubSub Error [${topic}]:`, error)
+                            }
+                        })(),
+                    )
+                }
+            }
+        }
+
+        // Чекаємо виконання всіх обробників паралельно
+        await Promise.allSettled(tasks)
+    }
+
+    /**
+     * Повне очищення всіх підписок та кешу.
+     */
+    clear() {
+        this._subscribers.clear()
+        this._regexCache.clear()
+    }
+}

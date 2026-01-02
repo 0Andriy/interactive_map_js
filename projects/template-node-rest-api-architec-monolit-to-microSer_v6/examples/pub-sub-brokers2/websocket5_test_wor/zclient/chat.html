@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>WS Pro Chat 2026 | Full Sync</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            @import url('fonts.googleapis.com');
+            body {
+                font-family: 'Inter', sans-serif;
+                background-color: #020617;
+                color: #f8fafc;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            .msg-bubble {
+                max-width: 80%;
+                padding: 10px 14px;
+                border-radius: 14px;
+                font-size: 14px;
+            }
+            .msg-mine {
+                background: #2563eb;
+                color: #fff;
+                align-self: flex-end;
+                border-bottom-right-radius: 2px;
+            }
+            .msg-others {
+                background: #1e293b;
+                color: #f1f5f9;
+                align-self: flex-start;
+                border-bottom-left-radius: 2px;
+                border: 1px solid #334155;
+            }
+
+            .status-ring {
+                transition: all 0.4s ease;
+                border-radius: 50%;
+                border: 2px solid transparent;
+            }
+            .status-OPEN {
+                border-color: #10b981;
+                filter: drop-shadow(0 0 5px #10b981);
+            }
+            .status-CONNECTING {
+                border-color: #f59e0b;
+                animation: pulse 1.5s infinite;
+            }
+
+            .unread-badge {
+                background: #ef4444;
+                color: white;
+                font-size: 10px;
+                padding: 2px 6px;
+                border-radius: 10px;
+                font-weight: 800;
+            }
+            .room-active {
+                background: rgba(37, 99, 235, 0.15);
+                color: #60a5fa;
+                border-left: 4px solid #2563eb;
+            }
+
+            @keyframes pulse {
+                50% {
+                    opacity: 0.5;
+                }
+            }
+            .custom-scroll::-webkit-scrollbar {
+                width: 4px;
+            }
+            .custom-scroll::-webkit-scrollbar-thumb {
+                background: #334155;
+                border-radius: 10px;
+            }
+        </style>
+    </head>
+    <body class="flex flex-col">
+        <header
+            class="h-16 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-50"
+        >
+            <div class="flex flex-col">
+                <span class="text-[10px] font-black text-blue-500 tracking-widest uppercase"
+                    >WS_SYSTEM_2026</span
+                >
+                <span
+                    id="wsStatusText"
+                    class="text-[9px] font-mono text-slate-500 uppercase tracking-tighter"
+                    >Disconnected</span
+                >
+            </div>
+
+            <div class="flex-1 max-w-xl mx-8 flex gap-2">
+                <input
+                    id="wsUrl"
+                    type="text"
+                    value="wss://echo.websocket.org"
+                    class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-[11px] font-mono text-blue-400 outline-none focus:ring-1 focus:ring-blue-500"
+                />
+                <button
+                    id="btnConnect"
+                    class="bg-blue-600 hover:bg-blue-500 px-5 py-2 rounded-xl text-[10px] font-black transition-all"
+                >
+                    CONNECT
+                </button>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-bold text-slate-300">Senior_Dev</span>
+                <div id="avatarWrapper" class="status-ring status-CLOSED p-0.5">
+                    <div
+                        class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-sm font-black border-2 border-slate-900 uppercase"
+                    >
+                        S
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Кімнати -->
+            <nav class="w-64 border-r border-slate-800 bg-slate-900/40 flex flex-col shrink-0">
+                <div class="p-5 flex justify-between items-center border-b border-slate-800/50">
+                    <span class="text-[10px] font-black text-slate-500 uppercase">Channels</span>
+                    <button id="btnAddRoom" class="text-blue-500 hover:text-white text-lg">
+                        +
+                    </button>
+                </div>
+                <div id="roomList" class="flex-1 overflow-y-auto custom-scroll p-2 space-y-1"></div>
+            </nav>
+
+            <!-- Чат -->
+            <main class="flex-1 flex flex-col bg-slate-950">
+                <div
+                    class="h-14 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900/10 shrink-0"
+                >
+                    <h2
+                        id="activeRoomName"
+                        class="text-xs font-bold text-slate-400 uppercase tracking-widest"
+                    >
+                        Select Channel
+                    </h2>
+                    <div id="typingArea" class="text-[10px] text-blue-400 italic"></div>
+                </div>
+
+                <div
+                    id="messagesEl"
+                    class="flex-1 overflow-y-auto p-6 flex flex-col space-y-4 custom-scroll"
+                ></div>
+
+                <div class="p-4 bg-slate-900/50 border-t border-slate-800">
+                    <div class="flex gap-2 max-w-5xl mx-auto">
+                        <input
+                            id="chatInput"
+                            type="text"
+                            autocomplete="off"
+                            placeholder="Write message..."
+                            class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none"
+                        />
+                        <button
+                            id="btnSend"
+                            class="bg-blue-600 px-8 py-3 rounded-xl text-xs font-black hover:bg-blue-500 transition-all shadow-lg"
+                        >
+                            SEND
+                        </button>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Personnel -->
+            <aside class="w-64 border-l border-slate-800 bg-slate-900/40 hidden lg:flex flex-col">
+                <div
+                    class="p-5 text-[10px] font-black text-slate-500 uppercase border-b border-slate-800/50 tracking-widest"
+                >
+                    Personnel
+                </div>
+                <div
+                    id="userList"
+                    class="p-4 space-y-3 overflow-y-auto custom-scroll text-xs"
+                ></div>
+            </aside>
+        </div>
+
+        <script type="module">
+            import WSAdapter from './WSAdapter.js'
+
+            const MSG_TYPES = {
+                SEND_MESSAGE: 'chat:send_message',
+                NEW_MESSAGE: 'chat:message_new',
+                TYPING: 'chat:typing_start',
+                ROOM_CREATE: 'room:join',
+                ROOM_DELETE: 'room:leave',
+            }
+
+            const state = {
+                user: { name: 'Senior_Dev' },
+                activeRoom: null,
+                rooms: [
+                    { id: 'r11', name: 'CORE_MAIN', members: ['Senior_Dev', 'Lead_AI'], unread: 0 },
+                    { id: 'r12', name: 'DEV_LOGS', members: ['Senior_Dev', 'Logger_V8'], unread: 0 },
+                ],
+                typingUsers: {}, // { room_id: [names...] }
+            }
+
+            let client = null
+            let typingTimeout
+            const messagesEl = document.getElementById('messagesEl')
+            const chatInput = document.getElementById('chatInput')
+            const roomListEl = document.getElementById('roomList')
+
+            // --- WS Handling ---
+            document.getElementById('btnConnect').onclick = () => {
+                client = new WSAdapter(document.getElementById('wsUrl').value)
+                updateStatus('CONNECTING')
+                client.on('connected', () => updateStatus('OPEN'))
+                client.on('disconnected', () => updateStatus('CLOSED'))
+                client.on('data', handleServerMessage)
+                client.connect()
+            }
+
+            function handleServerMessage(payload) {
+                const data = typeof payload === 'string' ? JSON.parse(payload) : payload
+                console.log(1, data)
+
+                switch (data.type) {
+                    case MSG_TYPES.NEW_MESSAGE:
+                        if (data.room === state.activeRoom) {
+                            appendMessage(data)
+                        } else {
+                            updateUnread(data.room, 1)
+                        }
+                        break
+                    case MSG_TYPES.TYPING:
+                        handleTypingUpdate(data)
+                        break
+                    case MSG_TYPES.ROOM_CREATE:
+                        if (!state.rooms.find((r) => r.id === data.roomObj.id)) {
+                            state.rooms.push(data.roomObj)
+                            renderRooms()
+                        }
+                        break
+                    case MSG_TYPES.ROOM_DELETE:
+                        handleRemoteDelete(data.roomId)
+                        break
+                }
+            }
+
+            // --- Typing Logic ---
+            chatInput.addEventListener('input', () => {
+                if (!client || !state.activeRoom) return
+                sendTyping(true)
+                clearTimeout(typingTimeout)
+                typingTimeout = setTimeout(() => sendTyping(false), 2000)
+            })
+
+            function sendTyping(isTyping) {
+                client.send({
+                    type: MSG_TYPES.TYPING,
+                    room: state.activeRoom,
+                    user: state.user.name,
+                    isTyping,
+                })
+            }
+
+            function handleTypingUpdate(data) {
+                if (!state.typingUsers[data.room]) state.typingUsers[data.room] = new Set()
+                if (data.isTyping) state.typingUsers[data.room].add(data.user)
+                else state.typingUsers[data.room].delete(data.user)
+
+                if (data.room === state.activeRoom) renderTyping()
+            }
+
+            function renderTyping() {
+                const users = Array.from(state.typingUsers[state.activeRoom] || []).filter(
+                    (u) => u !== state.user.name,
+                )
+                const area = document.getElementById('typingArea')
+                if (users.length === 0) area.innerText = ''
+                else if (users.length === 1) area.innerText = `${users[0]} друкує...`
+                else area.innerText = `${users.length} людей друкують...`
+            }
+
+            // --- Room Management ---
+            document.getElementById('btnAddRoom').onclick = () => {
+                const name = prompt('Назва каналу:')
+                if (!name) return
+                const roomObj = {
+                    id: 'r' + Date.now(),
+                    name: name.toUpperCase(),
+                    members: [state.user.name],
+                    unread: 0,
+                }
+                client?.send({ type: MSG_TYPES.ROOM_CREATE, roomObj })
+                // Локально додаємо відразу для echo
+                if (!state.rooms.find((r) => r.id === roomObj.id)) {
+                    state.rooms.push(roomObj)
+                    renderRooms()
+                }
+            }
+
+            window.deleteRoomLocal = (id) => {
+                client?.send({ type: MSG_TYPES.ROOM_DELETE, roomId: id })
+                handleRemoteDelete(id)
+            }
+
+            function handleRemoteDelete(id) {
+                state.rooms = state.rooms.filter((r) => r.id !== id)
+                if (state.activeRoom === id) {
+                    state.activeRoom = null
+                    messagesEl.innerHTML = ''
+                    document.getElementById('activeRoomName').innerText = 'Select Channel'
+                    document.getElementById('userList').innerHTML = ''
+                }
+                renderRooms()
+            }
+
+            function updateUnread(roomId, count) {
+                const room = state.rooms.find((r) => r.id === roomId)
+                if (room) {
+                    room.unread += count
+                    renderRooms()
+                }
+            }
+
+            // --- Core Functions ---
+            function renderRooms() {
+                roomListEl.innerHTML = state.rooms
+                    .map(
+                        (r) => `
+                <div class="group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${
+                    state.activeRoom === r.id ? 'room-active' : 'text-slate-400 hover:bg-slate-800'
+                }" onclick="selectRoom('${r.id}')">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold"># ${r.name}</span>
+                        ${
+                            r.unread > 0
+                                ? `<span class="unread-badge animate-pulse">${r.unread}</span>`
+                                : ''
+                        }
+                    </div>
+                    <button onclick="event.stopPropagation(); deleteRoomLocal('${
+                        r.id
+                    }')" class="opacity-0 group-hover:opacity-100 text-red-500 text-xs px-1 transition-all">✕</button>
+                </div>
+            `,
+                    )
+                    .join('')
+            }
+
+            window.selectRoom = (id) => {
+                state.activeRoom = id
+                const room = state.rooms.find((r) => r.id === id)
+                room.unread = 0
+                document.getElementById('activeRoomName').innerText = room.name
+                messagesEl.innerHTML = `<div class="text-[9px] text-center text-slate-600 uppercase py-4 border-b border-slate-800/10 mb-4">Secure Channel #${room.name}</div>`
+                renderRooms()
+                renderUsers(room.members)
+                renderTyping()
+                chatInput.focus()
+                console.log(state)
+            }
+
+            function renderUsers(members) {
+                document.getElementById('userList').innerHTML = members
+                    .map(
+                        (m) => `
+                <div class="flex items-center gap-3">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></div>
+                    <span class="text-slate-300 font-medium">${m}</span>
+                </div>
+            `,
+                    )
+                    .join('')
+            }
+
+            function handleSendMessage() {
+                const text = chatInput.value.trim()
+                if (!text || !state.activeRoom || !client) return
+                const data = {
+                    type: MSG_TYPES.SEND_MESSAGE,
+                    room: state.activeRoom,
+                    user: state.user.name,
+                    text,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                }
+                client.send(data)
+                chatInput.value = ''
+                sendTyping(false)
+            }
+
+            function appendMessage(data) {
+                const isMe = data.user === state.user.name
+                const html = `
+                <div class="flex flex-col ${
+                    isMe ? 'items-end' : 'items-start'
+                } animate-in fade-in duration-300">
+                    <div class="flex items-center gap-2 mb-1 px-2">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase">${
+                            data.user
+                        }</span>
+                        <span class="text-[8px] font-mono text-slate-700">${data.time || ''}</span>
+                    </div>
+                    <div class="msg-bubble ${isMe ? 'msg-mine' : 'msg-others'} shadow-md">${
+                    data.text
+                }</div>
+                </div>`
+                messagesEl.insertAdjacentHTML('beforeend', html)
+                messagesEl.scrollTop = messagesEl.scrollHeight
+            }
+
+            function updateStatus(s) {
+                document.getElementById('wsStatusText').innerText = s
+                document.getElementById('avatarWrapper').className = `status-ring status-${s} p-0.5`
+            }
+
+            document.getElementById('btnSend').onclick = handleSendMessage
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleSendMessage()
+                }
+            })
+
+            renderRooms()
+        </script>
+    </body>
+</html>

@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>WS Lab Pro 2026 | Mobile-First Responsive</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            @import url('fonts.googleapis.com');
+
+            body {
+                font-family: 'Inter', sans-serif;
+                background-color: #020617;
+                color: #e2e8f0;
+                margin: 0;
+                padding: 0;
+            }
+
+            /* Десктопний режим: фіксована висота екрана */
+            @media (min-width: 1024px) {
+                .main-container {
+                    height: 100vh;
+                    overflow: hidden;
+                    padding: 1.5rem;
+                }
+                .scrollable-area {
+                    overflow-y: auto;
+                    height: 100%;
+                }
+            }
+
+            /* Мобільний режим: звичайний скрол сторінки */
+            @media (max-width: 1023px) {
+                .main-container {
+                    height: auto;
+                    padding: 1rem;
+                }
+                #editor-container {
+                    min-height: 200px;
+                }
+            }
+
+            #terminal,
+            #editor-container {
+                font-family: 'Fira Code', monospace;
+            }
+
+            /* JSON Highlight Colors */
+            .json-key {
+                color: #f87171;
+            }
+            .json-string {
+                color: #fbbf24;
+            }
+            .json-value {
+                color: #34d399;
+            }
+            .json-number {
+                color: #f97316;
+            }
+            .json-boolean {
+                color: #60a5fa;
+            }
+
+            /* Smart Editor Overlay */
+            #editor-container {
+                position: relative;
+                background: #0a0f1e;
+                border-radius: 1rem;
+                border: 1px solid #1e293b;
+                flex-grow: 1;
+            }
+
+            #msgBody,
+            #highlight-layer {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                padding: 1rem;
+                font-size: 12px;
+                line-height: 1.5;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                outline: none;
+                border: none;
+                margin: 0;
+            }
+            #msgBody {
+                color: transparent;
+                background: transparent;
+                caret-color: #34d399;
+                z-index: 2;
+                resize: none;
+            }
+            #highlight-layer {
+                z-index: 1;
+                color: #94a3b8;
+                pointer-events: none;
+                overflow: hidden;
+            }
+
+            /* UI Badges */
+            .badge {
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 9px;
+                font-weight: bold;
+                text-transform: uppercase;
+                margin-right: 8px;
+                flex-shrink: 0;
+            }
+            .badge-in {
+                background: #1e3a8a;
+                color: #60a5fa;
+                border: 1px solid #3b82f6;
+            }
+            .badge-out {
+                background: #064e3b;
+                color: #34d399;
+                border: 1px solid #10b981;
+            }
+            .badge-sys {
+                background: #334155;
+                color: #cbd5e1;
+                border: 1px solid #475569;
+            }
+
+            /* Скролбари */
+            ::-webkit-scrollbar {
+                width: 5px;
+                height: 5px;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #1e293b;
+                border-radius: 10px;
+            }
+
+            /* Приховування скролбара для кнопок шаблонів */
+            .no-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+            .no-scrollbar {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+        </style>
+    </head>
+    <body class="antialiased">
+        <div class="main-container max-w-[1600px] mx-auto flex flex-col lg:flex-row gap-6">
+            <!-- Sidebar -->
+            <aside class="w-full lg:w-[360px] flex flex-col gap-4 scrollable-area">
+                <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-3xl shadow-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-[10px] uppercase tracking-widest text-slate-500 font-black">
+                            Identity
+                        </h2>
+                        <div
+                            id="userAvatar"
+                            class="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-emerald-500 flex items-center justify-center text-xs font-bold shadow-lg"
+                        >
+                            ?
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        <input
+                            id="userName"
+                            type="text"
+                            value="Senior_Dev"
+                            placeholder="Username"
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                        />
+                        <input
+                            id="userId"
+                            type="text"
+                            readonly
+                            class="w-full bg-slate-950/50 border border-slate-800 text-slate-600 rounded-xl p-2 text-[9px] font-mono"
+                        />
+                    </div>
+                </div>
+
+                <!-- Config -->
+                <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-3xl shadow-xl">
+                    <h2
+                        class="text-[10px] uppercase tracking-widest text-slate-500 mb-4 font-black"
+                    >
+                        Connection
+                    </h2>
+                    <input
+                        id="wsUrl"
+                        type="text"
+                        value="wss://echo.websocket.org"
+                        class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs mb-3 outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <div class="grid grid-cols-2 gap-2">
+                        <button
+                            id="btnConnect"
+                            class="bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold text-[10px] transition-all active:scale-95 shadow-lg shadow-blue-900/20 uppercase tracking-wider"
+                        >
+                            Connect
+                        </button>
+                        <button
+                            id="btnStop"
+                            class="bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-bold text-[10px] transition-all active:scale-95 uppercase tracking-wider"
+                        >
+                            Stop
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Editor Section -->
+                <div
+                    class="bg-slate-900/80 border border-slate-800 p-5 rounded-3xl shadow-xl flex flex-col min-h-[400px] lg:flex-1"
+                >
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-[10px] uppercase tracking-widest text-slate-500 font-black">
+                            Payload
+                        </h2>
+                        <button
+                            id="btnPrettify"
+                            class="text-[9px] bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded border border-slate-700 transition-colors uppercase"
+                        >
+                            Prettify
+                        </button>
+                    </div>
+
+                    <!-- ВИПРАВЛЕНО: Шаблони тепер не ламають верстку -->
+                    <div class="flex gap-2 mb-4 overflow-x-auto no-scrollbar pb-1">
+                        <button
+                            id="tplPing"
+                            class="flex-none text-[9px] bg-slate-800/80 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700/50 transition-all font-bold"
+                        >
+                            PING
+                        </button>
+                        <button
+                            id="tplAuth"
+                            class="flex-none text-[9px] bg-slate-800/80 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700/50 transition-all font-bold"
+                        >
+                            AUTH
+                        </button>
+                        <button
+                            id="tplMsg"
+                            class="flex-none text-[9px] bg-slate-800/80 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700/50 transition-all font-bold"
+                        >
+                            MESSAGE
+                        </button>
+                    </div>
+
+                    <div id="editor-container" class="relative overflow-hidden mb-4">
+                        <pre id="highlight-layer"></pre>
+                        <textarea id="msgBody" spellcheck="false"></textarea>
+                    </div>
+
+                    <button
+                        id="btnSend"
+                        class="w-full bg-emerald-600 hover:bg-emerald-500 py-4 rounded-2xl font-black text-[11px] transition-all active:scale-95 shadow-lg shadow-emerald-900/20 uppercase tracking-[0.1em]"
+                    >
+                        Dispatch Packet
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main Terminal -->
+            <main
+                class="flex-1 flex flex-col bg-black/40 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-md min-w-0"
+            >
+                <div
+                    class="bg-slate-900/90 px-6 py-4 flex flex-wrap justify-between items-center gap-4 border-b border-slate-800"
+                >
+                    <div class="flex items-center gap-4">
+                        <span
+                            class="text-[10px] font-mono font-bold text-blue-500 bg-blue-500/10 px-2 py-1 rounded"
+                            >WS_KERNEL_2026</span
+                        >
+                        <div
+                            class="flex items-center gap-2 px-3 py-1 rounded-full bg-black/40 border border-slate-800"
+                        >
+                            <div
+                                id="statusDot"
+                                class="w-1.5 h-1.5 rounded-full bg-slate-600 transition-all duration-500"
+                            ></div>
+                            <span
+                                id="statusText"
+                                class="text-[9px] font-black tracking-widest text-slate-500 uppercase"
+                                >Offline</span
+                            >
+                        </div>
+                    </div>
+                    <button
+                        id="btnClear"
+                        class="text-[9px] font-bold text-slate-500 hover:text-white uppercase tracking-widest transition-colors"
+                    >
+                        Clear Console
+                    </button>
+                </div>
+                <!-- Скрол області логів -->
+                <div
+                    id="terminal"
+                    class="flex-1 p-4 lg:p-6 overflow-y-auto text-[11px] leading-relaxed space-y-2 scrollable-area"
+                ></div>
+            </main>
+        </div>
+
+        <script type="module">
+            import WSAdapter from './WSAdapter.js'
+
+            const terminal = document.getElementById('terminal')
+            const statusDot = document.getElementById('statusDot')
+            const statusText = document.getElementById('statusText')
+            const msgBody = document.getElementById('msgBody')
+            const highlightLayer = document.getElementById('highlight-layer')
+            const userName = document.getElementById('userName')
+            const userId = document.getElementById('userId')
+            const userAvatar = document.getElementById('userAvatar')
+
+            // Init
+            userId.value = 'UID-' + Math.random().toString(36).substring(2, 10).toUpperCase()
+            const updAv = () => {
+                userAvatar.innerText = (userName.value || '?').charAt(0).toUpperCase()
+            }
+            userName.oninput = updAv
+            updAv()
+
+            // Highlight
+            function hl(t) {
+                let h = t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                return h.replace(
+                    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
+                    (m) => {
+                        let c = 'json-number'
+                        if (/^"/.test(m)) c = /:$/.test(m) ? 'json-key' : 'json-string'
+                        else if (/true|false/.test(m)) c = 'json-boolean'
+                        return `<span class="${c}">${m}</span>`
+                    },
+                )
+            }
+            const sync = () => {
+                highlightLayer.innerHTML = hl(msgBody.value) + '\n'
+            }
+            msgBody.oninput = sync
+            msgBody.onscroll = () => {
+                highlightLayer.scrollTop = msgBody.scrollTop
+            }
+
+            // Templates
+            const setTpl = (k) => {
+                const templates = {
+                    ping: { type: 'ping', ts: Date.now() },
+                    auth: { type: 'auth', token: 'session_token_example', version: '2.0' },
+                    msg: { type: 'message', room: 'lobby', payload: { text: 'Hello from Lab!' } },
+                }
+                msgBody.value = JSON.stringify(templates[k], null, 2)
+                sync()
+            }
+            document.getElementById('tplPing').onclick = () => setTpl('ping')
+            document.getElementById('tplAuth').onclick = () => setTpl('auth')
+            document.getElementById('tplMsg').onclick = () => setTpl('msg')
+
+            // Keys
+            msgBody.onkeydown = function (e) {
+                if (e.key === 'Tab') {
+                    e.preventDefault()
+                    const s = this.selectionStart
+                    this.value =
+                        this.value.substring(0, s) + '  ' + this.value.substring(this.selectionEnd)
+                    this.selectionEnd = this.selectionStart = s + 2
+                    sync()
+                }
+            }
+
+            document.getElementById('btnPrettify').onclick = () => {
+                try {
+                    msgBody.value = JSON.stringify(JSON.parse(msgBody.value), null, 2)
+                    sync()
+                } catch (e) {
+                    uiLogger.error('JSON Error', 'Invalid syntax')
+                }
+            }
+
+            // Logger
+            const uiLogger = {
+                log(m, type = 'info', dir = 'sys', p = null) {
+                    const el = document.createElement('div')
+                    const st = {
+                        success: 'border-emerald-500/30 bg-emerald-500/5',
+                        warn: 'border-amber-500/30 bg-amber-500/5',
+                        error: 'border-rose-500/30 bg-rose-500/5',
+                        info: 'border-blue-500/30 bg-blue-500/5',
+                        trace: 'border-slate-500/30 bg-slate-500/5 opacity-60',
+                    }
+                    const cl = {
+                        success: 'text-emerald-400',
+                        warn: 'text-amber-400',
+                        error: 'text-rose-400',
+                        info: 'text-blue-400',
+                        trace: 'text-slate-400',
+                    }
+
+                    el.className = `border-l-2 pl-4 py-3 mb-1 rounded-r-2xl transition-all ${
+                        st[type] || st.info
+                    }`
+                    el.innerHTML = `
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                        <span class="badge badge-${dir}">${dir}</span>
+                        <span class="text-slate-600 font-mono text-[9px]">${new Date()
+                            .toLocaleString('en-GB', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: false,
+                                fractionalSecondDigits: 2,
+                            })
+                            .replace(',', '')}</span>
+                        <span class="font-bold uppercase tracking-tight text-[10px] ml-2 ${
+                            cl[type]
+                        }">${m}</span>
+                    </div>
+                    ${
+                        p
+                            ? `<pre class="mt-2 p-3 bg-black/60 rounded-xl border border-white/5 overflow-x-auto text-[10px]"><code>${hl(
+                                  JSON.stringify(p, null, 2),
+                              )}</code></pre>`
+                            : ''
+                    }
+                `
+                    terminal.appendChild(el)
+                    terminal.scrollTop = terminal.scrollHeight
+                    this.updateStatus(window.client?.status || 'CLOSED')
+                },
+                updateStatus(s) {
+                    const c = {
+                        OPEN: 'bg-emerald-500 shadow-[0_0_10px_#10b981]',
+                        CONNECTING: 'bg-amber-500 shadow-[0_0_10px_#f59e0b]',
+                        CLOSED: 'bg-rose-500 shadow-[0_0_10px_#f43f5e]',
+                    }
+                    statusDot.className = `w-1.5 h-1.5 rounded-full ${
+                        c[s] || 'bg-slate-600'
+                    } transition-all duration-500`
+                    statusText.innerText = s
+                    statusText.className = `text-[9px] font-black uppercase ${
+                        s === 'OPEN' ? 'text-emerald-400' : 'text-slate-500'
+                    }`
+                },
+                success(m, p) {
+                    this.log(m, 'success', 'sys', p)
+                },
+                info(m, p) {
+                    this.log(m, 'info', 'sys', p)
+                },
+                warn(m, p) {
+                    this.log(m, 'warn', 'sys', p)
+                },
+                error(m, p) {
+                    this.log(m, 'error', 'sys', p)
+                },
+                trace(m, p) {
+                    this.log(m, 'trace', 'sys', p)
+                },
+            }
+
+            // App
+            window.client = null
+            document.getElementById('btnConnect').onclick = () => {
+                if (window.client) window.client.disconnect()
+                window.client = new WSAdapter(
+                    document.getElementById('wsUrl').value,
+                    { authProvider: async () => btoa(userName.value) },
+                    uiLogger,
+                )
+                window.client.on('connected', () =>
+                    uiLogger.success(`Connected: ${userName.value}`),
+                )
+                window.client.on('data', (d) => uiLogger.log('Inbound', 'info', 'in', d))
+                window.client.on('error', (e) => uiLogger.error('Protocol Fault', e))
+                window.client.on('disconnected', (e) =>
+                    uiLogger.warn('Connection Lost', `Code: ${e.code}`),
+                )
+                window.client.connect()
+                uiLogger.updateStatus('CONNECTING')
+            }
+
+            document.getElementById('btnStop').onclick = () => {
+                window.client?.disconnect()
+                uiLogger.updateStatus('CLOSED')
+            }
+            document.getElementById('btnSend').onclick = () => {
+                const r = msgBody.value.trim()
+                if (!window.client) return uiLogger.error('Offline')
+                try {
+                    let d = r.startsWith('{') || r.startsWith('[') ? JSON.parse(r) : r
+                    window.client.send(d)
+                    uiLogger.log('Outbound', 'success', 'out', d)
+                } catch (e) {
+                    uiLogger.error('Payload Fault', 'Invalid JSON')
+                }
+            }
+            document.getElementById('btnClear').onclick = () => (terminal.innerHTML = '')
+            setTpl('ping')
+        </script>
+    </body>
+</html>

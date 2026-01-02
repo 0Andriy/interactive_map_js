@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>WS Lab Pro 2026 | Smart Editor & Templates</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            @import url('fonts.googleapis.com');
+
+            body {
+                font-family: 'Inter', sans-serif;
+                background-color: #020617;
+                overflow: hidden;
+            }
+            #terminal,
+            #editor-container {
+                font-family: 'Fira Code', monospace;
+            }
+
+            /* JSON Syntax Colors */
+            .json-key {
+                color: #f87171;
+            }
+            .json-string {
+                color: #fbbf24;
+            }
+            .json-value {
+                color: #34d399;
+            }
+            .json-number {
+                color: #f97316;
+            }
+            .json-boolean {
+                color: #60a5fa;
+            }
+
+            /* Smart Editor Overlay */
+            #editor-container {
+                position: relative;
+                min-height: 200px;
+                background: #0a0f1e;
+                border-radius: 1rem;
+                border: 1px solid #1e293b;
+                overflow: hidden;
+            }
+
+            #msgBody,
+            #highlight-layer {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                padding: 1rem;
+                margin: 0;
+                border: none;
+                font-size: 13px;
+                line-height: 1.5;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                outline: none;
+            }
+
+            #msgBody {
+                color: transparent;
+                background: transparent;
+                caret-color: #34d399;
+                z-index: 2;
+                resize: none;
+            }
+
+            #highlight-layer {
+                z-index: 1;
+                color: #94a3b8;
+                pointer-events: none;
+            }
+
+            /* UI Elements */
+            .badge {
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 9px;
+                font-weight: bold;
+                text-transform: uppercase;
+                margin-right: 8px;
+            }
+            .badge-in {
+                background: #1e3a8a;
+                color: #60a5fa;
+                border: 1px solid #3b82f6;
+            }
+            .badge-out {
+                background: #064e3b;
+                color: #34d399;
+                border: 1px solid #10b981;
+            }
+            .badge-sys {
+                background: #334155;
+                color: #cbd5e1;
+                border: 1px solid #475569;
+            }
+
+            ::-webkit-scrollbar {
+                width: 4px;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #1e293b;
+                border-radius: 10px;
+            }
+        </style>
+    </head>
+    <body class="text-slate-200 min-h-screen p-4">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 h-[95vh]">
+            <!-- Sidebar -->
+            <aside class="lg:col-span-1 space-y-4 flex flex-col">
+                <!-- Connection Box -->
+                <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-3xl shadow-xl">
+                    <h2
+                        class="text-[10px] uppercase tracking-widest text-slate-500 mb-4 font-black"
+                    >
+                        Endpoint
+                    </h2>
+                    <input
+                        id="wsUrl"
+                        type="text"
+                        value="wss://echo.websocket.org"
+                        class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs mb-3 outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                    />
+                    <div class="grid grid-cols-2 gap-2">
+                        <button
+                            id="btnConnect"
+                            class="bg-blue-600 hover:bg-blue-500 py-2.5 rounded-xl font-bold text-xs transition-all active:scale-95 shadow-lg shadow-blue-900/20"
+                        >
+                            CONNECT
+                        </button>
+                        <button
+                            id="btnStop"
+                            class="bg-slate-800 hover:bg-slate-700 py-2.5 rounded-xl font-bold text-xs transition-all active:scale-95"
+                        >
+                            STOP
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Smart Editor with Highlight & Templates -->
+                <div
+                    class="bg-slate-900/80 border border-slate-800 p-5 rounded-3xl shadow-xl flex-1 flex flex-col overflow-hidden"
+                >
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-[10px] uppercase tracking-widest text-slate-500 font-black">
+                            Payload Editor
+                        </h2>
+                        <button
+                            id="btnPrettify"
+                            class="text-[9px] bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded border border-slate-700 transition-colors"
+                        >
+                            PRETTIFY
+                        </button>
+                    </div>
+
+                    <!-- Quick Templates Row -->
+                    <div class="flex gap-1.5 mb-3 overflow-x-auto pb-1 no-scrollbar">
+                        <button
+                            id="tplPing"
+                            class="text-[8px] bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-white px-2 py-1 rounded transition-all border border-slate-700/50"
+                        >
+                            PING
+                        </button>
+                        <button
+                            id="tplAuth"
+                            class="text-[8px] bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-white px-2 py-1 rounded transition-all border border-slate-700/50"
+                        >
+                            AUTH
+                        </button>
+                        <button
+                            id="tplMsg"
+                            class="text-[8px] bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-white px-2 py-1 rounded transition-all border border-slate-700/50"
+                        >
+                            MESSAGE
+                        </button>
+                    </div>
+
+                    <div id="editor-container" class="flex-1 mb-4">
+                        <pre id="highlight-layer"></pre>
+                        <textarea
+                            id="msgBody"
+                            spellcheck="false"
+                            placeholder='{"type": "ping"}'
+                        ></textarea>
+                    </div>
+
+                    <button
+                        id="btnSend"
+                        class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-bold text-xs transition-all active:scale-95 shadow-lg shadow-emerald-900/20"
+                    >
+                        SEND PACKET
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Terminal -->
+            <main
+                class="lg:col-span-3 flex flex-col bg-black/40 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-sm"
+            >
+                <div
+                    class="bg-slate-900/90 px-6 py-3 flex justify-between items-center border-b border-slate-800"
+                >
+                    <div class="flex items-center gap-4">
+                        <span class="text-[10px] font-mono font-bold text-blue-500"
+                            >WS_LAB_2026_PRO</span
+                        >
+                        <div
+                            id="statusBadge"
+                            class="flex items-center gap-2 px-3 py-1 rounded-full bg-black/40 border border-slate-800"
+                        >
+                            <div
+                                id="statusDot"
+                                class="w-1.5 h-1.5 rounded-full bg-slate-600 transition-all duration-500"
+                            ></div>
+                            <span
+                                id="statusText"
+                                class="text-[9px] font-black tracking-widest text-slate-500 uppercase"
+                                >Offline</span
+                            >
+                        </div>
+                    </div>
+                    <button
+                        id="btnClear"
+                        class="text-[9px] font-bold text-slate-500 hover:text-white uppercase tracking-widest"
+                    >
+                        Clear Logs
+                    </button>
+                </div>
+                <div
+                    id="terminal"
+                    class="flex-1 p-6 overflow-y-auto text-[11px] leading-relaxed space-y-1"
+                ></div>
+            </main>
+        </div>
+
+        <script type="module">
+            import WSAdapter from './WSAdapter.js'
+
+            const terminal = document.getElementById('terminal')
+            const statusDot = document.getElementById('statusDot')
+            const statusText = document.getElementById('statusText')
+            const msgBody = document.getElementById('msgBody')
+            const highlightLayer = document.getElementById('highlight-layer')
+
+            // --- Highlight Engine ---
+            function applyHighlighting(text) {
+                let html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                html = html.replace(
+                    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
+                    (match) => {
+                        let cls = 'json-number'
+                        if (/^"/.test(match)) {
+                            cls = /:$/.test(match) ? 'json-key' : 'json-string'
+                        } else if (/true|false/.test(match)) {
+                            cls = 'json-boolean'
+                        } else if (/null/.test(match)) {
+                            cls = 'text-slate-500'
+                        }
+                        return `<span class="${cls}">${match}</span>`
+                    },
+                )
+                return html
+            }
+
+            function updateEditor() {
+                highlightLayer.innerHTML = applyHighlighting(msgBody.value) + '\n'
+            }
+
+            msgBody.addEventListener('input', updateEditor)
+            msgBody.addEventListener('scroll', () => {
+                highlightLayer.scrollTop = msgBody.scrollTop
+                highlightLayer.scrollLeft = msgBody.scrollLeft
+            })
+
+            // --- Templates Logic ---
+            const templates = {
+                ping: { type: 'ping', ts: Date.now() },
+                auth: { type: 'auth', token: 'session_token_example', version: '2.0' },
+                msg: { type: 'message', room: 'lobby', payload: { text: 'Hello from Lab!' } },
+            }
+
+            function setTemplate(key) {
+                msgBody.value = JSON.stringify(templates[key], null, 2)
+                updateEditor()
+            }
+
+            document.getElementById('tplPing').onclick = () => setTemplate('ping')
+            document.getElementById('tplAuth').onclick = () => setTemplate('auth')
+            document.getElementById('tplMsg').onclick = () => setTemplate('msg')
+
+            // --- Editor Key Handlers ---
+            msgBody.addEventListener('keydown', function (e) {
+                if (e.key === 'Tab') {
+                    e.preventDefault()
+                    const start = this.selectionStart
+                    this.value =
+                        this.value.substring(0, start) +
+                        '  ' +
+                        this.value.substring(this.selectionEnd)
+                    this.selectionStart = this.selectionEnd = start + 2
+                    updateEditor()
+                }
+                const pairs = { '{': '}', '[': ']', '"': '"' }
+                if (pairs[e.key]) {
+                    const start = this.selectionStart
+                    if (start === this.selectionEnd) {
+                        const next = this.value.substring(start, start + 1)
+                        if (next !== pairs[e.key]) {
+                            this.value =
+                                this.value.substring(0, start) +
+                                pairs[e.key] +
+                                this.value.substring(start)
+                            this.selectionEnd = this.selectionStart = start
+                        }
+                    }
+                }
+            })
+
+            document.getElementById('btnPrettify').onclick = () => {
+                try {
+                    msgBody.value = JSON.stringify(JSON.parse(msgBody.value), null, 2)
+                    updateEditor()
+                } catch (e) {
+                    uiLogger.error('Format Error', 'Invalid JSON')
+                }
+            }
+
+            // --- UI Logger ---
+            const uiLogger = {
+                log(msg, type = 'info', dir = 'sys', p = null) {
+                    const el = document.createElement('div')
+                    const styles = {
+                        success: 'border-emerald-500/30 bg-emerald-500/5',
+                        warn: 'border-amber-500/30 bg-amber-500/5',
+                        error: 'border-rose-500/30 bg-rose-500/5',
+                        info: 'border-blue-500/30 bg-blue-500/5',
+                        debug: 'border-purple-500/30 bg-purple-500/5',
+                        trace: 'border-slate-500/30 bg-slate-500/5 opacity-60',
+                    }
+                    const colors = {
+                        success: 'text-emerald-400',
+                        warn: 'text-amber-400',
+                        error: 'text-rose-400',
+                        info: 'text-blue-400',
+                        debug: 'text-purple-400',
+                        trace: 'text-slate-400',
+                    }
+
+                    el.className = `animate-in fade-in slide-in-from-left-2 duration-300 border-l-2 pl-4 py-3 mb-1 rounded-r-xl ${
+                        styles[type] || styles.info
+                    }`
+                    el.innerHTML = `
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="badge badge-${dir}">${dir}</span>
+                        <span class="text-slate-600 font-mono text-[9px]"> ${new Date()
+                            .toLocaleString('en-GB', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: false,
+                                fractionalSecondDigits: 2,
+                            })
+                            .replace(',', '')}
+                        </span>
+                        <span class="font-bold uppercase tracking-tight text-[10px] ml-2 ${
+                            colors[type]
+                        }">${msg}</span>
+                    </div>
+                    ${
+                        p !== null
+                            ? `<pre class="mt-2 p-3 bg-black/60 rounded-xl border border-white/5 overflow-x-auto text-[10px]"><code>${applyHighlighting(
+                                  JSON.stringify(p, null, 2),
+                              )}</code></pre>`
+                            : ''
+                    }
+                `
+                    terminal.appendChild(el)
+                    terminal.scrollTop = terminal.scrollHeight
+                    if (window.client) this.updateStatus(window.client.status)
+                },
+                updateStatus(s) {
+                    const c = {
+                        OPEN: 'bg-emerald-500 shadow-[0_0_8px_#10b981]',
+                        CONNECTING: 'bg-amber-500 shadow-[0_0_8px_#f59e0b]',
+                        CLOSED: 'bg-rose-500 shadow-[0_0_8px_#f43f5e]',
+                    }
+                    statusDot.className = `w-1.5 h-1.5 rounded-full ${
+                        c[s] || 'bg-slate-600'
+                    } transition-all duration-500`
+                    statusText.innerText = s
+                    statusText.className = `text-[9px] font-black tracking-widest uppercase ${
+                        s === 'OPEN' ? 'text-emerald-400' : 'text-slate-500'
+                    }`
+                },
+                success(m, p) {
+                    this.log(m, 'success', 'sys', p)
+                },
+                info(m, p) {
+                    this.log(m, 'info', 'sys', p)
+                },
+                warn(m, p) {
+                    this.log(m, 'warn', 'sys', p)
+                },
+                error(m, p) {
+                    this.log(m, 'error', 'sys', p)
+                },
+                debug(m, p) {
+                    this.log(m, 'debug', 'sys', p)
+                },
+                trace(m, p) {
+                    this.log(m, 'trace', 'sys', p)
+                },
+            }
+
+            // --- App ---
+            window.client = null
+
+            document.getElementById('btnConnect').onclick = () => {
+                const url = document.getElementById('wsUrl').value
+                if (window.client) window.client.disconnect()
+                window.client = new WSAdapter(url, { pingInterval: 20000 }, uiLogger)
+
+                window.client.on('connected', () => uiLogger.success('Session Ready'))
+                window.client.on('data', (d) => uiLogger.log('Inbound', 'info', 'in', d))
+                window.client.on('error', (e) => uiLogger.error('Protocol Fault', e))
+                window.client.on('disconnected', (e) =>
+                    uiLogger.warn('Stream Broken', `Code: ${e.code}`),
+                )
+
+                window.client.connect()
+                uiLogger.updateStatus('CONNECTING')
+            }
+
+            document.getElementById('btnStop').onclick = () => {
+                window.client?.disconnect()
+                uiLogger.updateStatus('CLOSED')
+            }
+
+            document.getElementById('btnSend').onclick = () => {
+                const raw = msgBody.value.trim()
+                if (!window.client) return uiLogger.error('No Connection')
+                try {
+                    let data
+                    if (raw.startsWith('{') || raw.startsWith('[')) data = JSON.parse(raw)
+                    else if (!isNaN(raw) && raw !== '') data = Number(raw)
+                    else if (raw === 'true' || raw === 'false') data = raw === 'true'
+                    else data = raw
+
+                    window.client.send(data)
+                    uiLogger.log('Outbound', 'success', 'out', data)
+                } catch (e) {
+                    uiLogger.error('Format Error', 'Check JSON syntax')
+                }
+            }
+
+            document.getElementById('btnClear').onclick = () => (terminal.innerHTML = '')
+
+            // Init
+            setTemplate('ping')
+        </script>
+    </body>
+</html>
