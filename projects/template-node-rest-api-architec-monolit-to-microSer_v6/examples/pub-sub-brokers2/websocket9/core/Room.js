@@ -31,7 +31,7 @@ export class Room {
          * Батьківський простір імен.
          * @type {Namespace}
          */
-        this.ns = namespace
+        this.namespace = namespace
 
         /** Інстанс логера.
          * @type {import('../interfaces/Logger.js').Logger}
@@ -45,13 +45,13 @@ export class Room {
          * @type {Set<Socket>}
          * @private
          */
-        this._localSockets = new Set()
+        this.sockets = new Set()
 
         /**
          * Топік для брокера подій (горизонтальне масштабування).
          * @type {string}
          */
-        this.topic = `broker:ns:${this.ns.name}:room:${this.name}`
+        this.topic = `broker:ns:${this.namespace.name}:room:${this.name}`
 
         /** Позначка знищення кімнати.
          * @type {boolean}
@@ -70,10 +70,20 @@ export class Room {
          */
         this.createdAt = Date.now()
 
-        this.logger?.info('Room instance created', {
+        this.logger?.info?.(`[${this.constructor.name}] Room instance created`, {
             topic: this.topic,
             createdAt: this.createdAt,
         })
+    }
+
+    /**
+     * Повертає кількість локальних сокетів у кімнаті на цій ноді.
+     * @returns {number}
+     * @example
+     * const size = room.size;
+     */
+    get size() {
+        return this.sockets.size
     }
 
     /**
@@ -83,7 +93,7 @@ export class Room {
      * const empty = room.isEmpty;
      */
     get isEmpty() {
-        return this._localSockets.size === 0
+        return this.sockets.size === 0
     }
 
     /**
@@ -105,10 +115,29 @@ export class Room {
     async getMemberCount() {
         try {
             // Запит до глобального стану (напр. Redis), де зберігаються всі ID учасників
-            return await this.ns.state.getCountInRoom(this.ns.name, this.name)
+            return await this.namespace.state.getCountInRoom(this.namespace.name, this.name)
         } catch (error) {
-            this.logger?.error('Failed to get global member count', { error: error.message })
-            return this._localSockets.size // Fallback до локальних даних
+            this.logger?.error?.(`[${this.constructor.name}] Failed to get global member count`, {
+                error: error.message,
+            })
+            return this.sockets.size // Fallback до локальних даних
+        }
+    }
+
+    /**
+     * Повертає список ідентифікаторів усіх учасників кімнати (всіх нод).
+     * @returns {Promise<string[]>}
+     * @example
+     * const members = await room.getMembers();
+     */
+    async getMembers() {
+        try {
+            return await this.namespace.state.getMembersInRoom(this.namespace.name, this.name)
+        } catch (error) {
+            this.logger?.error?.(`[${this.constructor.name}] Failed to get global members`, {
+                error: error.message,
+            })
+            return Array.from(this.sockets).map((s) => s.id)
         }
     }
 
@@ -121,32 +150,32 @@ export class Room {
      */
     async add(socket) {
         if (this._isDestroyed) return
-        if (this._localSockets.has(socket)) return
+        if (this.sockets.has(socket)) return
 
         try {
             // АКТИВАЦІЯ ПІДПИСКИ: Тільки якщо це перший локальний користувач
-            if (this._localSockets.size === 0 && !this._isSubscribed) {
+            if (this.sockets.size === 0 && !this._isSubscribed) {
                 await this._subscribeToBroker()
             }
 
             // Додавання локального сокета
-            this._localSockets.add(socket)
+            this.sockets.add(socket)
 
             // Оновлення глобального стану (Redis/Shared State)
-            await this.ns.state.addUserToRoom(this.ns.name, this.name, socket.id)
+            await this.namespace.state.addUserToRoom(this.namespace.name, this.name, socket.id)
 
-            this.logger?.debug('Socket added to room', {
+            this.logger?.debug?.(`[${this.constructor.name}] Socket added to room`, {
                 socketId: socket.id,
-                countActiveLocalSockets: this._localSockets.size,
+                count: this.sockets.size,
             })
         } catch (error) {
-            this.logger?.error('Failed to add socket to room', {
+            this.logger?.error?.(`[${this.constructor.name}] Failed to add socket to room`, {
                 socketId: socket.id,
                 error: error.message,
             })
 
             // Якщо підписка не вдалася, ми не додаємо юзера і чистимо підписку, якщо вона була ініційована
-            if (this._localSockets.size === 0) {
+            if (this.sockets.size === 0) {
                 await this._unsubscribeFromBroker()
             }
 
@@ -163,26 +192,30 @@ export class Room {
      */
     async remove(socket) {
         // Перевірка, чи сокет взагалі був у цій кімнаті
-        if (!this._localSockets.has(socket)) return
+        if (!this.sockets.has(socket)) return
 
         // 1. Видаляємо сокет з локального Set
-        this._localSockets.delete(socket)
+        this.sockets.delete(socket)
 
         // 2. Оновлюємо стан у Redis/DB (глобальний стан)
         try {
-            await this.ns.state.removeUserFromRoom(this.ns.name, this.name, socket.id)
+            await this.namespace.state.removeUserFromRoom(this.namespace.name, this.name, socket.id)
         } catch (error) {
-            this.logger.error('State removal failed', { error: error.message })
+            this.logger?.error?.(`[${this.constructor.name}] State removal failed`, {
+                error: error.message,
+            })
         }
 
-        this.logger?.debug('Socket removed from room', {
+        this.logger?.debug?.(`[${this.constructor.name}] Socket removed from room`, {
             socketId: socket.id,
-            countActiveLocalSockets: this._localSockets.size,
+            count: this.sockets.size,
         })
 
         // 3. ПІДПИСКА: Відписуємось від брокера, тільки якщо сокетів 0
         if (this.isEmpty) {
-            this.logger?.info('No local users remaining. Deactivating room broker subscription.')
+            this.logger?.info?.(
+                `[${this.constructor.name}] No local users remaining. Deactivating room broker subscription.`,
+            )
             await this._unsubscribeFromBroker()
         }
     }
@@ -199,22 +232,21 @@ export class Room {
         if (this._isDestroyed) return
 
         // Додаємо метадані відправника для захисту від Echo
-        const finalEnvelope = {
+        const packet = {
             ...envelope,
             senderId: senderSocketId,
+            originServerId: this.namespace.serverId,
+            timestamp: Date.now(),
         }
 
         try {
-            // Публікація повідомлення через брокер (горизонтальне масштабування)
-            await this.ns.broker.publish(this.topic, {
-                ...finalEnvelope,
-                serverId: this.ns.serverId, //originId
-            })
+            // Публікуємо для інших нод
+            await this.namespace.broker.publish(this.topic, packet)
 
-            // Локальна доставка на цій ноді
-            this.dispatch(finalEnvelope)
+            // Доставляємо своїм локальним сокетам
+            this.dispatch(packet)
         } catch (error) {
-            this.logger?.error('Global broadcast failed', {
+            this.logger?.error?.(`[${this.constructor.name}] Broadcast failed`, {
                 error: error.message,
                 event: envelope.event,
             })
@@ -224,34 +256,34 @@ export class Room {
     /**
      * Відправляє повідомлення ТІЛЬКИ локальним підписникам на цій ноді.
      * Викликається зазвичай адаптером брокера при отриманні повідомлення з мережі.
-     * @param {MessageEnvelopeDTO} envelope
+     * @param {MessageEnvelopeDTO} packet
      * @example
-     * room.dispatch(envelope);
+     * room.dispatch(packet);
      */
-    dispatch(envelope) {
+    dispatch(packet) {
         if (this._isDestroyed) return
-        if (this._localSockets.size === 0) return
+        if (this.sockets.size === 0) return
 
-        const { senderId, serverId = null } = envelope
+        const { senderId, originServerId = null } = packet
 
         // INSTANCE ECHO PROTECTION:
-        // Якщо serverId збігається з нашим instanceId, це означає, що ЦЯ нода
+        // Якщо originServerId збігається з нашим instanceId, це означає, що ЦЯ нода
         // сама відправила це повідомлення в брокер. Ми його ігноруємо,
         // бо брокер прислав нам нашу ж копію.
-        if (serverId && serverId === this.ns.serverId) {
+        if (originServerId && originServerId === this.namespace.serverId) {
             return
         }
 
         // Використовуємо ітератор, щоб не блокувати цикл подій надовго
         // Для екстремальних навантажень тут можна додати setImmediate через кожні N пакетів
-        for (const socket of this._localSockets) {
+        for (const socket of this.sockets) {
             // SOCKET ECHO PROTECTION:
             // Не відправляємо повідомлення клієнту, який його створив.
             if (senderId && socket.id === senderId) {
                 continue
             }
 
-            socket.rawSend(envelope)
+            socket.rawSend(packet)
         }
     }
 
@@ -264,15 +296,23 @@ export class Room {
 
         try {
             // Брокер викликає dispatch для кожного вхідного повідомлення з мережі
-            await this.ns.broker.subscribe(this.topic, (envelope) => {
-                this.dispatch(envelope)
+            await this.namespace.broker.subscribe(this.topic, (packet) => {
+                // Важливо: обробляємо тільки повідомлення від ІНШИХ серверів
+                if (packet.originServerId !== this.namespace.serverId) {
+                    this.dispatch(packet)
+                }
             })
             this._isSubscribed = true
-            this.logger?.info('Room Room broker subscription activated', { topic: this.topic })
-        } catch (error) {
-            this.logger?.error('Room broker subscription activation failed', {
-                error: error.message,
+            this.logger?.info?.(`[${this.constructor.name}] Room broker subscription activated`, {
+                topic: this.topic,
             })
+        } catch (error) {
+            this.logger?.error?.(
+                `[${this.constructor.name}] Room broker subscription activation failed`,
+                {
+                    error: error.message,
+                },
+            )
             throw error // Critical error, blocking 'add'
         }
     }
@@ -284,11 +324,15 @@ export class Room {
         if (!this._isSubscribed) return
 
         try {
-            await this.ns.broker.unsubscribe(this.topic)
+            await this.namespace.broker.unsubscribe(this.topic)
             this._isSubscribed = false
-            this.logger?.info('Room broker subscription deactivated', { topic: this.topic })
+            this.logger?.info?.(`[${this.constructor.name}] Room broker subscription deactivated`, {
+                topic: this.topic,
+            })
         } catch (error) {
-            this.logger?.error('Room broker unsubscribe failed', { error: error.message })
+            this.logger?.error?.(`[${this.constructor.name}] Room broker unsubscribe failed`, {
+                error: error.message,
+            })
         }
     }
 
@@ -299,12 +343,19 @@ export class Room {
         if (this._isDestroyed) return
         this._isDestroyed = true
 
+        // Відписуємося від брокера
         await this._unsubscribeFromBroker()
-        this._localSockets.clear()
 
-        this.logger?.info('Room destroyed', {
+        // Видаляємо всіх локальних сокетів з кімнати
+        for (const socket of this.sockets) {
+            socket.leave(this.name)
+        }
+        this.sockets.clear()
+
+        //
+        this.logger?.info?.(`[${this.constructor.name}] Room destroyed`, {
             uptime: this.uptime,
-            countActiveLocalSockets: this._localSockets.size,
+            count: this.sockets.size,
         })
     }
 }

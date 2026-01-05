@@ -1,6 +1,6 @@
 import { PubSub } from './PubSub.js'
 import { Room } from './Room.js'
-import { MiddlewareRunner } from './MiddlewareRunner.js'
+import { MiddlewareRunner } from './MiddlewarePipeline.js'
 import { MessageEnvelope } from './MessageEnvelope.js'
 
 /**
@@ -100,36 +100,10 @@ export class Namespace {
         // Підписка на брокер для отримання глобальних повідомлень
         this._subscribeToBroker()
 
-        this.logger?.info('Namespace initialized', {
+        this.logger?.info?.(`[${this.constructor.name}] Namespace initialized`, {
             serverId: this.serverId,
             topic: this.topic,
         })
-    }
-
-    /**
-     * Namespace uptime in milliseconds.
-     * @returns {number}
-     * @example
-     * const nsUptime = namespace.uptime;
-     */
-    get uptime() {
-        return Date.now() - this.createdAt
-    }
-
-    /**
-     * Повертає загальну кількість учасникі в namespace (всіх сокетів на всіх серверах).
-     * @returns {Promise<number>}
-     * @example
-     * const memberCount = await namespace.getMemberCount();
-     */
-    async getMemberCount() {
-        try {
-            // Запит до глобального стану (напр. Redis), де зберігаються всі ID учасників
-            return await this.state.getCountInNamespace(this.name)
-        } catch (error) {
-            this.logger?.error('Failed to get global member count', { error: error.message })
-            return this._localSockets.size // Fallback до локальних даних
-        }
     }
 
     /**
@@ -182,6 +156,52 @@ export class Namespace {
     }
 
     /**
+     * Namespace uptime in milliseconds.
+     * @returns {number}
+     * @example
+     * const nsUptime = namespace.uptime;
+     */
+    get uptime() {
+        return Date.now() - this.createdAt
+    }
+
+    /**
+     * Повертає загальну кількість учасникі в namespace (всіх сокетів на всіх серверах).
+     * @returns {Promise<number>}
+     * @example
+     * const memberCount = await namespace.getMemberCount();
+     */
+    async getMemberCount() {
+        try {
+            // Запит до глобального стану (напр. Redis), де зберігаються всі ID учасників
+            return await this.state.getCountInNamespace(this.name)
+        } catch (error) {
+            this.logger?.error?.(`[${this.constructor.name}] Failed to get global member count`, {
+                error: error.message,
+            })
+            return this._localSockets.size // Fallback до локальних даних
+        }
+    }
+
+    /**
+     * Повертає список усіх учасників у namespace (всіх сокетів на всіх серверах).
+     * @returns {Promise<string[]>} Масив ID сокетів.
+     * @example
+     * const members = await namespace.getMembers();
+     */
+    async getMembers() {
+        try {
+            // Запит до глобального стану (напр. Redis), де зберігаються всі ID учасників
+            return await this.state.getMembersInNamespace(this.name)
+        } catch (error) {
+            this.logger?.error?.(`[${this.constructor.name}] Failed to get global members`, {
+                error: error.message,
+            })
+            return Array.from(this._localSockets.values()).map((s) => s.id)
+        }
+    }
+
+    /**
      * Sets up broker subscription for cluster-wide communication.
      * @private
      * @return {Promise<void>}
@@ -190,7 +210,7 @@ export class Namespace {
         try {
             await this.broker.subscribe(this.topic, (packet) => {
                 // Instance Echo Protection: ignore messages from our own node
-                if (packet.serverId === this.serverId) {
+                if (packet.originServerId === this.serverId) {
                     return
                 }
 
@@ -205,9 +225,13 @@ export class Namespace {
                 }
             })
 
-            this.logger?.debug('Namespace broker subscription established')
+            this.logger?.debug?.(
+                `[${this.constructor.name}] Namespace broker subscription established`,
+            )
         } catch (error) {
-            this.logger.error('Namespace broker setup failed', { error: error.message })
+            this.logger?.error?.(`[${this.constructor.name}] Namespace broker setup failed`, {
+                error: error.message,
+            })
         }
     }
 
@@ -219,9 +243,11 @@ export class Namespace {
     async _unsubscribeFromBroker() {
         try {
             await this.broker.unsubscribe(this.topic)
-            this.logger?.debug('Namespace broker subscription removed')
+            this.logger?.debug?.(`[${this.constructor.name}] Namespace broker subscription removed`)
         } catch (error) {
-            this.logger?.error('Namespace broker unsubscribe failed', { error: error.message })
+            this.logger?.error?.(`[${this.constructor.name}] Namespace broker unsubscribe failed`, {
+                error: error.message,
+            })
         }
     }
 
@@ -239,7 +265,7 @@ export class Namespace {
         }
         this._userToSockets.get(userId).add(socket)
 
-        this.logger?.debug('Socket associated with user', {
+        this.logger?.debug?.(`[${this.constructor.name}] Socket associated with user`, {
             socketId: socket.id,
             userId,
         })
@@ -272,7 +298,7 @@ export class Namespace {
         }
         this._userToSockets.get(newUserId).add(socket)
 
-        this.logger.debug('Socket identity re-mapped', {
+        this.logger?.debug?.(`[${this.constructor.name}] Socket identity re-mapped`, {
             oldUserId,
             newUserId,
             socketId: socket.id,
@@ -299,12 +325,12 @@ export class Namespace {
                 await this.addUserSocket(socket.user.id, socket)
             }
 
-            this.logger?.debug('Socket added to namespace', {
+            this.logger?.debug?.(`[${this.constructor.name}] Socket added to namespace`, {
                 socketId: socket.id,
                 userId: socket.user?.id,
             })
         } catch (error) {
-            this.logger?.warn('Socket rejected by middleware', {
+            this.logger?.warn?.(`[${this.constructor.name}] Socket rejected by middleware`, {
                 socketId: socket.id,
                 error: error.message,
             })
@@ -338,14 +364,19 @@ export class Namespace {
         // Автоматичний вихід з усіх кімнат
         const leavePromises = Array.from(socket.rooms).map((roomName) =>
             this.leaveRoom(roomName, socket).catch((error) =>
-                this.logger?.error('Room exit error during socket removal', {
-                    error: error.message,
-                }),
+                this.logger?.error?.(
+                    `[${this.constructor.name}] Room exit error during socket removal`,
+                    {
+                        error: error.message,
+                    },
+                ),
             ),
         )
 
         await Promise.allSettled(leavePromises)
-        this.logger?.debug('Socket session removed', { socketId: socket.id })
+        this.logger?.debug?.(`[${this.constructor.name}] Socket session removed`, {
+            socketId: socket.id,
+        })
     }
 
     /**
@@ -393,7 +424,7 @@ export class Namespace {
             room = new Room(roomName, this)
             this.rooms.set(roomName, room)
             this.events.emit('room_created', room)
-            this.logger?.info('New room created', { room: roomName })
+            this.logger?.info?.(`[${this.constructor.name}] New room created`, { room: roomName })
         }
 
         await room.add(socket)
@@ -419,7 +450,9 @@ export class Namespace {
 
             this.rooms.delete(roomName)
             this.events.emit('room_destroyed', room)
-            this.logger?.info('Room destroyed due to emptiness', { room: roomName })
+            this.logger?.info?.(`[${this.constructor.name}] Room destroyed due to emptiness`, {
+                room: roomName,
+            })
         }
     }
 
@@ -496,24 +529,24 @@ export class Namespace {
      * await namespace.broadcast('news', { headline: 'Breaking News!' });
      */
     async broadcast(event, payload, senderId = null) {
-        const envelope = MessageEnvelope.create({
+        const packet = MessageEnvelope.create({
             ns: this.name,
             event,
             payload,
             sender: senderId,
+            originServerId: this.serverId,
         })
 
         // 1. Local delivery
-        this._dispatchToAllLocal(envelope)
+        this._dispatchToAllLocal(packet)
 
         // 2. Global delivery
         try {
-            await this.broker.publish(`broker:ns:${this.name}:global`, {
-                serverId: this.serverId,
-                envelope,
-            })
+            await this.broker.publish(`broker:ns:${this.name}:global`, packet)
         } catch (error) {
-            this.logger?.error('Global broadcast failed', { error: error.message })
+            this.logger?.error?.(`[${this.constructor.name}] Global broadcast failed`, {
+                error: error.message,
+            })
         }
     }
 
@@ -525,7 +558,7 @@ export class Namespace {
         if (this._isDestroyed) return
         this._isDestroyed = true
 
-        this.logger?.info('Destroying namespace...', {
+        this.logger?.info?.(`[${this.constructor.name}] Destroying namespace...`, {
             uptime: this.uptime,
             activeLocalSockets: this._localSockets.size,
         })
@@ -551,6 +584,6 @@ export class Namespace {
         this.events.clear()
 
         //
-        this.logger?.info('Namespace destroyed successfully')
+        this.logger?.info?.('Namespace destroyed successfully')
     }
 }

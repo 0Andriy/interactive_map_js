@@ -1,5 +1,5 @@
 import { PubSub } from './PubSub.js'
-import { MiddlewareRunner } from './MiddlewareRunner.js'
+import { MiddlewareRunner } from './MiddlewarePipeline.js'
 import crypto from 'crypto'
 
 /**
@@ -82,92 +82,10 @@ export class Socket {
         /* Ініціалізація внутрішніх подій сокета */
         this._init()
 
-        this.logger?.info('Socket initialized', {
+        this.logger?.info?.(`[${this.constructor.name}] Socket initialized`, {
             namespace: this.namespace.name,
             connectedAt: this.connectedAt.toISOString(),
         })
-    }
-
-    /**
-     * Повертає тривалість з'єднання в мілісекундах.
-     * @returns {number}
-     * @example
-     * const socketUptime = socket.uptime
-     */
-    get uptime() {
-        return Date.now() - this.connectedAt.getTime()
-    }
-
-    /**
-     * Повертає час останньої активності (отримання повідомлення).
-     * @returns {number}
-     * @example
-     * const lastActive = socket.lastActivity
-     */
-    get lastActivity() {
-        return this._lastActivity
-    }
-
-    /**
-     * Генерує шаблонного гостя.
-     * Можна викликати повторно, якщо авторизація не вдалася.
-     * @returns {Object} Об'єкт користувача гостя.
-     * @example
-     * const guestUser = socket._generateDefaultUser()
-     */
-    _generateDefaultUser() {
-        // Беремо частину UUID до першого дефіса (напр. '550e8400')
-        const shortId = this.id.split('-')[0]
-
-        return {
-            id: `guest_${shortId}`,
-            name: `Anonymous-${shortId}`,
-            role: 'guest',
-            isAuthorized: false,
-            createdAt: new Date(),
-        }
-    }
-
-    /**
-     * Оновлює дані користувача після успішної авторизації.
-     * @param {Object} userData - Дані користувача.
-     * @example
-     * socket.setUser({ id: 'user_123', name: 'John Doe', role: 'member' })
-     */
-    setUser(userData) {
-        // Зберігаємо посилання на старого гостя для можливого перенесення даних
-        const oldUserId = this.user?.id
-
-        // Оновлюємо дані користувача
-        this.user = {
-            ...userData,
-            id: userData.id || userData._id || oldUserId,
-            isAuthorized: true,
-            authenticatedAt: new Date(),
-        }
-
-        // Оновлюємо мапу в Namespace (якщо ID змінився)
-        if (oldUserId !== this.user.id) {
-            this.ns.updateSocketIdentity(this, oldUserId)
-        }
-
-        this.logger?.info('User identity updated', {
-            socketId: this.id,
-            userId: this.user.id,
-        })
-    }
-
-    /**
-     * Перевірка, чи сокет є "завислим" (наприклад, не було повідомлень > 5 хв)
-     * @param {number} timeoutMs - Час в мілісекундах для вважання сокета "завислим". За замовчуванням 300000 (5 хв).
-     * @returns {boolean}
-     * @example
-     * if (socket.isIdle(60000)) {
-     *     console.log('Socket is idle for more than 1 minute');
-     * }
-     */
-    isIdle(timeoutMs = 300000) {
-        return Date.now() - this._lastActivity > timeoutMs
     }
 
     /**
@@ -225,12 +143,98 @@ export class Socket {
     }
 
     /**
+     * Повертає тривалість з'єднання в мілісекундах.
+     * @returns {number}
+     * @example
+     * const socketUptime = socket.uptime
+     */
+    get uptime() {
+        return Date.now() - this.connectedAt.getTime()
+    }
+
+    /**
+     * Повертає час останньої активності (отримання повідомлення).
+     * @returns {number}
+     * @example
+     * const lastActive = socket.lastActivity
+     */
+    get lastActivity() {
+        return this._lastActivity
+    }
+
+    /**
+     * Перевірка, чи сокет є "завислим" (наприклад, не було повідомлень > 5 хв)
+     * @param {number} timeoutMs - Час в мілісекундах для вважання сокета "завислим". За замовчуванням 300000 (5 хв).
+     * @returns {boolean}
+     * @example
+     * if (socket.isIdle(60000)) {
+     *     console.log('Socket is idle for more than 1 minute');
+     * }
+     */
+    isIdle(timeoutMs = 300000) {
+        return Date.now() - this._lastActivity > timeoutMs
+    }
+
+    /**
+     * Генерує шаблонного гостя.
+     * Можна викликати повторно, якщо авторизація не вдалася.
+     * @returns {Object} Об'єкт користувача гостя.
+     * @example
+     * const guestUser = socket._generateDefaultUser()
+     */
+    _generateDefaultUser() {
+        // Беремо частину UUID до першого дефіса (напр. '550e8400')
+        const shortId = this.id.split('-')[0]
+
+        return {
+            id: `guest_${shortId}`,
+            name: `Anonymous-${shortId}`,
+            role: 'guest',
+            isAuthorized: false,
+            createdAt: new Date(),
+        }
+    }
+
+    /**
+     * Оновлює дані користувача після успішної авторизації.
+     * @param {Object} userData - Дані користувача.
+     * @example
+     * socket.setUser({ id: 'user_123', name: 'John Doe', role: 'member' })
+     */
+    setUser(userData) {
+        // Зберігаємо посилання на старого гостя для можливого перенесення даних
+        const oldUserId = this.user?.id
+
+        // Оновлюємо дані користувача
+        this.user = {
+            ...userData,
+            id: userData.id || userData._id || oldUserId,
+            isAuthorized: true,
+            authenticatedAt: new Date(),
+        }
+
+        // Оновлюємо мапу в Namespace (якщо ID змінився)
+        if (oldUserId !== this.user.id) {
+            this.ns.updateSocketIdentity(this, oldUserId)
+        }
+
+        this.logger?.info?.(`[${this.constructor.name}] User identity updated`, {
+            socketId: this.id,
+            userId: this.user.id,
+        })
+    }
+
+    /**
      * Ініціалізація внутрішніх подій
      * @private
      */
     _init() {
         this.rawSocket.on('message', async (rawData) => {
-            this.logger?.debug(`Incoming packet: ${rawData.toString().substring(0, 100)}`)
+            this.logger?.debug?.(
+                `[${this.constructor.name}] Incoming packet: ${rawData
+                    .toString()
+                    .substring(0, 100)}`,
+            )
 
             // Оновлюємо час активності
             this._lastActivity = Date.now()
@@ -240,7 +244,7 @@ export class Socket {
             try {
                 parsed = JSON.parse(rawData.toString())
             } catch (error) {
-                this.logger?.error('Failed to parse incoming JSON', {
+                this.logger?.error?.(`[${this.constructor.name}] Failed to parse incoming JSON`, {
                     error: error.message,
                     preview: rawData.toString().substring(0, 100),
                 })
@@ -271,7 +275,7 @@ export class Socket {
                 // Виклик підписників на подію
                 await this.events.emit(ctx.event, ctx.payload)
             } catch (error) {
-                this.logger?.error('Packet processing error', {
+                this.logger?.error?.(`[${this.constructor.name}] Packet processing error`, {
                     event,
                     error: error.message,
                     stack: error.stack,
@@ -287,7 +291,7 @@ export class Socket {
 
         // Обробка закриття з'єднання сокета
         this.rawSocket.on('close', (code, reason) => {
-            this.logger?.info('Socket transport closed', {
+            this.logger?.info?.(`[${this.constructor.name}] Socket transport closed`, {
                 code,
                 reason: reason.toString(),
                 uptime: this.uptime,
@@ -298,7 +302,9 @@ export class Socket {
 
         // Обробка помилок сокета
         this.rawSocket.on('error', (error) => {
-            this.logger?.error('Socket transport error', { error: error.message })
+            this.logger?.error?.(`[${this.constructor.name}] Socket transport error`, {
+                error: error.message,
+            })
         })
     }
 
@@ -308,7 +314,7 @@ export class Socket {
      */
     ping() {
         if (this.rawSocket.readyState !== this.rawSocket.OPEN) {
-            this.logger?.warn('Attempted to ping closed socket', {
+            this.logger?.warn?.(`[${this.constructor.name}] Attempted to ping closed socket`, {
                 readyState: this.rawSocket.readyState,
             })
             return
@@ -330,10 +336,13 @@ export class Socket {
      */
     rawSend(data) {
         if (this.rawSocket.readyState !== this.rawSocket.OPEN) {
-            this.logger?.warn('Attempted to send data on closed socket', {
-                readyState: this.rawSocket.readyState,
-                data: data,
-            })
+            this.logger?.warn?.(
+                `[${this.constructor.name}] Attempted to send data on closed socket`,
+                {
+                    readyState: this.rawSocket.readyState,
+                    data: data,
+                },
+            )
             return
         }
 
@@ -351,9 +360,16 @@ export class Socket {
      * socket.join('chat-room-1')
      */
     async join(roomName) {
-        await this.namespace.joinRoom(roomName, this)
+        if (this.rooms.has(roomName)) {
+            this.logger?.debug?.(`[${this.constructor.name}] Socket already in room: ${roomName}`)
+            return
+        }
+
         this.rooms.add(roomName)
-        this.logger?.debug(`Joined room: ${roomName}`, {
+
+        await this.namespace.joinRoom(roomName, this)
+
+        this.logger?.debug?.(`[${this.constructor.name}] Joined room: ${roomName}`, {
             count: this.rooms.size,
             rooms: Array.from(this.rooms),
         })
@@ -366,9 +382,11 @@ export class Socket {
      * socket.leave('chat-room-1')
      */
     async leave(roomName) {
-        await this.namespace.leaveRoom(roomName, this)
         this.rooms.delete(roomName)
-        this.logger?.debug(`Left room: ${roomName}`, {
+
+        await this.namespace.leaveRoom(roomName, this)
+
+        this.logger?.debug?.(`[${this.constructor.name}] Left room: ${roomName}`, {
             count: this.rooms.size,
             rooms: Array.from(this.rooms),
         })
@@ -383,7 +401,7 @@ export class Socket {
      * await socket.disconnect(4001, 'Server is restarting');
      */
     async disconnect(code = 1000, reason = 'Server closed') {
-        this.logger?.info(`Disconnecting socket: ${reason}`, {
+        this.logger?.info?.(`[${this.constructor.name}] Disconnecting socket: ${reason}`, {
             code,
             reason,
         })
@@ -400,6 +418,10 @@ export class Socket {
      * await socket.destroy();
      */
     async destroy() {
+        for (const roomName of [...this.rooms]) {
+            this.leave(roomName)
+        }
+
         // Видаляємо сокет з усіх кімнат у просторі імен
         await this.namespace.removeSocket(this)
 
@@ -413,6 +435,6 @@ export class Socket {
         this.user = null
 
         //
-        this.logger?.info('Socket destroyed and resources cleaned up')
+        this.logger?.info?.(`[${this.constructor.name}] Socket destroyed and resources cleaned up`)
     }
 }

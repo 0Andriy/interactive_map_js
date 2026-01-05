@@ -40,10 +40,17 @@ export class PubSub {
      * @param {string} pattern - Назва події або паттерн (напр. "orders.*", "chat:msg").
      * @param {Function} callback - Функція обробник.
      * @returns {Function} Функція для відписки (unsubscribe).
+     * @example
+     * const unsubscribe = pubsub.on('chat.*', (data) => {
+     *     console.log('New chat event:', data)
+     * })
+     *
+     * // Щоб відписатися:
+     * unsubscribe()
      */
     on(pattern, callback) {
         if (typeof callback !== 'function') {
-            throw new TypeError('Callback must be a function')
+            throw new TypeError(`[${this.constructor.name}] Callback must be a function`)
         }
 
         if (!this._subscribers.has(pattern)) {
@@ -61,6 +68,9 @@ export class PubSub {
      * Відписка від події.
      * @param {string} pattern - Паттерн, на який була оформлена підписка.
      * @param {Function} callback - Обробник, який треба видалити.
+     * @example
+     * const callback = (data) => { console.log(data) }
+     * pubsub.off('chat.*', callback)
      */
     off(pattern, callback) {
         const subs = this._subscribers.get(pattern)
@@ -79,6 +89,8 @@ export class PubSub {
      * @param {string} topic - Конкретний топік події (напр. "orders.created").
      * @param {any} data - Дані повідомлення.
      * @returns {Promise<void>}
+     * @example
+     * await pubsub.emit('chat.message', { text: 'Hello World' })
      */
     async emit(topic, data) {
         const tasks = []
@@ -88,7 +100,7 @@ export class PubSub {
             try {
                 await callback(data)
             } catch (error) {
-                this.logger?.error(`PubSub Error [${topic}]:`, error)
+                this.logger?.error?.(`[${this.constructor.name}] PubSub Error [${topic}]:`, error)
             }
         }
 
@@ -109,6 +121,9 @@ export class PubSub {
 
     /**
      * Повне очищення всіх підписок та кешу.
+     * @returns {void}
+     * @example
+     * pubsub.clear()
      */
     clear() {
         this._subscribers.clear()

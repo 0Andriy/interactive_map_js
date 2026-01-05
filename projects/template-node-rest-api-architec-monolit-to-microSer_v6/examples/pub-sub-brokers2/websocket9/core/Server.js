@@ -94,7 +94,7 @@ export class WSServer {
         this._startGlobalHeartbeat()
 
         const mode = options.server ? 'attached to HTTP server' : `on port ${options.port}`
-        this.logger?.info(`WS Server started [${mode}]`, {
+        this.logger?.info?.(`[${this.constructor.name}] WS Server started [${mode}]`, {
             basePath: this.basePath,
             createdAt: this.createdAt,
         })
@@ -139,10 +139,13 @@ export class WSServer {
 
                 // Захист: якщо шлях не відповідає basePath, відхиляємо з'єднання
                 if (!nsName) {
-                    this.logger?.warn('Connection rejected: Base path mismatch', {
-                        received: url.pathname,
-                        expected: this.basePath,
-                    })
+                    this.logger?.warn?.(
+                        `[${this.constructor.name}] Connection rejected: Base path mismatch`,
+                        {
+                            received: url.pathname,
+                            expected: this.basePath,
+                        },
+                    )
                     ws.terminate()
                     return
                 }
@@ -171,20 +174,22 @@ export class WSServer {
 
                 // Обробка помилок сокета
                 ws.on('error', (error) => {
-                    this.logger?.error('Socket transport error', {
+                    this.logger?.error?.(`[${this.constructor.name}] Socket transport error`, {
                         socketId: socket.id,
                         error: error.message,
                     })
                 })
             } catch (error) {
-                this.logger?.error('Connection handling failed', { error: error.message })
+                this.logger?.error?.(`[${this.constructor.name}] Connection handling failed`, {
+                    error: error.message,
+                })
                 ws.terminate()
             }
         })
 
         // Глобальна обробка помилок WSS
         this.wss.on('error', (error) => {
-            this.logger?.error('WSS Global Error:', error)
+            this.logger?.error?.(`[${this.constructor.name}] WSS Global Error:`, error)
         })
     }
 
@@ -232,7 +237,9 @@ export class WSServer {
         if (!this.namespaces.has(normalizedName)) {
             const ns = new Namespace(normalizedName, this._deps)
             this.namespaces.set(normalizedName, ns)
-            this.logger?.info('Namespace created', { ns: normalizedName })
+            this.logger?.info?.(`[${this.constructor.name}] Namespace created`, {
+                ns: normalizedName,
+            })
         }
         return this.namespaces.get(normalizedName)
     }
@@ -260,11 +267,14 @@ export class WSServer {
             for (const ns of this.namespaces.values()) {
                 for (const socket of ns._localSockets.values()) {
                     if (!socket.isAlive) {
-                        socket.logger?.info('Terminating inactive socket', {
-                            nsName: ns.name,
-                            socketId: socket.id,
-                            uptime: socket.uptime,
-                        })
+                        socket.logger?.info?.(
+                            `[${socket.constructor.name}] Terminating inactive socket`,
+                            {
+                                nsName: ns.name,
+                                socketId: socket.id,
+                                uptime: socket.uptime,
+                            },
+                        )
                         socket.disconnect((4000, 'Heartbeat timeout'))
                         socket.rawSocket.terminate()
                         continue
@@ -301,7 +311,7 @@ export class WSServer {
         if (this._isClosing) return
         this._isClosing = true
 
-        this.logger?.info('Shutting down IO server...', {
+        this.logger?.info?.(`[${this.constructor.name}] Shutting down IO server...`, {
             uptime: this.uptime,
         })
 
@@ -320,17 +330,19 @@ export class WSServer {
         // 3. Закриваємо сам WSS
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
-                this.logger?.warn('WSS close timeout, forcing exit')
+                this.logger?.warn?.(`[${this.constructor.name}] WSS close timeout, forcing exit`)
                 resolve()
             }, 5000)
 
             this.wss.close((err) => {
                 clearTimeout(timer)
                 if (err) {
-                    this.logger?.error('WSS close error', { error: err.message })
+                    this.logger?.error?.(`[${this.constructor.name}] WSS close error`, {
+                        error: err.message,
+                    })
                     return reject(err)
                 }
-                this.logger?.info('WS Server closed successfully')
+                this.logger?.info?.(`[${this.constructor.name}] WS Server closed successfully`)
                 resolve()
             })
         })

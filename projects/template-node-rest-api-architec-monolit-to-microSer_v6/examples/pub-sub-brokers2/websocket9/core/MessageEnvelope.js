@@ -40,7 +40,9 @@ export class MessageEnvelope {
      */
     static create({ ns, room, event, payload, sender, traceId }) {
         if (!ns || !event) {
-            throw new Error(`[MessageEnvelope] Missing required fields: ${!ns ? 'ns' : 'event'}`)
+            throw new Error(
+                `[${this.constructor.name}] Missing required fields: ${!ns ? 'ns' : 'event'}`,
+            )
         }
 
         const envelope = {
