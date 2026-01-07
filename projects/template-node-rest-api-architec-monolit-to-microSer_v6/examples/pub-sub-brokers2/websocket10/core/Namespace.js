@@ -7,9 +7,9 @@ export class Namespace {
     #brokerChannel = null
     #brokerUnsubscribe = null
 
-    constructor(name, { server, stateAdapter, brokerAdapter, logger = null } = {}) {
+    constructor(name, { serverId, stateAdapter, brokerAdapter, logger = null }) {
         this.name = name
-        this.server = server
+        this.serverId = serverId
 
         this.state = stateAdapter
         this.broker = brokerAdapter
@@ -22,8 +22,9 @@ export class Namespace {
               })
             : logger
 
-        this.sockets = new Map() // id -> Socket
-        this.rooms = new Map() // name -> Room
+        this.sockets = new Map() // socketId -> Socket
+        this.rooms = new Map() // nameRoom -> Room
+        this.users = new Map() // userId -> Set of SocketIds
 
         this.eventEmitter = new EventEmitter({ logger: this.logger })
         this.pipelineMiddleware = new MiddlewarePipeline({ logger: this.logger })
@@ -33,7 +34,7 @@ export class Namespace {
         this.#initBroker()
 
         this.logger?.info?.(`[${this.constructor.name}] Namespace initialized`, {
-            serverId: this.server.serverId,
+            serverId: this.serverId,
             brokerChannel: this.#brokerChannel,
         })
     }
@@ -82,19 +83,31 @@ export class Namespace {
 
         try {
             const context = {
-                ns: this,
                 socket,
+                ns: this,
             }
 
             await this.pipelineMiddleware.run(context)
 
             this.sockets.set(socket.id, socket)
 
-            await this.state?.addClient(this.name, socket.id, { serverId: this.server.serverId })
+            const userId = socket?.user?.id
+            if (userId) {
+                this.addUserSocket(userId, socket.id)
+            }
 
-            socket.rawSocket.on('close', () => this.removeSocket(socket.id))
+            await this.state?.addClient(this.name, socket.id, { serverId: this.serverId })
+
+            socket.rawSocket.on('close', () => {
+                this.removeSocket(socket.id)
+            })
 
             this.emit('connection', socket)
+
+            this.logger?.debug?.(`[${this.constructor.name}] Socket added to namespace`, {
+                socketId: socket.id,
+                userId: socket.user?.id,
+            })
         } catch (error) {
             this.logger?.warn?.(`[${this.constructor.name}] Socket rejected by middleware`, {
                 socketId: socket.id,
@@ -107,17 +120,44 @@ export class Namespace {
     /**
      * Видалити сокет звідусіль (викликається при close)
      */
-    removeSocket(socketId) {
+    async removeSocket(socketId) {
         const socket = this.sockets.get(socketId)
         if (!socket) return
+
+        const userId = socket?.user?.id
+        if (userId) {
+            this.removeUserSocket(userId, socketId)
+        }
 
         // 1. Видалити сокет з усіх кімнат
         for (const roomName of [...socket.rooms]) {
             this.leaveRoom(roomName, socketId)
         }
 
+        await this.state?.removeClient(this.name, socketId)
+
         // 2. Видалити з реєстру
         this.sockets.delete(socketId)
+    }
+
+    addUserSocket(userId, socketId) {
+        let userSocketIds = this.users.get(userId)
+        if (!userSocketIds) {
+            userSocketIds = new Set()
+            this.users.set(userId, userSocketIds)
+        }
+        userSocketIds.add(socketId)
+    }
+
+    removeUserSocket(userId, socketId) {
+        const userSocketId = this.users.get(userId)
+        if (userSocketId) return
+
+        userSocketId.remove(socketId)
+
+        if (userSocketId.size === 0) {
+            this.users.delete(userId)
+        }
     }
 
     /**
@@ -137,9 +177,7 @@ export class Namespace {
 
     leaveRoom(roomName, socketId) {
         const room = this.rooms.get(roomName)
-        if (!room) {
-            return
-        }
+        if (!room) return
 
         room.remove(socketId)
 
@@ -150,18 +188,78 @@ export class Namespace {
     }
 
     /**
-     * Глобальний еміт (Локально + Брокер)
+     * Глобальний еміт (Локально + Брокер) - emit
      */
-    broadcast(event, data, senderId = null) {
-        this.localEmit(event, data, senderId)
+    async broadcast(event, data, senderId = null) {
+        if (!event) {
+            this.logger?.error?.(
+                `[${this.constructor.name}] Broadcast failed: event name is required`,
+            )
+            return
+        }
 
-        if (this.broker) {
-            this.broker.publish(this.#brokerChannel, {
-                from: this.server.serverId,
-                nsName: this.name,
+        // 1. Локальна розсилка всім підключеним до цього вузла
+        try {
+            await this.localEmit(event, data, senderId)
+        } catch (error) {
+            this.logger?.error?.(`[${this.constructor.name}] Local dispatch error`, {
+                error,
                 event,
-                data,
             })
+        }
+
+        // 2. Публікація в брокер для інших вузлів кластера
+        if (this.broker) {
+            try {
+                await this.broker.publish(this.#brokerChannel, {
+                    fromServerId: this.serverId,
+                    nsName: this.name,
+                    event,
+                    data,
+                    senderId,
+                })
+            } catch (error) {
+                this.logger?.error?.(`[${this.constructor.name}] Broker publish error`, {
+                    error,
+                    channel: this.#brokerChannel,
+                })
+            }
+        }
+    }
+
+    to(roomName) {
+        return {
+            emit: (event, payload) => {
+                const room = this.rooms.get(roomName)
+                if (!room) return
+
+                room.broadcast(event, payload)
+            },
+        }
+    }
+
+    toUser(userId) {
+        return {
+            emit: async (event, data) => {
+                // 1. Локальна відправка на всі сокети цього юзера на цьому сервері
+                const socketIds = this.users.get(userId)
+                if (socketIds) {
+                    for (const sId of socketIds) {
+                        this.sockets.get(sId)?.send({ event, data, ns: this.name })
+                    }
+                }
+
+                // 2. Публікація в брокер, щоб інші сервери зробили те саме
+                if (this.broker) {
+                    await this.broker.publish(this.#brokerChannel, {
+                        fromServerId: this.serverId,
+                        type: 'USER_BROADCAST',
+                        userId,
+                        event,
+                        data,
+                    })
+                }
+            },
         }
     }
 
@@ -211,32 +309,37 @@ export class Namespace {
             }
         }
 
+        for (const room of [...this.rooms.values()]) {
+            room.destroy()
+        }
+        this.rooms.clear()
+
         for (const socket of [...this.sockets.values()]) {
             socket.disconnect(1001, 'Namespace Destroyed')
         }
         this.sockets.clear()
 
-        for (const room of [...this.sockets.values()]) {
-            room.destroy()
-        }
-        this.rooms.clear()
-
         this.eventEmitter.destroy()
         this.pipelineMiddleware.destroy()
+
+        this.logger?.debug?.(`[${this.constructor.name}] Namespace destroyed: ${this.name}`, {
+            nsName: this.name,
+        })
+        this.logger = null
     }
 
     /* ===============================
      * Internal helpers
      * =============================== */
 
-    #initBroker() {
+    async #initBroker() {
         if (!this.broker) return
 
         // Зберігаємо функцію відписки, яку повертає брокер
-        const result = this.broker.subscribe(this.#brokerChannel, (msg) => {
-            if (this.#isDestroyed || msg.from === this.server.serverId) {
-                return
-            }
+        const result = await this.broker.subscribe(this.#brokerChannel, (msg) => {
+            if (this.#isDestroyed) return
+            // Echo Protection: ігноруємо власні повідомлення
+            if (msg.fromServerId && msg.fromServerId === this.serverId) return
 
             this.localEmit(msg.event, msg.data, msg.senderId)
         })

@@ -251,6 +251,50 @@ export class EventEmitter {
     }
 
     /**
+     * Повертає копію масиву обробників для вказаної події.
+     *
+     * @param {string} eventName - Назва події.
+     * @returns {Function[]}
+     *
+     * @example
+     * emitter.listeners('data');
+     */
+    listeners(eventName) {
+        this.#assertAlive()
+        this.#assertEventName(eventName)
+        return [...this.#getMatchedHandlers(eventName)]
+    }
+
+    /**
+     * Повертає кількість слухачів для конкретної події,
+     * враховуючи збіги за шаблонами (wildcards).
+     *
+     * @param {string} eventName - Назва події.
+     * @returns {number}
+     *
+     * @example
+     * emitter.listenerCount('data');
+     */
+    listenerCount(eventName) {
+        this.#assertAlive()
+        this.#assertEventName(eventName)
+        const handlers = this.#getMatchedHandlers(eventName)
+        return handlers.length
+    }
+
+    /**
+     * Повертає масив усіх зареєстрованих паттернів подій.
+     *
+     * @returns {string[]}
+     *
+     * @example
+     * emitter.eventNames();
+     */
+    eventNames() {
+        return Array.from(this.#events.keys())
+    }
+
+    /**
      * Повністю знищує емітер, очищує пам'ять та блокує подальшу роботу.
      *
      * @example

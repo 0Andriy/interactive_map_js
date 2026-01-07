@@ -1,6 +1,6 @@
 import { WebSocketServer } from 'ws'
-// import { Namespace } from './Namespace.js'
-// import { Socket } from './Socket.js'
+import { Namespace } from './Namespace.js'
+import { Socket } from './Socket.js'
 import crypto from 'crypto'
 
 export class WSServer {
@@ -12,39 +12,29 @@ export class WSServer {
     #brokerChannel = null
     #brokerUnsubscribe = null
 
-    constructor({
-        server,
-        basePath = '/ws',
-        wssOptions = {},
-        stateAdapter = null,
-        brokerAdapter = null,
-        logger = null,
-    } = {}) {
-        this.serverId = crypto.randomUUID()
+    constructor(options = {}) {
+        this.options = options
 
-        this.server = server
-        this.basePath = this.#normalizePath(basePath)
-        this.#brokerChannel = `ws:global`
-
-        this.#stateAdapter = stateAdapter
-        this.#brokerAdapter = brokerAdapter
-
-        this.sockets = new Map()
-        this.namespaces = new Map()
+        this.serverId = options.serverId || crypto.randomUUID()
+        this.basePath = options.path ? this.#normalizePath(options.path) : '/'
         this.createdAt = new Date()
 
-        this.#logger = logger.child
-            ? logger.child({
-                  component: `${this.constructor.name}`,
-                  serverId: this.serverId,
-              })
-            : logger
+        this.namespaces = new Map()
 
-        this.wss = new WebSocketServer({
-            noServer: true,
-            path: basePath,
-            ...wssOptions,
-        })
+        this.#stateAdapter = options.stateAdapter
+        this.#brokerAdapter = options.brokerAdapter
+        this.#brokerChannel = `ws:global`
+
+        if (options.logger) {
+            this.#logger = options.logger.child
+                ? options.logger.child({
+                      component: this.constructor.name,
+                      serverId: this.serverId,
+                  })
+                : options.logger
+        }
+
+        this.wss = new WebSocketServer(options)
 
         this.#init()
         this.#initGlobalHeartbeat()
@@ -79,7 +69,7 @@ export class WSServer {
      * =============================== */
 
     of(nameNamespace) {
-        if (!nameNamespace || typeof nameNamespace !== 'string' || eventName.length === 0) {
+        if (!nameNamespace || typeof nameNamespace !== 'string') {
             throw new TypeError(
                 `[${this.constructor.name}] nameNamespace must be a non-empty string`,
             )
@@ -90,7 +80,7 @@ export class WSServer {
         let namespace = this.namespaces.get(nsName)
         if (!namespace) {
             namespace = new Namespace(nsName, {
-                server: this,
+                serverId: this.serverId,
                 stateAdapter: this.#stateAdapter,
                 brokerAdapter: this.#brokerAdapter,
                 logger: this.#logger,
@@ -105,20 +95,94 @@ export class WSServer {
         return namespace
     }
 
-    broadcast(event, data, senderId = null, targetNsName = null) {
+    async broadcast(event, data, senderId = null, targetNsName = null) {
+        if (!event) {
+            this.#logger?.error?.(
+                `[${this.constructor.name}] Broadcast failed: event name is required`,
+            )
+            return
+        }
+
         // 1. Локальна розсилка всім підключеним до цього вузла
-        this.#dispatchLocal(event, data, senderId, targetNsName)
+        try {
+            await this.#dispatchLocal(event, data, senderId, targetNsName)
+        } catch (error) {
+            this.#logger?.error?.(`[${this.constructor.name}] Local dispatch error`, {
+                error,
+                event,
+            })
+        }
 
         // 2. Публікація в брокер для інших вузлів кластера
         if (this.#brokerAdapter) {
-            this.#brokerAdapter.publish(this.#brokerChannel, {
-                from: this.serverId,
-                event,
-                data,
-                senderId,
-                targetNsName,
-            })
+            try {
+                await this.#brokerAdapter.publish(this.#brokerChannel, {
+                    fromServerId: this.serverId,
+                    event,
+                    data,
+                    senderId,
+                    targetNsName,
+                })
+            } catch (error) {
+                this.#logger?.error?.(`[${this.constructor.name}] Broker publish error`, {
+                    error,
+                    channel: this.#brokerChannel,
+                })
+            }
         }
+    }
+
+    handleUpgrade(server = null) {
+        if (!server) {
+            return
+        }
+
+        if (this.wss.options.server || this.wss.options.port) {
+            this.#logger?.info?.(
+                `[${this.constructor.name}] handleUpgrade skipped: wss is already managing the server`,
+                {
+                    basePath: this.basePath,
+                },
+            )
+            return
+        }
+
+        const onUpgrade = async (request, socket, head) => {
+            const { pathname } = new URL(request.url, `http://${request.headers.host}`)
+
+            if (pathname === this.basePath) {
+                this.wss.handleUpgrade(request, socket, head, (ws) => {
+                    this.wss.emit('connection', ws, request)
+                })
+                return
+            }
+
+            // Отримуємо кількість усіх функцій-обробників події 'upgrade'
+            const listeners = server.listeners('upgrade')
+
+            // Зберігаємо лічильник перевірок у самому сокеті
+            socket.checkCount = (socket.checkCount || 0) + 1
+
+            // Якщо цей обробник був останнім у списку і ніхто не підтвердив обробку
+            if (socket.checkCount === listeners.length) {
+                this.#logger?.warn?.(
+                    `[${this.constructor.name}] Path not found, closing connection on upgrade.`,
+                    { pathname },
+                )
+
+                socket.write('HTTP/1.1 404 Not Found\r\n\r\n')
+                socket.destroy()
+            }
+        }
+
+        server.on('upgrade', onUpgrade)
+        server.once('close', () => {
+            server.removeListener('upgrade', onUpgrade)
+        })
+
+        this.#logger?.info?.(`[${this.constructor.name}] Upgrade handler attached to server`, {
+            basePath: this.basePath,
+        })
     }
 
     getLocalStats() {
@@ -174,33 +238,35 @@ export class WSServer {
      * Internal helpers
      * =============================== */
 
-    #normalizePath(path) {
-        if (typeof path !== 'string') return '/'
+    #normalizePath(path = '/') {
+        if (typeof path !== 'string') return null
         const trimmed = path.trim()
         const leading = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
         return leading.length > 1 && leading.endsWith('/') ? leading.slice(0, -1) : leading
     }
 
     #init() {
-        // Обробка Upgrade запитів
-        this.server.on('upgrade', (request, socket, head) => {
-            const { pathname } = new URL(request.url, `http://${request.headers.host}`)
-
-            if (pathname.startsWith(this.basePath)) {
-                this.wss.handleUpgrade(request, socket, head, (ws) => {
-                    this.wss.emit('connection', ws, request)
-                })
-            }
-        })
-
-        // Основний обробник нових з'єднань
         this.wss.on('connection', async (ws, req) => {
+            if (this.#isClosing) {
+                ws.terminate()
+                return
+            }
+
             try {
-                const url = new URL(req.url, `http://${req.headers.host}`)
+                const url = new URL(req.url, `${req.protocol}://${req.headers.host}`)
                 const relativePath = url.pathname.slice(this.basePath.length)
                 const nsName = this.#normalizePath(relativePath)
 
-                const namespace = this.of(nsName)
+                const namespace = this.namespaces.get(nsName)
+                if (!namespace) {
+                    this.#logger?.warn?.(
+                        `[${this.constructor.name}] Attempt to connect to non-existent namespace: ${nsName}`,
+                    )
+                    ws.close(4004, 'Not Found Namespace')
+                    ws.terminate()
+                    return
+                }
+
                 const socketId = crypto.randomUUID()
 
                 const socket = new Socket({
@@ -219,17 +285,17 @@ export class WSServer {
                     issued: Date.now(),
                 }
 
-                await namespace.addSocket(socket)
-
                 //
                 ws.on('close', () => {
                     namespace.removeSocket(socketId)
                 })
 
+                await namespace.addSocket(socket)
+
                 //
                 ws.on('error', (error) => {
                     this.#logger?.error?.(`[${this.constructor.name}] Socket transport error`, {
-                        socketId: socket.id,
+                        socketId: socketId,
                         error: error.message,
                     })
                 })
@@ -247,17 +313,19 @@ export class WSServer {
         })
     }
 
-    #initBrokerSubscriptions() {
+    async #initBrokerSubscriptions() {
         if (!this.#brokerAdapter) return
 
         // Підписка на глобальні повідомлення від інших серверів
-        const result = this.#brokerAdapter.subscribe(this.#brokerChannel, (msg) => {
+        const result = await this.#brokerAdapter.subscribe(this.#brokerChannel, (msg) => {
+            if (this.#isClosing) return
             // Echo Protection: ігноруємо власні повідомлення
-            if (this.#isClosing || msg.from === this.serverId) return
+            if (msg.fromServerId && msg.fromServerId === this.serverId) return
 
             this.#logger?.debug?.(
-                `[${this.constructor.name}] Broker Received global broadcast from ${msg.from}`,
+                `[${this.constructor.name}] Broker received broadcast from ${msg.fromServerId}`,
             )
+
             this.#dispatchLocal(msg.event, msg.data, msg.senderId, msg.targetNsName)
         })
 
@@ -275,17 +343,18 @@ export class WSServer {
             }
 
             ns.localEmit(event, data, senderId)
-        } else {
-            for (const ns of this.namespaces.values()) {
-                ns.localEmit(event, data, senderId)
-            }
+            return
+        }
+
+        for (const ns of this.namespaces.values()) {
+            ns.localEmit(event, data, senderId)
         }
     }
 
     #initGlobalHeartbeat() {
         this.#heartbeatTimer = setInterval(() => {
-            for (const ns of this.namespaces.values()) {
-                for (const socket of ns.sockets.values()) {
+            for (const ns of [...this.namespaces.values()]) {
+                for (const socket of [...ns.sockets.values()]) {
                     if (!socket.isAlive) {
                         socket.logger?.info?.(
                             `[${socket.constructor.name}] Terminating inactive socket`,
@@ -300,10 +369,6 @@ export class WSServer {
                     }
 
                     socket.isAlive = false
-
-                    if (socket.rawSocket.readyState !== socket.rawSocket.OPEN) {
-                        return
-                    }
 
                     socket.ping()
                 }

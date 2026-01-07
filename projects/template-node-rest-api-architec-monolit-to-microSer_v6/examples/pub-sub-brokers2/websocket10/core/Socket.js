@@ -121,6 +121,14 @@ export class Socket {
         this.namespace.broadcast(event, data, this.id)
     }
 
+    to(room) {
+        return {
+            emit: (event, payload) => {
+                this.adapter.publish(`${this.nspName}:${room}`, { event, payload }, this.id)
+            },
+        }
+    }
+
     /**
      * Надіслати Ping клієнту.
      */
@@ -161,7 +169,8 @@ export class Socket {
         // Обробка вхідних повідомлень
         this.rawSocket.on('message', (rawData) => {
             try {
-                const message = JSON.parse(rawData)
+                const rawDataString = rawData.toString()
+                const message = JSON.parse(rawDataString)
 
                 // Емітимо подію локально на об'єкті сокета
                 if (message.event) {
