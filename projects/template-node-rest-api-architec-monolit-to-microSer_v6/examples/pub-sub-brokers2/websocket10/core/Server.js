@@ -150,7 +150,7 @@ export class WSServer {
         const onUpgrade = async (request, socket, head) => {
             const { pathname } = new URL(request.url, `http://${request.headers.host}`)
 
-            if (pathname === this.basePath) {
+            if (pathname.startsWith(this.basePath) && pathname === this.basePath) {
                 this.wss.handleUpgrade(request, socket, head, (ws) => {
                     this.wss.emit('connection', ws, request)
                 })
