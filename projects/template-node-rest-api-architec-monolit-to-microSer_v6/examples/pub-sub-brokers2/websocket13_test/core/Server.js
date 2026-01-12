@@ -73,22 +73,6 @@ export class Server {
                 const url = new URL(request.url, `http://${request.headers.host || 'localhost'}`)
                 const pathname = url.pathname
 
-                // Витягуємо auth з query-параметрів (наприклад, ?token=abc або ?auth={"token":"abc"})
-                let authData = {}
-                const rawAuth = url.searchParams.get('token')
-
-                if (rawAuth) {
-                    try {
-                        authData = JSON.parse(rawAuth)
-                    } catch (e) {
-                        // Якщо не JSON, можемо спробувати взяти просто як рядок або об'єкт
-                        authData = { token: rawAuth }
-                    }
-                }
-
-                // Передаємо ці дані в запит, щоб Socket міг їх підхопити
-                request.auth = authData
-
                 // 1. Захист: перевіряємо, чи шлях починається з нашого базового basePath (напр. /socket.io)
                 // Також перевіряємо, щоб basePath не був порожнім
                 if (!this.options.basePath || !pathname.startsWith(this.options.basePath)) {
