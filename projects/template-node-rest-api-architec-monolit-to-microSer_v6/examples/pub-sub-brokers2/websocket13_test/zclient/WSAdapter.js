@@ -127,9 +127,10 @@ export default class WSAdapter {
 
     /**
      * Відправляє дані. Якщо сокет закритий — додає в чергу.
-     * @param {Object|string} data
+     * @param {any} data - Дані
+     * @param {number} [ttl=0] - Час життя повідомлення в черзі (мс)
      */
-    send(data) {
+    send(data, ttl = 0) {
         const payload =
             this.options.autoJson && typeof data === 'object' && data !== null
                 ? JSON.stringify(data)
@@ -150,7 +151,10 @@ export default class WSAdapter {
                 )
             }
 
-            this.messageQueue.push(payload)
+            this.messageQueue.push({
+                payload,
+                expiry: ttl > 0 ? Date.now() + ttl : null,
+            })
             this.logger?.warn?.(
                 `[WS-${this.#instanceId}] Socket not open. Queued. Current queue size: ${
                     this.messageQueue.length
@@ -183,6 +187,16 @@ export default class WSAdapter {
 
             this.send(payload)
         })
+    }
+
+    /**
+     * М'яке перепідключення (наприклад, для оновлення токена)
+     */
+    refresh() {
+        this.logger?.info?.(`[WS-${this.#instanceId}] Soft restart...`)
+        if (this.#ws) {
+            this.#ws.close(4000, 'Refresh')
+        }
     }
 
     /**
@@ -279,6 +293,7 @@ export default class WSAdapter {
 
         this.#ws.onmessage = (event) => {
             this.#resetPongTimeout()
+
             let data = event.data
 
             this.logger?.trace?.(`[WS-${this.#instanceId}] Raw message received`, data)
@@ -295,6 +310,14 @@ export default class WSAdapter {
             if (this.options.autoJson && typeof data === 'string') {
                 try {
                     data = JSON.parse(data)
+
+                    // Обробка системного PONG (якщо сервер шле JSON)
+                    if (data.type === 'pong' || data.action === 'pong') {
+                        this.#resetPongTimeout()
+                        this.logger?.debug?.(`[WS-${this.#instanceId}] Pong received (JSON)`)
+                        return
+                    }
+
                     // Перевірка патерну Request-Response
                     if (data?.requestId && this.#pendingRequests.has(data.requestId)) {
                         const resolver = this.#pendingRequests.get(data.requestId)
@@ -312,9 +335,17 @@ export default class WSAdapter {
             this.#emit('data', data)
         }
 
+        if (typeof this.#ws.on === 'function') {
+            this.#ws.on('pong', () => {
+                this.#resetPongTimeout()
+                this.logger?.debug?.(`[WS-${this.#instanceId}] Protocol Pong received`)
+            })
+        }
+
         this.#ws.onclose = (event) => {
             this.#updateStatus('CLOSED')
             this.#stopHeartbeat()
+
             if (!this.isManualClose) {
                 this.logger?.warn?.(
                     `[WS-${this.#instanceId}] ⚠️ Disconnected. Code: ${event.code}, Reason: ${
@@ -343,8 +374,17 @@ export default class WSAdapter {
         )
 
         while (this.messageQueue.length > 0 && this.isConnected) {
-            const msg = this.messageQueue.shift()
-            this.#ws.send(msg)
+            const item = this.messageQueue.shift()
+
+            // Перевірка TTL повідомлення
+            if (item.expiry && Date.now() > item.expiry) {
+                this.logger?.debug?.(
+                    `[WS-${this.#instanceId}] Skipped an outdated message from the queue`,
+                )
+                continue
+            }
+
+            this.#ws.send(item.payload)
 
             if (this.options.rateLimitDelay > 0) {
                 await new Promise((r) => setTimeout(r, this.options.rateLimitDelay))
@@ -358,6 +398,7 @@ export default class WSAdapter {
     #handleReconnect() {
         if (!this.options.reconnect) return
         if (this.isManualClose) return
+        if (this.#reconnectTimer) return
 
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
             this.logger?.warn?.(`[WS-${this.#instanceId}] Device offline. Waiting for network...`)
@@ -379,6 +420,7 @@ export default class WSAdapter {
         const finalDelay = Math.max(0, delay + jitter)
 
         this.#reconnectTimer = setTimeout(() => {
+            this.#reconnectTimer = null
             this.retries++
             this.connect()
         }, finalDelay)
@@ -421,6 +463,11 @@ export default class WSAdapter {
                 // Відправляємо пінг
                 this.#ws.send(JSON.stringify({ type: 'ping', ts: Date.now() }))
 
+                // Якщо використовується бібліотека 'ws' в Node.js, можна слати протокольний пінг:
+                if (typeof this.#ws.ping === 'function') {
+                    this.#ws.ping()
+                }
+
                 // Очікуємо понг (якщо не прийде - розриваємо для реконнекту)
                 this.#pongTimeoutTimer = setTimeout(() => {
                     this.logger?.error?.(
@@ -454,7 +501,10 @@ export default class WSAdapter {
      *
      */
     #clearTimers() {
-        if (this.#reconnectTimer) clearTimeout(this.#reconnectTimer)
+        if (this.#reconnectTimer) {
+            clearTimeout(this.#reconnectTimer)
+            this.#reconnectTimer = null
+        }
         this.#stopHeartbeat()
     }
 
