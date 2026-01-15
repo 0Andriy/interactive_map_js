@@ -28,7 +28,7 @@ import apiV1Routes from './api/v1/index.js'
 // <=======================================================================>
 // <=======================================================================>
 
-export async function createExpressApp({ wsAppInstance = null, staticFilesDir = 'public' } = {}) {
+export async function createExpressApp({ wss = null, staticFilesDir = 'public' } = {}) {
     // Створюємо екземпляр додатку
     const app = express()
 
@@ -38,8 +38,8 @@ export async function createExpressApp({ wsAppInstance = null, staticFilesDir = 
 
     // 0.
     app.use((req, res, next) => {
-        if (wsAppInstance) {
-            req.wsApp = wsAppInstance
+        if (wss) {
+            req.wss = wss
         }
 
         next()
@@ -52,6 +52,11 @@ export async function createExpressApp({ wsAppInstance = null, staticFilesDir = 
     // --- 1. Ранні middleware для безпеки та продуктивності ---
     // Ці middleware мають працювати якомога раніше, щоб забезпечити базовий захист
     // та обробку мережевих запитів.
+
+    // --- НАЛАШТУВАННЯ ДОВІРИ ДО ПРОКСІ ---
+    // Це КРИТИЧНО. Вкажіть IP вашого фронтенд-сервера (або проксі).
+    // 'loopback' довіряє 127.0.0.1. Можна вказати список IP: ['127.0.0.1', '192.168.1.100']
+    app.set('trust proxy', ['loopback'])
 
     // Middleware для перенаправлення HTTP на HTTPS
     // Цей middleware повинен бути одним з перших, якщо використовується HTTPS,
@@ -130,11 +135,43 @@ export async function createExpressApp({ wsAppInstance = null, staticFilesDir = 
     // Застосовується до всіх API-маршрутів. Розмістіть його після логування,
     // але до вашої основної логіки маршрутів.
     // const apiLimiter = rateLimit({
-    //     windowMs: 15 * 60 * 1000, // 15 хвилин
-    //     max: 100, // Максимум 100 запитів
-    //     message: 'Забагато запитів з цієї IP-адреси, спробуйте пізніше.',
-    //     standardHeaders: true, // Повертає заголовки X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
-    //     legacyHeaders: false, // Відключає заголовки X-Powered-By
+    //     windowMs: 15 * 60 * 1000, // 15 минут
+    //     limit: 100, // Лимит запросов
+    //     standardHeaders: 'draft-7',
+    //     legacyHeaders: false,
+
+    //     // Хранилище в Redis (Shared state между инстансами)
+    //     store: new RedisStore({
+    //         sendCommand: (...args) => redisClient.call(...args),
+    //     }),
+
+    //     skip: (req) => {
+    //         const ignoredPaths = ['/api-docs', '/api-docs.json']
+    //         // Если путь запроса начинается с путей Swagger — пропускаем его
+    //         return ignoredPaths.some((path) => req.path.startsWith(path))
+    //     },
+
+    //     /**
+    //      * Ключевой момент: Логика определения клиента
+    //      */
+    //     keyGenerator: (req) => {
+    //         // 1. Если пользователь авторизован — лимитируем по ID (самый надежный способ)
+    //         if (req.user?.id) return `user:${req.user.id}`
+
+    //         // 2. Если запрос идет через твой прокси-бэкенд,
+    //         // Express (благодаря trust proxy) автоматически вытащит реальный IP
+    //         // из X-Forwarded-For и положит в req.ip.
+    //         return `ip:${req.ip}`
+    //     },
+
+    //     handler: (req, res) => {
+    //         console.warn(`Rate limit exceeded for: ${req.ip}`)
+    //         res.status(429).json({
+    //             status: 429,
+    //             message: 'Too many requests, please try again later.',
+    //             retryAfter: res.getHeader('Retry-After'),
+    //         })
+    //     },
     // })
     // app.use('/api/', apiLimiter) // Припустимо, що API маршрути починаються з '/api/'
 
