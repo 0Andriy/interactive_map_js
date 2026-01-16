@@ -207,7 +207,7 @@ export default class WSAdapter {
         this.isManualClose = true
         this.#clearTimers()
         if (this.#ws) {
-            this.#ws.close(1000, 'Normal Closure')
+            this.#ws.close(1000, 'Client closing connection')
             this.#ws = null
         }
         this.#updateStatus('CLOSED')
@@ -282,13 +282,15 @@ export default class WSAdapter {
     #registerNativeListeners() {
         if (!this.#ws) return
 
-        this.#ws.onopen = () => {
+        this.#ws.onopen = (event) => {
             this.logger?.info?.(`[WS-${this.#instanceId}] ✅ Connection established`)
             this.#updateStatus('OPEN')
             this.retries = 0
             this.#emit('connected', { url: this.url, timestamp: new Date() })
             // this.#startHeartbeat()
             this.#flushQueue()
+
+            this.#emit('open', event)
         }
 
         this.#ws.onmessage = (event) => {
@@ -332,7 +334,14 @@ export default class WSAdapter {
                     )
                 }
             }
+
             this.#emit('data', data)
+            this.#emit('message', data)
+
+            // Trigger typed message handlers
+            if (data.event) {
+                this.#emit(data.event, data)
+            }
         }
 
         if (typeof this.#ws.on === 'function') {
@@ -340,6 +349,11 @@ export default class WSAdapter {
                 this.#resetPongTimeout()
                 this.logger?.debug?.(`[WS-${this.#instanceId}] Protocol Pong received`)
             })
+        }
+
+        this.#ws.onerror = (error) => {
+            this.logger?.error?.(`[WS-${this.#instanceId}] ❗ WebSocket Error:`, error)
+            this.#emit('error', error)
         }
 
         this.#ws.onclose = (event) => {
@@ -353,13 +367,9 @@ export default class WSAdapter {
                     }`,
                 )
                 this.#emit('disconnected', { code: event.code })
+                this.#emit('close', event)
                 this.#handleReconnect()
             }
-        }
-
-        this.#ws.onerror = (error) => {
-            this.logger?.error?.(`[WS-${this.#instanceId}] ❗ WebSocket Error:`, error)
-            this.#emit('error', error)
         }
     }
 
@@ -461,7 +471,13 @@ export default class WSAdapter {
         this.#pingTimer = setInterval(() => {
             if (this.isConnected) {
                 // Відправляємо пінг
-                this.#ws.send(JSON.stringify({ type: 'ping', ts: Date.now() }))
+                this.#ws.send(
+                    JSON.stringify({
+                        type: 'ping',
+                        event: 'ping',
+                        timestamp: Date.now(),
+                    }),
+                )
 
                 // Якщо використовується бібліотека 'ws' в Node.js, можна слати протокольний пінг:
                 if (typeof this.#ws.ping === 'function') {
