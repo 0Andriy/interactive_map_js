@@ -9,7 +9,7 @@ import * as jose from 'jose'
  * @property {string} [audience] - Цільова аудиторія (поле 'aud').
  * @property {string} [subject] - Суб'єкт токена (поле 'sub', зазвичай ID користувача).
  * @property {string} [jwtId] - Унікальний ідентифікатор токена (поле 'jti').
- * @property {string|number} [notBefore] - Час, раніше якого токен недійсний (nbf)
+ * @property {string|number} [notBefore] - Час, з якого токен стане активним (напр. '10h' для відкладеної дії).
  * @property {string} [kid] - Ідентифікатор ключа (Key ID) для пошуку в базі/сховищі.
  * @property {number} [clockSkewOffset] - Кількість секунд, на яку "відкочується" час створення (iat) назад.
  * @property {string|number} [clockTolerance] - Допустимий розсинхрон часу при перевірці (напр. '30s').
@@ -23,8 +23,8 @@ import * as jose from 'jose'
 export class JwtService {
     /**
      * @param {Object} config - Об'єкт конфігурації DI.
-     * @param {Function} config.keyResolver - Асинхронна функція для отримання ключа зі сховища.
-     * @param {TokenOptions} [config.defaultOptions] - Параметри за замовчуванням.
+     * @param {Function} config.keyResolver - Асинхронна функція для отримання ключа.
+     * @param {TokenOptions} [config.defaultOptions] - Глобальні налаштування за замовчуванням.
      */
     constructor({ keyResolver, defaultOptions }) {
         // Зберігаємо функцію отримання ключів, передану через Dependency Injection
@@ -35,8 +35,8 @@ export class JwtService {
             algorithm: 'RS256',
             expiresIn: '1h',
             issuer: 'JwtService',
-            clockSkewOffset: 0, // за замовчуванням 0 секунд зазору
-            clockTolerance: '0s', // допуск розсинхрону при верифікації
+            clockSkewOffset: 5, // за замовчуванням 5 секунд зазору
+            clockTolerance: '10s', // допуск розсинхрону при верифікації
             ...defaultOptions,
         }
 
@@ -54,12 +54,12 @@ export class JwtService {
 
     /**
      * Статичний метод для перетворення сирих даних (PEM рядок або об'єкт) у об'єкти jose.
-     * Винесений у статику, щоб ресолвери могли використовувати його без створення екземпляра сервісу.
-     *
      * @param {Object|string} keySource - Сирі дані (PEM рядки або об'єкт з секретом).
-     * @param {string} alg - Алгоритм токена.
-     * @param {'sign'|'verify'} operation - Операція (підпис чи перевірка).
+     * @param {string} alg - Алгоритм JWT.
+     * @param {'sign'|'verify'} operation - Тип операції.
      * @returns {Promise<jose.KeyLike|Uint8Array>}
+     * @example
+     * const key = await JwtService.transformToJoseKey('PEM_DATA', 'RS256', 'sign');
      */
     static async transformToJoseKey(keySource, alg, operation) {
         // Якщо алгоритм симетричний (HS...), створюємо Uint8Array з секрету
@@ -81,10 +81,9 @@ export class JwtService {
     }
 
     /**
-     * Створює та підписує новий JWT токен.
-     *
-     * @param {Object} payload - Корисне навантаження (дані користувача).
-     * @param {TokenOptions} [overrideOptions={}] - Налаштування для конкретного виклику.
+     * Генерує та підписує JWT токен.
+     * @param {Object} payload - Корисне навантаження (Дані для токена).
+     * @param {TokenOptions} [overrideOptions={}] - Специфічні налаштування виклику.
      * @returns {Promise<string>} Підписаний JWT.
      * @example
      * const token = await jwtService.sign({ role: 'admin' }, { expiresIn: '5m', kid: 'v1' });
@@ -93,11 +92,10 @@ export class JwtService {
         // Об'єднуємо налаштування: пріоритет у overrideOptions
         const opt = { ...this.defaultOptions, ...overrideOptions }
 
-        // Викликаємо DI ресолвер для отримання ключа
+        // Отримання ключа через ресолвер (DI)
         const key = await this.keyResolver({ alg: opt.algorithm, kid: opt.kid }, payload, 'sign')
 
-        // Обчислюємо час створення з урахуванням зсуву (clockSkewOffset)
-        // Це вирішує проблему, коли сервер перевірки вважає, що токен "ще не настав"
+        // Обчислення технічного часу випуску (iat) з урахуванням компенсації
         const now = Math.floor(Date.now() / 1000)
         const adjustedIat = now + this.internalTimeOffset - opt.clockSkewOffset
 
@@ -129,7 +127,11 @@ export class JwtService {
         if (opt.subject) jwt.setSubject(opt.subject)
 
         // nbf (Not Before): Токен не активний до цього часу
-        jwt.setNotBefore(opt.notBefore || adjustedIat)
+        if (opt.notBefore) {
+            jwt.setNotBefore(opt.notBefore)
+        } else {
+            jwt.setNotBefore(adjustedIat)
+        }
 
         // jti (JWT ID): Унікальний ID токена (для запобігання replay-атакам)
         if (opt.jwtId) jwt.setJti(opt.jwtId)
@@ -139,7 +141,6 @@ export class JwtService {
 
     /**
      * Верифікує токен та повертає його вміст.
-     *
      * @param {string} token - Рядок JWT.
      * @param {TokenOptions} [overrideOptions={}] - Опції верифікації.
      * @returns {Promise<{payload: Object, header: Object}>}
@@ -163,6 +164,48 @@ export class JwtService {
             return { payload, header: protectedHeader }
         } catch (error) {
             throw new Error(`Token verification failed: ${error.message}`)
+        }
+    }
+
+    /**
+     * Швидке декодування payload без перевірки підпису.
+     * @param {string} token - Рядок JWT.
+     * @returns {Object}
+     */
+    decodePayload(token) {
+        try {
+            return jose.decodeJwt(token)
+        } catch (error) {
+            throw new Error(`Token decoding error: ${error.message}`)
+        }
+    }
+
+    /**
+     * Отримання заголовка без перевірки підпису (напр. для kid).
+     * @param {string} token - Рядок JWT.
+     * @returns {Object}
+     */
+    decodeHeader(token) {
+        try {
+            return jose.decodeProtectedHeader(token)
+        } catch (error) {
+            throw new Error(`Header decoding error: ${error.message}`)
+        }
+    }
+
+    /**
+     * Unsafe decoding of both header and payload without any validation.
+     * @param {string} token - Рядок JWT.
+     * @returns {Object}
+     */
+    decode(token) {
+        try {
+            return {
+                payload: jose.decodeJwt(token),
+                header: jose.decodeProtectedHeader(token),
+            }
+        } catch (error) {
+            throw new Error(`Failed to perform complete JWT decode: ${error.message}`)
         }
     }
 
