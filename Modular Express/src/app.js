@@ -27,6 +27,7 @@ import { authorizeRoles } from './common/middleware/authorizeRoles.js'
 
 // routes
 import { initUserModule as userModuleV1 } from './modules/user/v1/user.module.js'
+import { RoleModule as RoleModuleV1 } from './modules/role/v1/role.module.js'
 
 /**
  * Створює та налаштовує Express додаток
@@ -228,6 +229,11 @@ export async function createExpressApp({ staticFilesDir = 'public' } = {}) {
 
     const dbManagerInstance = OracleDatabaseManager.getInstance()
     // -----------------     router - V1    ------------------------------------
+    // ----- roles
+    const RoleModuleV1Instance = RoleModuleV1.init(dbManagerInstance)
+    app.use('/api/v1/roles', RoleModuleV1Instance.router)
+
+    // ----- users
     app.use(
         '/api/v1/users',
         userModuleV1({
@@ -239,6 +245,12 @@ export async function createExpressApp({ staticFilesDir = 'public' } = {}) {
             rolesMiddleware: authorizeRoles,
         }).router,
     )
+
+    app.get('/test-create', async (req, res) => {
+        await RoleModuleV1Instance.repository.initializeSchema()
+
+        res.status(200).json({ message: 'Role Module V1 schema initialized.' })
+    })
 
     // <=======================================================================>
     // <================   404 - Not Found Handler  ===========================>

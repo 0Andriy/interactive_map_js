@@ -63,7 +63,7 @@ export class RoleController {
 
     /**
      * @swagger
-     * /api/roles:
+     * /api/v1/roles:
      *   get:
      *     summary: Отримати список всіх ролей
      *     tags: [Roles]
@@ -90,7 +90,7 @@ export class RoleController {
 
     /**
      * @swagger
-     * /api/roles/{id}:
+     * /api/v1/roles/{id}:
      *   get:
      *     summary: Отримати роль за ID
      *     tags: [Roles]
@@ -125,7 +125,7 @@ export class RoleController {
 
     /**
      * @swagger
-     * /api/roles:
+     * /api/v1/roles:
      *   post:
      *     summary: Створити нову роль
      *     tags: [Roles]
@@ -158,7 +158,7 @@ export class RoleController {
 
     /**
      * @swagger
-     * /api/roles/{id}:
+     * /api/v1/roles/{id}:
      *   put:
      *     summary: Оновити існуючу роль
      *     tags: [Roles]
@@ -193,7 +193,7 @@ export class RoleController {
 
     /**
      * @swagger
-     * /api/roles/{id}:
+     * /api/v1/roles/{id}:
      *   delete:
      *     summary: Видалити роль
      *     tags: [Roles]

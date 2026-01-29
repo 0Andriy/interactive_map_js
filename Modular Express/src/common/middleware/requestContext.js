@@ -22,22 +22,31 @@ import { asyncLocalStorage } from '../utils/context.js'
  * @returns {void}
  */
 export const requestContextMiddleware = (req, res, next) => {
-    // Check for existing X-Request-Id and X-Correlation-Id headers
+    // 1. Отримуємо або генеруємо унікальні ідентифікатори
     const requestId = req.headers['x-request-id'] || crypto.randomUUID()
     const correlationId = req.headers['x-correlation-id'] || requestId
 
-    // Add headers to the response
-    res.setHeader('X-Request-Id', requestId)
-    res.setHeader('X-Correlation-Id', correlationId)
+    // 2. Додаємо ідентифікатори в заголовки запиту для подальшого використання
+    req.headers['x-request-id'] = requestId
+    req.headers['x-correlation-id'] = correlationId
 
-    // Створюємо об'єкт контексту, який можна буде розширювати
+    // 3. Встановлюємо ідентифікатори в заголовки відповіді для клієнта
+    res.setHeader('x-request-id', requestId)
+    res.setHeader('x-correlation-id', correlationId)
+
+    // 4. Створюємо об'єкт контексту, який можна буде розширювати
     const context = {
         requestId,
         correlationId,
         user: null, // Буде наповнено пізніше в loggingUserResolver
     }
 
-    // Store in AsyncLocalStorage for later use (e.g., in logging)
+    // 5. Додаємо контекст до об'єкта запиту для легкого доступу в інших middleware/контролерах
+    req.requestId = requestId
+    req.correlationId = correlationId
+    req.context = context
+
+    // 6. Запускаємо AsyncLocalStorage з контекстом для доступу в будь-якій точці обробки запиту
     asyncLocalStorage.run(context, () => {
         next()
     })

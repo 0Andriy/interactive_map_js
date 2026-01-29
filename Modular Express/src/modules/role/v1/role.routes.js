@@ -1,7 +1,7 @@
 // role.routes.js
 import { Router } from 'express'
-import validate from '../middlewares/validation.middleware.js'
-import { RoleIdParamSchema, RoleBodySchema } from './role.validation.js'
+import validate from '../../../common/middleware/validation.middleware.js'
+import { RoleIdParamSchema, CreateRoleSchema, UpdateRoleSchema } from './role.validation.js'
 
 /**
  * Клас для конфігурації маршрутів модуля Role.
@@ -30,14 +30,14 @@ export class RoleRoutes {
 
         this.router.post(
             '/',
-            validate(RoleBodySchema, 'body'),
+            validate(CreateRoleSchema, 'body'),
             this.controller.create.bind(this.controller),
         )
 
         this.router.put(
             '/:id',
             validate(RoleIdParamSchema, 'params'),
-            validate(RoleBodySchema.partial(), 'body'),
+            validate(UpdateRoleSchema, 'body'),
             this.controller.update.bind(this.controller),
         )
 

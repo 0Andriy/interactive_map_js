@@ -212,7 +212,7 @@ export class OracleDatabaseService {
             const result = await conn.execute(sql, params, combinedOptions)
 
             this.logger?.debug?.('SQL Executed', {
-                sql,
+                sql: sql.trim(),
                 duration: `${Date.now() - start}ms`,
                 traceId: internalCtx.traceId,
             })
@@ -220,7 +220,7 @@ export class OracleDatabaseService {
             return result
         } catch (error) {
             this.logger?.error?.('Execution error', {
-                sql,
+                sql: sql.trim(),
                 message: error.message,
                 offset: error.offset,
                 traceId: internalCtx.traceId,
@@ -250,7 +250,7 @@ export class OracleDatabaseService {
             return result
         } catch (error) {
             this.logger?.error?.('ExecuteMany Error', {
-                sql,
+                sql: sql.trim(),
                 count: bindsArray.length,
                 message: error.message,
                 offset: error.offset,

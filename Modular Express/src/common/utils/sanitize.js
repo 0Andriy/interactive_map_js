@@ -3,7 +3,7 @@
  */
 
 const SENSITIVE_FIELDS = ['password', 'secret', 'authorization', 'cookie', 'card', 'key']
-const MAX_STRING_LENGTH = 500 // Обрізати довгі рядки (наприклад, Base64)
+const MAX_STRING_LENGTH = 5000 // Обрізати довгі рядки (наприклад, Base64)
 const MAX_BODY_KEYS = 50 // Обмежити кількість полів у об'єкті
 
 /**

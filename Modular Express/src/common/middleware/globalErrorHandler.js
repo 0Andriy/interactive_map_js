@@ -47,7 +47,7 @@ export function globalErrorHandler(err, req, res, next) {
     const logWriter = req.logger || logger
 
     // 3. Журналювання (використовуємо опціональний ланцюжок)
-    logWriter?.error?.({
+    logWriter?.error?.(error.message, {
         message: error.message,
         name: error.name,
         statusCode: error.statusCode,
@@ -56,6 +56,7 @@ export function globalErrorHandler(err, req, res, next) {
 
         // Додаємо requestId для зв'язку логів (якщо є middleware для цього)
         requestId: req.requestId || req.headers['x-request-id'],
+        сorrelationId: req.correlationId || req.headers['x-correlation-id'],
 
         // 2. Log request details
         request: {

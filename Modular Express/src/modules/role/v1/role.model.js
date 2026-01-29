@@ -11,7 +11,7 @@ export class Role {
     constructor(data = {}) {
         const properties = Object.keys(RoleSchema.columns)
         for (const property of properties) {
-            this[property] = data[property] !== undefined ? data[property] : null
+            this[property] = data[property]
         }
     }
 

@@ -78,7 +78,9 @@ async function initApp() {
         thickModeOptions: config.oracleDB.thickModeOptions,
     })
 
-    await dbManager.get('TEST').isHealthy()
+    
+    const isHealthy = await dbManager.get('TEST').isHealthy()
+    console.log('Database health check result:', isHealthy)
 
     // -------------------  Ініціалізація JWT  ------------------------------
     config.tokenTypes.access.keyProvider = async (context, payload, operation) => {
