@@ -6,7 +6,7 @@ import { RoleIdParamSchema, RoleBodySchema } from './role.validation.js'
 /**
  * Клас для конфігурації маршрутів модуля Role.
  */
-class RoleRoutes {
+export class RoleRoutes {
     /**
      * @param {RoleController} controller - Екземпляр контролера (DI)
      */
@@ -56,8 +56,6 @@ class RoleRoutes {
         return this.router
     }
 }
-
-export default RoleRoutes
 
 // // role.routes.js
 // import { Router } from 'express'

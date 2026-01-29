@@ -1,5 +1,3 @@
-// role.controller.js
-
 /**
  * @swagger
  * tags:
@@ -55,9 +53,9 @@
  *           example: "Розширені права для модерації коментарів"
  */
 
-class RoleController {
+export class RoleController {
     /**
-     * @param {RoleService} roleService
+     * @param {import('./role.service.js').RoleService} roleService
      */
     constructor(roleService) {
         this.roleService = roleService
@@ -84,7 +82,7 @@ class RoleController {
     async getAll(req, res) {
         try {
             const roles = await this.roleService.getAllRoles()
-            res.json(roles)
+            res.status(200).json(roles)
         } catch (error) {
             res.status(500).json({ error: error.message })
         }
@@ -117,8 +115,9 @@ class RoleController {
      */
     async getById(req, res) {
         try {
-            const role = await this.roleService.getRoleById(req.params.id)
-            res.json(role)
+            const { id } = req.params
+            const role = await this.roleService.getRoleById(id)
+            res.status(200).json(role)
         } catch (error) {
             res.status(404).json({ error: error.message })
         }
@@ -150,8 +149,8 @@ class RoleController {
      */
     async create(req, res) {
         try {
-            const role = await this.roleService.createRole(req.body)
-            res.status(201).json(role)
+            const newRole = await this.roleService.createRole(req.body)
+            res.status(201).json(newRole)
         } catch (error) {
             res.status(400).json({ error: error.message })
         }
@@ -184,8 +183,9 @@ class RoleController {
      */
     async update(req, res) {
         try {
-            const role = await this.roleService.updateRole(req.params.id, req.body)
-            res.json(role)
+            const { id } = req.params
+            const updatedRole = await this.roleService.updateRole(id, req.body)
+            res.status(200).json(updatedRole)
         } catch (error) {
             res.status(400).json({ error: error.message })
         }
@@ -211,12 +211,11 @@ class RoleController {
      */
     async delete(req, res) {
         try {
-            const result = await this.roleService.deleteRole(req.params.id)
-            res.json(result)
+            const { id } = req.params
+            const result = await this.roleService.deleteRole(id)
+            res.status(200).json(result)
         } catch (error) {
             res.status(400).json({ error: error.message })
         }
     }
 }
-
-export default RoleController

@@ -1,9 +1,8 @@
-// role.schema.js
 /**
  * Схема метаданих для сутності Role.
  * Використовується для мапінгу об'єктів на колонки Oracle DB.
  */
-const RoleSchema = {
+export const RoleSchema = {
     table: 'APP_ROLES',
     columns: {
         id: {
@@ -25,5 +24,3 @@ const RoleSchema = {
         },
     },
 }
-
-export default RoleSchema

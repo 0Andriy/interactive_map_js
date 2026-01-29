@@ -1,23 +1,22 @@
-// role.module.js
-import RoleRepository from './role.repository.js'
-import RoleService from './role.service.js'
-import RoleController from './role.controller.js'
-import RoleRoutes from './role.routes.js'
+import { RoleRepository } from './role.repository.js'
+import { RoleService } from './role.service.js'
+import { RoleController } from './role.controller.js'
+import { RoleRoutes } from './role.routes.js'
 
 /**
  * Модуль Role (Composition Root).
  * Відповідає за Dependency Injection та ініціалізацію всього модуля.
  * Забезпечує інкапсуляцію логіки та експорт сервісів для інших модулів.
  */
-class RoleModule {
+export class RoleModule {
     /**
      * Метод для збірки модуля - Ініціалізація модуля.
-     * @param {Object} dbConnection - Пул з'єднань Oracle (oracledb connection)
+     * @param {Object} db - Пул з'єднань Oracle (oracledb connection)
      * @returns {Object} Об'єкт з роутером для Express та сервісом для DI.
      */
-    static init(dbConnection) {
+    static init(db) {
         // 1. Ініціалізація Repository (Infrastructure Layer)
-        const repository = new RoleRepository(dbConnection)
+        const repository = new RoleRepository(db)
 
         // 2. Ініціалізація Service (Domain/Business Layer)
         // Передаємо репозиторій як залежність
@@ -39,5 +38,3 @@ class RoleModule {
         }
     }
 }
-
-export default RoleModule
