@@ -131,20 +131,43 @@ export async function createExpressApp({ staticFilesDir = 'public' } = {}) {
     // Обмеження на 100 запитів з одного IP протягом 15 хвилин.
     // Застосовується до всіх API-маршрутів. Розмістіть його після логування,
     // але до вашої основної логіки маршрутів.
+    // Масив правил для пропуску (Whitelist)
+
     const apiLimiter = rateLimit({
         windowMs: 15 * 60 * 1000, // 15 хвилин
-        limit: 100, // Ліміт запитів
-        standardHeaders: 'draft-7',
-        legacyHeaders: false,
-        // Пропускаємо Swagger
-        skip: (req) => {
+        limit: (req) => {
             const url = req.originalUrl
 
-            // Регулярний вираз: шукає /api-docs у будь-якому місці шляху
-            // Наприклад: /api-docs, /api/v1/api-docs, /api/v2/api-docs
-            const isSwagger = /\/api-docs/.test(url)
+            // Перевіряємо, чи містить URL шлях /portal/
+            // i - ігнорувати регістр, якщо раптом шлях буде /Portal/
+            const isPortalRequest = /\/portal\//i.test(url)
 
-            return isSwagger
+            // Також додаємо перевірку на інші ознаки важких запитів (наприклад, POST)
+            const isHeavyRequest = isPortalRequest || req.method === 'POST'
+
+            // Якщо це портал або POST — даємо 2000, інакше стандартні 500
+            return isHeavyRequest ? 2000 : 500
+        },
+        standardHeaders: 'draft-7',
+        legacyHeaders: false,
+
+        // ВИНЯТКИ (Skip)
+        // Повністю пропускати перевірку для певних умов
+        skip: (req) => {
+            const skipRules = [
+                (req) => {
+                    // Swagger
+                    // Регулярний вираз: шукає /api-docs у будь-якому місці шляху
+                    // Наприклад: /api-docs, /api/v1/api-docs, /api/v2/api-docs
+                    return /\/api-docs/.test(req.originalUrl)
+                },
+                (req) => /\/health/.test(req.originalUrl), // Перевірка стану сервера
+                (req) => req.ip === '127.0.0.1', // Локальні запити
+                // Додайте будь-яке нове правило тут:
+                // (req) => req.headers['x-internal-service'],
+            ]
+
+            return skipRules.some((rule) => rule(req))
         },
         // Генерація ключа (User ID або IP)
         keyGenerator: (req) => {
@@ -158,7 +181,7 @@ export async function createExpressApp({ staticFilesDir = 'public' } = {}) {
         },
 
         handler: (req, res) => {
-            logger?.warn?.(`Rate limit exceeded for: ${req.ip}`)
+            logger?.warn?.(`Rate limit exceeded for: ${req.ip} on ${req.originalUrl}`)
             res.status(429).json({
                 status: 429,
                 message: 'Too many requests, please try again later.',

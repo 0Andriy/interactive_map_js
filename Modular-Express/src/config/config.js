@@ -523,13 +523,40 @@ class Config {
      */
     getCompressionOptions() {
         return {
-            level: getEnvInt('COMPRESSION_LEVEL', 6), // Рівень стиснення (0-9)
-            threshold: getEnvInt('COMPRESSION_THRESHOLD', 1024), // Мінімальний розмір відповіді для стиснення (в байтах), 1 KB
+            // Рівень стиснення (1 - найшвидший, 9 - найсильніший)
+            // Рівень 1 ідеальний для API: економить CPU сервера при високому навантаженні
+            level: getEnvInt('COMPRESSION_LEVEL', 6),
+            // Мінімальний розмір файлу для стиснення (1 КБ)
+            // Менші файли стискати немає сенсу, бо заголовки Gzip додадуть більше ваги
+            threshold: getEnvInt('COMPRESSION_THRESHOLD', 1024),
+            //
             filter: (req, res) => {
-                // Якщо заголовок 'x-no-compression' присутній, стиснення не застосовується
+                // Отримуємо тип контенту, який збираємось віддати
+                const contentType = res.getHeader('Content-Type') || ''
+
+                // Список типів, які НЕ треба стискати (бінарні дані)
+                const skipCompressionTypes = [
+                    'application/octet-stream',
+                    'application/zip',
+                    'application/pdf',
+                    'image/',
+                ]
+
+                // ПРАВИЛО 1: Ніколи не стискати бінарні потоки (LOB/Файли)
+                // Бінарні дані (zip, exe, jpg, pdf) вже стиснуті, повторний Gzip лише зависне
+                if (
+                    contentType &&
+                    skipCompressionTypes.some((type) => contentType.includes(type))
+                ) {
+                    return false
+                }
+
+                // ПРАВИЛО 2: Не стискати, якщо клієнт надіслав спеціальний заголовок
+                // (Наприклад, може додати 'X-No-Compression')
                 if (req.headers['x-no-compression']) {
                     return false
                 }
+
                 // Використовується стандартний фільтр 'compression' (за замовчуванням стискає HTML, CSS, JS, JSON тощо)
                 return compression.filter(req, res)
             },
