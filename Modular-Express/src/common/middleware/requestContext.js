@@ -34,11 +34,27 @@ export const requestContextMiddleware = (req, res, next) => {
     res.setHeader('x-request-id', requestId)
     res.setHeader('x-correlation-id', correlationId)
 
+    // Визначаємо IP (враховуємо проксі-сервери)
+    // Якщо Express налаштовано з app.set('trust proxy', true), можна просто req.ip
+    const clientIp =
+        req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || req.ip
+
+    // Збираємо дані про пристрій
+    const userAgent = req.headers['user-agent'] || 'unknown'
+
     // 4. Створюємо об'єкт контексту, який можна буде розширювати
     const context = {
         requestId,
         correlationId,
         user: null, // Буде наповнено пізніше в loggingUserResolver
+        security: {
+            ip: clientIp,
+            userAgent: userAgent,
+            method: req.method,
+            url: req.originalUrl,
+            referrer: req.headers['referer'] || req.headers['referrer'] || 'direct',
+        },
+        startTime: Date.now(),
     }
 
     // 5. Додаємо контекст до об'єкта запиту для легкого доступу в інших middleware/контролерах

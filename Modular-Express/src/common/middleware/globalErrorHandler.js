@@ -42,16 +42,24 @@ export function globalErrorHandler(err, req, res, next) {
     const isCustom = err instanceof CustomError
     const error = isCustom ? err : CustomError.from(err)
 
+    // Витягуємо дані для зручності
+    const statusCode = error.statusCode || 500
+    const errorCode = error.code || 'INTERNAL_SERVER_ERROR'
+    const errorMessage = error.message || 'Internal Server Error'
+    const validationErrors = error.errors || null
+
     // 3. Формування об'єкта для логування
     // Використовуємо req.logger, якщо він доданий через middleware, інакше стандартний
     const logWriter = req.logger || logger
+    const isDev = process.env.NODE_ENV === 'development'
 
     // 3. Журналювання (використовуємо опціональний ланцюжок)
     logWriter?.error?.(error.message, {
         message: error.message,
         name: error.name,
-        statusCode: error.statusCode,
-        code: error.code,
+        statusCode: statusCode,
+        errorCode: errorCode,
+        errors: validationErrors,
         stack: error.stack,
 
         // Додаємо requestId для зв'язку логів (якщо є middleware для цього)
@@ -84,17 +92,23 @@ export function globalErrorHandler(err, req, res, next) {
             : null,
     })
 
+    // 4. Підготовка Meta-даних для відповіді клієнту
+    // Сюди ми кладемо технічну інформацію, яка не є частиною основної помилки
+    const responseMeta = {
+        requestId: req.requestId || req.headers['x-request-id'],
+        ...(error.meta || {}),
+    }
+
     // 4. Формування відповіді
     // В продакшені — без stack, originalError, errors (якщо хочеш)
-    const isDev = process.env.NODE_ENV === 'development'
-    const responsePayload = error.toResponseJSON()
+    responseMeta.errorData = error.toResponseJSON()
 
     if (isDev) {
         // Додатково даємо стек та оригінальну помилку
-        responsePayload.stack = error.stack
+        responseMeta.stack = error.stack
 
         if (error.originalError) {
-            responsePayload.originalError = {
+            responseMeta.originalError = {
                 message: error.originalError.message,
                 stack: error.originalError.stack,
             }
@@ -102,12 +116,30 @@ export function globalErrorHandler(err, req, res, next) {
 
         // Можна також додати errors для детального дебагу
         if (error.errors && error.errors.length > 0) {
-            responsePayload.errors = error.errors
+            responseMeta.errors = error.errors
         }
     }
 
     // 5. Відправка відповіді
-    res.status(error.statusCode).json(responsePayload)
+    // Використовуємо наш метод .error(), який ми додали в responseHandler
+    // Якщо з якихось причин метод не встиг додатися (помилка на старті),
+    // робимо пряму відповідь у тому ж форматі
+    if (res.error) {
+        return res.error(errorMessage, statusCode, errorCode, validationErrors, responseMeta)
+    }
+
+    // Резервний варіант (якщо мідлвар responseHandler не відпрацював)
+    return res.status(statusCode).json({
+        ok: false,
+        status: 'error',
+        message: errorMessage,
+        code: errorCode,
+        errors: validationErrors,
+        meta: {
+            timestamp: new Date().toISOString(),
+            ...responseMeta,
+        },
+    })
 }
 
 export default globalErrorHandler

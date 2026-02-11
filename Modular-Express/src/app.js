@@ -16,6 +16,7 @@ import { OracleDatabaseManager } from './common/db/oracle/OracleDatabaseManager.
 import swaggerDocs from './common/utils/swagger.js'
 
 // Middleware (проміжне ПЗ)
+import { responseHandler } from './common/middlewares/response.middleware.js'
 import errorHandling from './common/middleware/globalErrorHandler.js'
 import forceHttps from './common/middleware/forceHttps.js'
 import { userResolver } from './common/middleware/userResolver.js'
@@ -108,6 +109,10 @@ export async function createExpressApp({ staticFilesDir = 'public' } = {}) {
     // Для парсингу Cookie.
     // Потрібно, якщо зчитуєте токени або інші дані з cookie.
     app.use(cookieParser())
+
+    // Підключення RESPONSE HANDLER для можливості стандартизації відповіді
+    // Ми робимо це до роутів, щоб у кожного `res` з'явилися методи .success() та .error()
+    app.use(responseHandler)
 
     // --- 3. Логування та обробка контексту користувача ---
     // Ці middleware отримують і обробляють інформацію, яка буде використовуватися для логування

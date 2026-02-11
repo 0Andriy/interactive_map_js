@@ -7,7 +7,7 @@ import crypto from 'node:crypto'
  * @param {string} filePath - Повний шлях до файлу на диску
  * @param {string} fileName - Назва файлу для запису в БД
  */
-export const uploadFile = async (db, filePath, fileName) => {
+export const uploadFile_v1 = async (db, filePath, fileName) => {
     // 0. Предварительная проверка
     if (!fs.existsSync(filePath)) {
         throw new Error(`File not found: ${filePath}`)
@@ -21,9 +21,9 @@ export const uploadFile = async (db, filePath, fileName) => {
 
             // 1. Створюємо запис і отримуємо вказівник на LOB (локатор)
             const sqlInsert = `
-            INSERT INTO MY_TABLE (FILE_NAME, FILE_DATA)
-            VALUES (:name, EMPTY_BLOB())
-            RETURNING ID, FILE_DATA INTO :id, :lobbv`
+            INSERT INTO ZZ_FILE_STORAGE (ID, NAME, CONTENT)
+            VALUES (1, :name, EMPTY_BLOB())
+            RETURNING ID, CONTENT INTO :id, :lobbv`
 
             const paramsInsert = {
                 name: fileName,
@@ -31,7 +31,7 @@ export const uploadFile = async (db, filePath, fileName) => {
                 lobbv: { type: db.oracledb.BLOB, dir: db.oracledb.BIND_OUT },
             }
 
-            const resultInsert = await ctx.uploadBlob(sqlInsert, paramsInsert)
+            const resultInsert = await ctx.execute(sqlInsert, paramsInsert)
             const outBinds = resultInsert.outBinds
 
             const recordId = Array.isArray(outBinds.id) ? outBinds.id[0] : outBinds.id
@@ -39,16 +39,16 @@ export const uploadFile = async (db, filePath, fileName) => {
 
             if (!lob) throw new Error('Failed to initialize LOB locator')
 
-            const fileStream = fs.createReadStream(filePath)
+            const sourceStream = fs.createReadStream(filePath)
 
             // 2. Стрімимо файл безпосередньо в Oracle + рахуємо хеш
             await new Promise((resolve, reject) => {
                 // Рахуємо хеш під час читання файлу
-                fileStream.on('data', (chunk) => {
+                sourceStream.on('data', (chunk) => {
                     hash.update(chunk)
                 })
 
-                fileStream.on('error', (err) => {
+                sourceStream.on('error', (err) => {
                     // Важливо: знищуємо LOB стрім при помилці файлу
                     lob.destroy()
                     reject(err)
@@ -60,13 +60,13 @@ export const uploadFile = async (db, filePath, fileName) => {
                 lob.on('finish', resolve)
 
                 // Запускаємо передачу файла в базу
-                fileStream.pipe(lob)
+                sourceStream.pipe(lob)
             })
 
             // 3. Оновлюємо хеш у тому самому рядку (це запустить триггер, якщо є)
             const finalHash = hash.digest('hex')
 
-            const sqlUpdate = `UPDATE MY_TABLE SET FILE_HASH = :hash WHERE ID = :id`
+            const sqlUpdate = `UPDATE ZZ_FILE_STORAGE SET HASH_VALUE = :hash WHERE ID = :id`
             const paramsUpdate = {
                 hash: finalHash,
                 id: recordId,
@@ -87,3 +87,43 @@ export const uploadFile = async (db, filePath, fileName) => {
 
     return result
 }
+
+// -----------------------------
+
+// create table ZZ_FILE_STORAGE
+// (
+//     id          NUMBER,
+//     name        VARCHAR2(255) not null,
+//     content     BLOB,
+//     hash_value  VARCHAR2(100),
+//     upload_date TIMESTAMP(6) default CURRENT_TIMESTAMP
+// )
+
+// import { OracleDatabaseManager } from '../../src/common/db/oracle/OracleDatabaseManager.js'
+// import config from '../../src/config/config.js'
+
+// import { fileURLToPath } from 'url'
+// import path from 'path'
+
+// // 1. Отримуємо шлях до поточного файлу
+// const __filename = fileURLToPath(import.meta.url);
+
+// // 2. Отримуємо шлях до поточної директорії
+// const __dirname = path.dirname(__filename);
+
+// //
+// const dbManager = new OracleDatabaseManager()
+// // Реєструємо бази даних
+// await dbManager.register('TEST', config.oracleDB.connections['TEST'], {
+//     thickModeOptions: config.oracleDB.thickModeOptions,
+// })
+
+// const db = dbManager.get('TEST')
+
+// const isHealthy = await db.isHealthy()
+// console.log(1, isHealthy)
+
+// const fileUrl = path.join(__dirname, 'oraociei11.dll')
+
+// const resultInsert = await uploadFile_v1(db, fileUrl, path.basename(fileUrl))
+// console.log(2, resultInsert)

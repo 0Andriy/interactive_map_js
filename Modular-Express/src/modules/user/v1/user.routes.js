@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import asyncHandler from '../../../common/utils/asyncWrapper.js'
+import asyncHandler from '../../../common/utils/catchAsync.js'
 import { validate } from '../../../common/middleware/validation.middleware.js'
 import {
     CreateUserSchema,
