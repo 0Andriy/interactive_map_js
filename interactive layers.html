@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Infinite Engine V11 - Final Ultra</title>
+    <style>
+        :root {
+            --bg: #050508;
+            --accent: #38bdf8;
+            --panel: rgba(15, 23, 42, 0.9);
+            --border: rgba(56, 189, 248, 0.3);
+            --text: #f1f5f9;
+        }
+
+        body, html { margin: 0; overflow: hidden; height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
+        /* Захист від виділення тексту при перетягуванні */
+        body.panning { user-select: none; }
+        
+        #viewport { width: 100vw; height: 100vh; cursor: crosshair; position: relative; overflow: hidden; }
+        canvas { position: absolute; inset: 0; pointer-events: none; }
+        #content-layer { position: absolute; transform-origin: 0 0; pointer-events: none; }
+
+        /* --- UI WRAPPER & PANEL --- */
+        .ui-wrapper {
+            position: fixed; top: 24px; left: 24px;
+            z-index: 1000;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* Основний стиль панелі */
+        .ui-panel {
+            min-width: 44px; min-height: 44px;
+            background: var(--panel); backdrop-filter: blur(16px);
+            border: 1px solid var(--border); border-radius: 22px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            transition: all 0.3s ease; position: relative;
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* Стан ЗГОРНУТО (іконка) */
+        .ui-wrapper.collapsed .ui-panel {
+            width: 44px; height: 44px; justify-content: center; align-items: center;
+        }
+        .ui-wrapper.collapsed:hover .ui-panel, 
+        .ui-wrapper.pinned .ui-panel {
+            width: 260px; height: auto; padding: 20px;
+            border-radius: 20px; overflow: visible;
+        }
+
+        /* Іконка шестерні (текстова, щоб завжди працювала) */
+        .menu-trigger {
+            font-size: 20px; display: none; cursor: pointer; user-select: none;
+        }
+        .ui-wrapper.collapsed .menu-trigger { display: block; }
+        .ui-wrapper.collapsed:hover .menu-trigger,
+        .ui-wrapper.pinned .menu-trigger { display: none; }
+
+        /* Контент всередині */
+        .panel-content {
+            opacity: 1; transition: opacity 0.2s; width: 100%;
+        }
+        .ui-wrapper.collapsed .panel-content { opacity: 0; display: none; }
+        .ui-wrapper.collapsed:hover .panel-content,
+        .ui-wrapper.pinned .panel-content { opacity: 1; display: block; }
+
+        /* Кнопка Pin */
+        .pin-btn {
+            position: absolute; top: 12px; right: 12px;
+            background: none; border: none; cursor: pointer;
+            color: var(--accent); font-size: 16px; padding: 5px;
+            line-height: 1;
+        }
+
+
+        .title { font-weight: 800; font-size: 11px; color: var(--accent); margin-bottom: 12px; letter-spacing: 1px; text-transform: uppercase; }
+        .control { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 13px; cursor: pointer; user-select: none; }
+        .control input { accent-color: var(--accent); width: 16px; height: 16px; }
+        .divider { height: 1px; background: var(--border); margin: 12px 0; }
+        .btn-reset { width: 100%; background: var(--accent); border: none; color: #000; padding: 10px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .stats { font-family: monospace; font-size: 11px; opacity: 0.5; margin-top: 15px; line-height: 1.6; }
+
+        /* Map Objects */
+        .map-card {
+            position: absolute; pointer-events: auto;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 1px solid var(--border); padding: 12px 16px; border-radius: 12px;
+            cursor: move; transform: translate(-50%, -50%); user-select: none;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4); min-width: 130px;
+        }
+        .map-card[data-group="base"] { border-left: 4px solid var(--accent); }
+        .map-card[data-group="note"] { border-left: 4px solid #fbbf24; }
+        .map-card b { color: var(--accent); font-size: 13px; display: block; margin-bottom: 4px; }
+        .map-card small { font-size: 10px; opacity: 0.5; font-family: monospace; }
+        .dragging { opacity: 0.7; scale: 1.05; border-style: dashed; z-index: 1000; }
+    </style>
+</head>
+<body>
+
+<!-- <div class="ui-panel">
+    <div class="title">Візуалізація</div>
+    <label class="control"><input type="checkbox" id="showGrid" checked> Сітка</label>
+    <label class="control"><input type="checkbox" id="showLabels" checked> Координати</label>
+    <label class="control"><input type="checkbox" id="useBounds"> Межі світу</label>
+    
+    <div class="divider"></div>
+    <div class="title">Групи об'єктів</div>
+    <label class="control"><input type="checkbox" id="group-base" checked> Станції (Base)</label>
+    <label class="control"><input type="checkbox" id="group-note" checked> Нотатки (Note)</label>
+
+    <button class="btn-reset" onclick="resetView()">Центрувати камеру</button>
+    <div class="stats" id="stats"></div>
+</div> -->
+
+<div class="ui-wrapper collapsed" id="uiWrapper">
+    <div class="ui-panel">
+        <div class="menu-trigger">⚙️</div>
+        
+        <div class="panel-content">
+            <button class="pin-btn" id="pinBtn" title="Закріпити">📌</button>
+            <div class="title">Налаштування</div>
+            <label class="control"><input type="checkbox" id="showGrid" checked> Сітка</label>
+            <label class="control"><input type="checkbox" id="showLabels" checked> Координати</label>
+            <label class="control"><input type="checkbox" id="useBounds"> Межі світу</label>
+            
+            <div class="divider"></div>
+            <div class="title">Групи</div>
+            <label class="control"><input type="checkbox" id="group-base" checked> Станції</label>
+            <label class="control"><input type="checkbox" id="group-note" checked> Нотатки</label>
+
+            <div class="stats" id="stats"></div>
+        </div>
+    </div>
+</div>
+
+<div id="viewport">
+    <canvas id="gridCanvas"></canvas>
+    <div id="content-layer"></div>
+</div>
+
+<script>
+/**
+ * ГЛОБАЛЬНИЙ ОБ'ЄКТ УПРАВЛІННЯ
+ */
+const ENGINE = {
+    state: { x: innerWidth / 2, y: innerHeight / 2, zoom: 1.0, isPanning: false, draggedObj: null },
+    ui: { showGrid: true, showLabels: true, useBounds: false, groups: { base: true, note: true } },
+    objects: [
+        { id: 1, x: 0, y: 0, title: "Alpha Station", group: "base" },
+        { id: 2, x: 500, y: 300, title: "Important Note", group: "note" }
+    ],
+    config: {
+        grid: { step: 100, base: 2, colors: { major: 'rgba(56, 189, 248, opacity)', axes: '#38bdf8' }},
+        camera: { min: 0.005, max: 100, speed: 0.0012 },
+        bounds: { x: [-5000, 5000], y: [-4000, 4000] }
+    },
+    utils: {
+        clamp(tx, ty, z) {
+            if (!ENGINE.ui.useBounds) return { x: tx, y: ty };
+            const b = ENGINE.config.bounds, sw = innerWidth, sh = innerHeight;
+            const minX = sw - b.x*z, maxX = -b.x*z, minY = sh - b.y*z, maxY = -b.y*z;
+            return {
+                x: minX > maxX ? (minX + maxX)/2 : Math.max(minX, Math.min(tx, maxX)),
+                y: minY > maxY ? (minY + maxY)/2 : Math.max(minY, Math.min(ty, maxY))
+            };
+        }
+    }
+};
+
+const canvas = document.getElementById('gridCanvas'), ctx = canvas.getContext('2d');
+const contentLayer = document.getElementById('content-layer'), viewport = document.getElementById('viewport');
+
+function render() {
+    const { state, ui } = ENGINE;
+    contentLayer.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.zoom})`;
+
+    // Оновлення об'єктів з урахуванням груп та Dragging
+    contentLayer.innerHTML = ENGINE.objects
+        .filter(obj => ui.groups[obj.group])
+        .map(obj => `
+            <div class="map-card ${state.draggedObj?.id === obj.id ? 'dragging' : ''}" 
+                 data-group="${obj.group}"
+                 style="left:${obj.x}px; top:${obj.y}px" 
+                 onmousedown="event.stopPropagation(); ENGINE.state.draggedObj = ENGINE.objects.find(o => o.id === ${obj.id})"
+                 oncontextmenu="event.preventDefault(); ENGINE.objects = ENGINE.objects.filter(o => o.id !== ${obj.id}); render()">
+                <b>${obj.title}</b>
+                <small>${Math.round(obj.x)} : ${Math.round(obj.y)}</small>
+            </div>
+        `).join('');
+
+    drawSmoothGrid();
+    document.getElementById('stats').innerText = `Zoom: ${state.zoom.toFixed(4)}\nX: ${Math.round(state.x)} Y: ${Math.round(state.y)}`;
+}
+
+/**
+ * БЕЗШОВНА ТРИШАРОВА СІТКА
+ */
+function drawSmoothGrid() {
+    const { state, config, ui } = ENGINE;
+    canvas.width = innerWidth; canvas.height = innerHeight;
+    if (!ui.showGrid && !ui.showLabels) return;
+
+    const logBase = config.grid.base;
+    const exponent = Math.log(state.zoom) / Math.log(logBase);
+    const floorExp = Math.floor(exponent);
+    const fraction = exponent - floorExp;
+
+    const steps = [
+        config.grid.step * Math.pow(logBase, -floorExp + 1), 
+        config.grid.step * Math.pow(logBase, -floorExp),     
+        config.grid.step * Math.pow(logBase, -floorExp - 1)  
+    ];
+
+    const opacities = [
+        fraction * 0.3,         
+        (1 - fraction) * 0.3,   
+        (1 - fraction) * 0.05   
+    ];
+
+    steps.forEach((step, i) => {
+        drawGridLayer(step, opacities[i], ui.showLabels && i === 1); 
+    });
+
+    if (ui.showGrid) {
+        ctx.beginPath(); ctx.strokeStyle = config.grid.colors.axes; ctx.lineWidth = 2; ctx.globalAlpha = 0.4;
+        if (state.x > 0 && state.x < canvas.width) { ctx.moveTo(state.x, 0); ctx.lineTo(state.x, canvas.height); }
+        if (state.y > 0 && state.y < canvas.height) { ctx.moveTo(0, state.y); ctx.lineTo(canvas.width, state.y); }
+        ctx.stroke(); ctx.globalAlpha = 1.0;
+    }
+}
+
+function drawGridLayer(step, opacity, showLabels) {
+    const scaled = step * ENGINE.state.zoom;
+    if (scaled < 8 || opacity <= 0) return;
+
+    ctx.beginPath();
+    ctx.strokeStyle = ENGINE.ui.showGrid ? `rgba(56, 189, 248, ${opacity})` : 'transparent';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = `rgba(255, 255, 255, ${opacity * 2.5})`;
+    ctx.font = "10px monospace";
+
+    const offX = ENGINE.state.x % scaled;
+    const offY = ENGINE.state.y % scaled;
+
+    for (let i = offX; i < canvas.width; i += scaled) {
+        const x = Math.round(i) - 0.5; ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
+        if (showLabels && scaled > 60) ctx.fillText(Math.round((i - ENGINE.state.x) / ENGINE.state.zoom), i + 4, 15);
+    }
+    for (let j = offY; j < canvas.height; j += scaled) {
+        const y = Math.round(j) - 0.5; ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
+        if (showLabels && scaled > 60) ctx.fillText(Math.round((j - ENGINE.state.y) / ENGINE.state.zoom), 4, j - 4);
+    }
+    ctx.stroke();
+}
+
+
+// UI HANDLERS
+const uiWrapper = document.getElementById('uiWrapper');
+const pinBtn = document.getElementById('pinBtn');
+
+pinBtn.onclick = (e) => {
+    e.stopPropagation();
+    const isPinned = uiWrapper.classList.toggle('pinned');
+    uiWrapper.classList.toggle('collapsed', !isPinned);
+    pinBtn.innerText = isPinned ? '📍' : '📌';
+};
+
+/**
+ * ІНТЕРАКЦІЇ
+ */
+viewport.ondblclick = (e) => {
+    const worldX = (e.clientX - ENGINE.state.x) / ENGINE.state.zoom;
+    const worldY = (e.clientY - ENGINE.state.y) / ENGINE.state.zoom;
+    const title = prompt("Назва об'єкта:", "Нова нотатка");
+    if (title) {
+        ENGINE.objects.push({ id: Date.now(), x: worldX, y: worldY, title, group: "note" });
+        render();
+    }
+};
+
+function resetView() {
+    ENGINE.state.x = innerWidth / 2; ENGINE.state.y = innerHeight / 2; ENGINE.state.zoom = 1.0;
+    render();
+}
+
+viewport.onwheel = e => {
+    e.preventDefault();
+    const s = ENGINE.state, c = ENGINE.config.camera;
+    const oldZ = s.zoom, newZ = Math.max(c.min, Math.min(oldZ * (1 - e.deltaY * c.speed), c.max));
+    const r = newZ / oldZ;
+    const p = ENGINE.utils.clamp(e.clientX - (e.clientX - s.x) * r, e.clientY - (e.clientY - s.y) * r, newZ);
+    Object.assign(s, { x: p.x, y: p.y, zoom: newZ }); render();
+};
+
+window.onmousemove = e => {
+    const s = ENGINE.state;
+    if (s.draggedObj) {
+        s.draggedObj.x += e.movementX / s.zoom;
+        s.draggedObj.y += e.movementY / s.zoom;
+        render();
+    } else if (s.isPanning) {
+        const p = ENGINE.utils.clamp(s.x + e.movementX, s.y + e.movementY, s.zoom);
+        Object.assign(s, p);
+        render();
+    }
+};
+
+window.onmousedown = (e) => { 
+    if(e.target === viewport || e.target === canvas) {
+        ENGINE.state.isPanning = true;
+        document.body.classList.add('panning'); // Додаємо клас
+    }
+};
+window.onmouseup = () => { 
+    ENGINE.state.isPanning = false; 
+    ENGINE.state.draggedObj = null; 
+    document.body.classList.remove('panning'); // Прибираємо клас
+    render(); 
+};
+window.oncontextmenu = e => e.preventDefault();
+
+document.querySelectorAll('input').forEach(el => el.onchange = e => {
+    if (e.target.id.startsWith('group-')) ENGINE.ui.groups[e.target.id.replace('group-', '')] = e.target.checked;
+    else ENGINE.ui[e.target.id] = e.target.checked;
+    render();
+});
+
+window.onresize = render;
+render();
+</script>
+</body>
+</html>
