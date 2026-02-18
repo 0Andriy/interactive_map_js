@@ -30,6 +30,39 @@ export class RoleRepository {
     }
 
     /**
+     * Автоматично визначає тип BIND для Oracle.
+     * @private
+     */
+    _getOracleType(db, colName) {
+        const colNameUpper = colName.toUpperCase()
+        // Дати та Timestamp
+        if (colNameUpper.includes('DATE') || colNameUpper.includes('AT')) {
+            return db.oracledb.DATE
+        }
+        // Числа (ID)
+        const colConfig = Object.values(RoleSchema.columns).find((c) => c.name === colName)
+        if (colConfig?.isPrimaryKey || colNameUpper.includes('ID')) {
+            return db.oracledb.NUMBER
+        }
+        // Все інше - рядки
+        return db.oracledb.STRING
+    }
+
+    /**
+     * Перетворює вихідні масиви Oracle outBinds у чистий об'єкт моделі.
+     * @private
+     */
+    _mapOutBindsToModel(outBinds, columns) {
+        const freshData = {}
+        columns.forEach((colName) => {
+            const val = outBinds[`out_${colName}`]
+            // Oracle BIND_OUT завжди повертає масив, беремо перший елемент [0]
+            freshData[colName] = Array.isArray(val) ? val[0] : val
+        })
+        return Role.fromDatabase(freshData)
+    }
+
+    /**
      * Перевіряє існування таблиці, створює її та заповнює початковими даними за потреби.
      * @returns {Promise<void>}
      */
@@ -287,49 +320,90 @@ export class RoleRepository {
 
     // -------------------------------------
 
+    // /**
+    //  * Створює новий запис ролі.
+    //  * @param {Role} role - Об'єкт моделі Role.
+    //  * @returns {Promise<Role>} Створена роль з отриманим ID.
+    //  */
+    // async create(role) {
+    //     const db = await this._getExecutor()
+
+    //     // Знаходимо конфігурацію первинного ключа (PK)
+    //     const pkEntry = Object.entries(RoleSchema.columns).find(([_, col]) => col.isPrimaryKey)
+    //     const [pkPropName, pkConfig] = pkEntry
+
+    //     const dbData = role.toDatabaseNames()
+    //     const hasProvidedId = role[pkPropName] !== null && role[pkPropName] !== undefined
+
+    //     // Формуємо список колонок для запиту
+    //     // Якщо ID не передано, видаляємо його з об'єкта dbData, щоб Oracle спрацював автоматично
+    //     if (!hasProvidedId) {
+    //         delete dbData[pkConfig.name]
+    //     }
+
+    //     const columns = Object.keys(dbData)
+    //     const bindNames = columns.map((col) => `:${col}`)
+
+    //     // Використовуємо RETURNING INTO для отримання ID (незалежно від того, хто його створив)
+    //     const sql = `
+    //         INSERT INTO ${RoleSchema.table} (${columns.join(', ')})
+    //         VALUES (${bindNames.join(', ')})
+    //         RETURNING ${pkConfig.name} INTO :out_id`
+
+    //     // Налаштовуємо Bind-змінні
+    //     const binds = {
+    //         ...dbData,
+    //         out_id: { type: db.oracledb.NUMBER, dir: db.oracledb.BIND_OUT },
+    //     }
+
+    //     const result = await db.execute(sql, binds)
+
+    //     // Отримуємо ID, який або повернула база, або ми самі передали
+    //     const finalId = result.outBinds.out_id[0] || role[pkPropName]
+
+    //     // Повертаємо свіжий об'єкт із бази (з усіма дефолтними значеннями та тригерами)
+    //     return await this.findById(finalId)
+    // }
+
     /**
-     * Створює новий запис ролі.
-     * @param {Role} role - Об'єкт моделі Role.
-     * @returns {Promise<Role>} Створена роль з отриманим ID.
+     * Створює запис та повертає актуальний об'єкт (з урахуванням тригерів та IDENTITY).
+     * @param {Role} role
+     * @returns {Promise<Role>}
      */
     async create(role) {
         const db = await this._getExecutor()
-
-        // Знаходимо конфігурацію первинного ключа (PK)
-        const pkEntry = Object.entries(RoleSchema.columns).find(([_, col]) => col.isPrimaryKey)
-        const [pkPropName, pkConfig] = pkEntry
-
+        const cols = RoleSchema.columns
         const dbData = role.toDatabaseNames()
-        const hasProvidedId = role[pkPropName] !== null && role[pkPropName] !== undefined
 
-        // Формуємо список колонок для запиту
-        // Якщо ID не передано, видаляємо його з об'єкта dbData, щоб Oracle спрацював автоматично
-        if (!hasProvidedId) {
-            delete dbData[pkConfig.name]
-        }
+        // Видаляємо PK, якщо він порожній, щоб спрацював сиквенс/identity
+        const pkConfig = Object.values(cols).find((c) => c.isPrimaryKey)
+        if (dbData[pkConfig.name] == null) delete dbData[pkConfig.name]
 
-        const columns = Object.keys(dbData)
-        const bindNames = columns.map((col) => `:${col}`)
+        // Фільтруємо лише ті колонки, які реально передані (не undefined)
+        const providedColumns = Object.keys(dbData).filter((key) => dbData[key] !== undefined)
+        const allColumns = Object.values(cols).map((c) => c.name)
 
-        // Використовуємо RETURNING INTO для отримання ID (незалежно від того, хто його створив)
         const sql = `
-            INSERT INTO ${RoleSchema.table} (${columns.join(', ')})
-            VALUES (${bindNames.join(', ')})
-            RETURNING ${pkConfig.name} INTO :out_id`
+            INSERT INTO ${RoleSchema.table} (${providedColumns.join(', ')})
+            VALUES (${providedColumns.map((c) => ':' + c).join(', ')})
+            RETURNING ${allColumns.join(', ')}
+            INTO ${allColumns.map((c) => ':out_' + c).join(', ')}`
 
-        // Налаштовуємо Bind-змінні
-        const binds = {
-            ...dbData,
-            out_id: { type: db.oracledb.NUMBER, dir: db.oracledb.BIND_OUT },
-        }
+        const binds = {}
+        // Вхідні дані
+        providedColumns.forEach((col) => {
+            binds[col] = dbData[col]
+        })
+        // Конфігурація для повернення всіх полів схеми
+        allColumns.forEach((colName) => {
+            binds[`out_${colName}`] = {
+                type: this._getOracleType(db, colName),
+                dir: db.oracledb.BIND_OUT,
+            }
+        })
 
         const result = await db.execute(sql, binds)
-
-        // Отримуємо ID, який або повернула база, або ми самі передали
-        const finalId = result.outBinds.out_id[0] || role[pkPropName]
-
-        // Повертаємо свіжий об'єкт із бази (з усіма дефолтними значеннями та тригерами)
-        return await this.findById(finalId)
+        return this._mapOutBindsToModel(result.outBinds, allColumns)
     }
 
     /**
@@ -374,46 +448,96 @@ export class RoleRepository {
         return { count: result.rowsAffected }
     }
 
+    // /**
+    //  * Оновлює існуючу роль.
+    //  * @param {number|string} id - ID ролі для оновлення.
+    //  * @param {Object} roleData - Часткові дані ролі для оновлення.
+    //  * @returns {Promise<Role>} Оновлений об'єкт Role.
+    //  * @throws {Error} Якщо запис для оновлення не знайдено.
+    //  */
+    // async update(id, roleData) {
+    //     const db = await this._getExecutor()
+
+    //     const pkEntry = Object.entries(RoleSchema.columns).find(([key, col]) => col.isPrimaryKey)
+    //     const [pkPropName, pkConfig] = pkEntry
+
+    //     // Створюємо екземпляр моделі, щоб отримати коректні назви колонок
+    //     const model = new Role(roleData)
+    //     const dbData = model.toDatabaseNames()
+
+    //     // Формуємо рядок SET для SQL, ігноруючи PK в самому SET
+    //     const setClauses = Object.keys(dbData)
+    //         .filter((colName) => colName !== pkConfig.name)
+    //         .map((colName) => `${colName} = :${colName}`)
+
+    //     const sql = `
+    //         UPDATE ${RoleSchema.table}
+    //         SET ${setClauses.join(', ')}
+    //         WHERE ${pkConfig.name} = :target_id`
+
+    //     const binds = {
+    //         ...dbData,
+    //         target_id: id,
+    //     }
+
+    //     const result = await db.execute(sql, binds)
+
+    //     if (result.rowsAffected === 0) {
+    //         throw new Error(`Запис з ID ${id} не знайдено для оновлення`)
+    //     }
+
+    //     // Повертаємо оновлений об'єкт прямо з бази
+    //     return await this.findById(id)
+    // }
+
     /**
-     * Оновлює існуючу роль.
-     * @param {number|string} id - ID ролі для оновлення.
-     * @param {Object} roleData - Часткові дані ролі для оновлення.
-     * @returns {Promise<Role>} Оновлений об'єкт Role.
-     * @throws {Error} Якщо запис для оновлення не знайдено.
+     * Оновлює лише передані поля.
+     * Повертає актуальний стан рядка після спрацювання всіх тригерів.
      */
     async update(id, roleData) {
         const db = await this._getExecutor()
+        const cols = RoleSchema.columns
+        const pkConfig = Object.values(cols).find((c) => c.isPrimaryKey)
 
-        const pkEntry = Object.entries(RoleSchema.columns).find(([key, col]) => col.isPrimaryKey)
-        const [pkPropName, pkConfig] = pkEntry
-
-        // Створюємо екземпляр моделі, щоб отримати коректні назви колонок
         const model = new Role(roleData)
         const dbData = model.toDatabaseNames()
 
-        // Формуємо рядок SET для SQL, ігноруючи PK в самому SET
-        const setClauses = Object.keys(dbData)
-            .filter((colName) => colName !== pkConfig.name)
-            .map((colName) => `${colName} = :${colName}`)
+        // Визначаємо колонки для SET (не PK і не undefined)
+        const updateColumns = Object.keys(dbData).filter(
+            (key) => key !== pkConfig.name && dbData[key] !== undefined,
+        )
+
+        if (updateColumns.length === 0) {
+            return this.findById(id)
+        }
+
+        const allColumns = Object.values(cols).map((c) => c.name)
 
         const sql = `
             UPDATE ${RoleSchema.table}
-            SET ${setClauses.join(', ')}
-            WHERE ${pkConfig.name} = :target_id`
+            SET ${updateColumns.map((c) => `${c} = :${c}`).join(', ')}
+            WHERE ${pkConfig.name} = :target_id
+            RETURNING ${allColumns.join(', ')}
+            INTO ${allColumns.map((c) => ':out_' + c).join(', ')}`
 
-        const binds = {
-            ...dbData,
-            target_id: id,
-        }
+        const binds = { target_id: id }
+        updateColumns.forEach((col) => {
+            binds[col] = dbData[col]
+        })
+        allColumns.forEach((colName) => {
+            binds[`out_${colName}`] = {
+                type: this._getOracleType(db, colName),
+                dir: db.oracledb.BIND_OUT,
+            }
+        })
 
         const result = await db.execute(sql, binds)
 
         if (result.rowsAffected === 0) {
-            throw new Error(`Запис з ID ${id} не знайдено для оновлення`)
+            throw new Error(`Запис з ID ${id} не знайдено`)
         }
 
-        // Повертаємо оновлений об'єкт прямо з бази
-        return await this.findById(id)
+        return this._mapOutBindsToModel(result.outBinds, allColumns)
     }
 
     /**
