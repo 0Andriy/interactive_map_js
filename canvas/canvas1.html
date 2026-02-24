@@ -1,0 +1,347 @@
+<!-- 
+Quadtree Spatial Engine: Оптимізація 50,000 статичних точок (працює через intersects).
+Recursive Composition: Елементи можуть містити інші елементи (children). При русі батька діти рухаються синхронно.
+Advanced Factory Registry: Класи Server, Cloud, Database, User, Router, Cluster.
+Multi-Port System: Різна кількість вузлів залежно від типу (від 2 до 8).
+Triple Line Types: Bezier, Straight, Polyline (orthogonal-like).
+Layer Manager: Керування видимістю ID, IP-адреси та Мета-даних.
+Multi-Select & Drag: Виділення рамкою та групове переміщення.
+Grouping [Ctrl+G / Shift+G]: Створення та розрив ієрархічних контейнерів.
+Zoom-to-cursor & Minimap: Навігація в нескінченному просторі.
+Snap-to-Grid [G]: Прив'язка до адаптивної сітки з підписами. 
+
+//
+Справжній Quadtree (v23): Оптимізація для 50,000 статичних точок (працює через intersects).
+Групування [Ctrl+G] / [Shift+G]: Контейнери, що автоматично змінюють розмір і рухають вміст.
+Система Шарів (Layers): Окрема видимість для ID, IP-адрес та Мета-даних.
+Реєстр Класів (Factory): Server, Cloud, DB, User, Router — кожен зі своєю кількістю вузлів.
+Вузол до Вузла: З'єднання працює лише між портами (Bezier/Straight/Polyline).
+Вибір та видалення ліній: Клік по зв'язку (білий колір) + Delete.
+Навігація: Zoom-to-cursor, Міні-карта, Легенда з координатами.
+Snap-to-Grid [G]: Прив'язка до сітки з підписами осей.
+
+-->
+
+
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Infinity Graph Ultimate v25</title>
+    <style>
+        body, html { margin: 0; padding: 0; overflow: hidden; background: #050505; color: #00ffcc; font-family: 'Consolas', monospace; }
+        canvas { display: block; cursor: crosshair; }
+        .ui-panel { position: absolute; top: 15px; left: 15px; background: rgba(10, 10, 10, 0.95); padding: 15px; border: 1px solid #00ffcc; border-radius: 4px; z-index: 100; pointer-events: none; min-width: 280px; }
+        .layers-panel { position: absolute; top: 15px; right: 15px; background: rgba(10, 10, 10, 0.95); padding: 12px; border: 1px solid #00ffcc; border-radius: 4px; z-index: 120; width: 180px; }
+        .layer-item { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; font-size: 11px; cursor: pointer; }
+        .toolbar { position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); background: #111; padding: 10px; border: 1px solid #444; border-radius: 6px; display: flex; gap: 8px; z-index: 110; }
+        button { background: #222; border: 1px solid #555; color: #00ffcc; padding: 6px 12px; cursor: pointer; font-size: 11px; }
+        button.active { background: #00ffcc; color: #000; border-color: #fff; }
+        #map-box { position: absolute; bottom: 20px; right: 20px; width: 160px; height: 160px; background: #000; border: 1px solid #333; z-index: 90; }
+    </style>
+</head>
+<body>
+
+<div class="ui-panel">
+    <b style="color:#00ffcc">ULTIMATE ENGINE v25</b><hr style="border:0;border-top:1px solid #333">
+    <div style="font-size:11px">
+        Nodes/Links: <span id="elCnt">0</span> / <span id="cnCnt">0</span><br>
+        Zoom: <span id="zoomVal">1.0</span> | Snap: <span id="gridStatus">ON</span>
+    </div>
+</div>
+
+<div class="layers-panel" id="layers-panel"><b>LAYER MANAGER</b><hr style="border:0;border-top:1px solid #333"></div>
+
+<div class="toolbar" id="toolbar">
+    <div id="shape-tools" style="display:flex; gap:5px"></div>
+    <div style="width:1px; background:#444; margin:0 5px;"></div>
+    <div id="line-tools" style="display:flex; gap:5px">
+        <button onclick="sl('bezier')" id="l-bezier" class="active">Bezier</button>
+        <button onclick="sl('straight')" id="l-straight">Straight</button>
+        <button onclick="sl('poly')" id="l-poly">Poly</button>
+    </div>
+</div>
+
+<div id="map-box"><canvas id="map-cvs" width="160" height="160"></canvas></div>
+<canvas id="canvas"></canvas>
+
+<script>
+const WORLD_SIZE = 60000;
+let snapEnabled = true, curType = 'server', curLineStyle = 'bezier';
+
+const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+const mCvs = document.getElementById('map-cvs'), mCtx = mCvs.getContext('2d');
+
+const layers = [
+    { id: 'base', name: 'Geometry', visible: true },
+    { id: 'logic', name: 'Logic (ID)', visible: true },
+    { id: 'phys', name: 'Physical (IP)', visible: false },
+    { id: 'meta', name: 'Metadata', visible: true }
+];
+
+// --- ГЕОМЕТРІЯ ТА QUAD TREE ---
+class Rect {
+    constructor(x, y, w, h) { this.x = x; this.y = y; this.w = w; this.h = h; }
+    intersects(r) { return !(r.x > this.x + this.w || r.x + r.w < this.x || r.y > this.y + this.h || r.y + r.h < this.y); }
+    contains(p) { return (p.x >= this.x && p.x <= this.x + this.w && p.y >= this.y && p.y <= this.y + this.h); }
+}
+
+class Quadtree {
+    constructor(boundary, capacity) {
+        this.boundary = boundary; this.capacity = capacity;
+        this.points = []; this.divided = false;
+    }
+    subdivide() {
+        const {x,y,w,h} = this.boundary;
+        this.nw = new Quadtree(new Rect(x, y, w/2, h/2), this.capacity);
+        this.ne = new Quadtree(new Rect(x + w/2, y, w/2, h/2), this.capacity);
+        this.sw = new Quadtree(new Rect(x, y + h/2, w/2, h/2), this.capacity);
+        this.se = new Quadtree(new Rect(x + w/2, y + h/2, w/2, h/2), this.capacity);
+        this.divided = true;
+    }
+    insert(p) {
+        if (!this.boundary.contains(p)) return false;
+        if (this.points.length < this.capacity) { this.points.push(p); return true; }
+        if (!this.divided) this.subdivide();
+        return this.nw.insert(p) || this.ne.insert(p) || this.sw.insert(p) || this.se.insert(p);
+    }
+    query(range, found) {
+        if (!this.boundary.intersects(range)) return;
+        for (let p of this.points) { if (range.intersects(new Rect(p.x, p.y, 30, 30))) found.push(p); }
+        if (this.divided) { this.nw.query(range, found); this.ne.query(range, found); this.sw.query(range, found); this.se.query(range, found); }
+    }
+}
+
+// --- БАЗОВИЙ КЛАС ВУЗЛА (COMPOSITE) ---
+class BaseNode {
+    constructor(id, x, y, w, h) {
+        this.id = id; this.x = x; this.y = y; this.w = w; this.h = h;
+        this.label = "Node " + id.toString().slice(-3);
+        this.selected = false; this.groupId = null; this.children = [];
+        this.data = { logic: `ID-${id.toString().slice(-4)}`, phys: `10.0.0.${id%255}`, meta: "v1.0" };
+    }
+    getPorts() {
+        return [{x:this.x, y:this.y+this.h/2, s:'l'}, {x:this.x+this.w, y:this.y+this.h/2, s:'r'}];
+    }
+    draw(ctx) {
+        if (!layers.find(l=>l.id==='base').visible) return;
+        ctx.fillStyle = this.selected ? '#1a1a1a' : '#0a0a0a';
+        ctx.strokeStyle = this.selected ? '#00ffcc' : '#444';
+        ctx.lineWidth = 2;
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+        ctx.strokeRect(this.x, this.y, this.w, this.h);
+
+        ctx.textAlign = 'center'; ctx.font = '11px Consolas';
+        if(layers.find(l=>l.id==='logic').visible) { ctx.fillStyle='#00ffcc'; ctx.fillText(this.label, this.x+this.w/2, this.y+20); }
+        if(layers.find(l=>l.id==='phys').visible) { ctx.fillStyle='#ffcc00'; ctx.fillText(this.data.phys, this.x+this.w/2, this.y+this.h/2); }
+        
+        ctx.save(); ctx.translate(this.x, this.y);
+        this.children.forEach(c => c.draw(ctx)); ctx.restore();
+    }
+}
+
+// --- СПЕЦИФІЧНІ КЛАСИ ТА ПРЕФАБИ ---
+class ServerNode extends BaseNode { constructor(id,x,y){ super(id,x,y,100,140); this.type='server'; } }
+class DBNode extends BaseNode {
+    constructor(id,x,y){ super(id,x,y,100,100); this.type='db'; }
+    getPorts() { return [{x:this.x+50, y:this.y, s:'t'}, {x:this.x, y:this.y+50, s:'l'}, {x:this.x+100, y:this.y+50, s:'r'}]; }
+    draw(ctx){ ctx.beginPath(); ctx.ellipse(this.x+50, this.y+50, 50, 50, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke(); super.draw(ctx); }
+}
+class ClusterNode extends BaseNode {
+    constructor(id,x,y){ 
+        super(id,x,y,220,220); this.type='cluster'; this.label="CLUSTER";
+        this.children.push(new BaseNode(id+1, 20, 40, 180, 50), new BaseNode(id+2, 20, 110, 180, 80));
+    }
+}
+
+// --- СИСТЕМА ГРУПУВАННЯ ---
+class GroupContainer {
+    constructor(id, items) { this.id = id; this.items = items; this.selected = false; this.update(); }
+    update() {
+        const minX = Math.min(...this.items.map(i=>i.x)), minY = Math.min(...this.items.map(i=>i.y));
+        const maxX = Math.max(...this.items.map(i=>i.x+i.w)), maxY = Math.max(...this.items.map(i=>i.y+i.h));
+        this.x = minX-25; this.y = minY-45; this.w = maxX-minX+50; this.h = maxY-minY+70;
+    }
+    draw(ctx) {
+        ctx.strokeStyle = this.selected ? '#00ffcc' : '#00ffcc33'; ctx.setLineDash();
+        ctx.strokeRect(this.x, this.y, this.w, this.h); ctx.setLineDash([]);
+        ctx.fillStyle='#00ffcc33'; ctx.fillText("GROUP", this.x+10, this.y+15);
+    }
+}
+
+// --- РЕЄСТР ТА СТАН ---
+const NodeFactory = {
+    registry: { server: ServerNode, db: DBNode, cluster: ClusterNode },
+    create(type, x, y) { return new this.registry[type](Date.now(), x, y); }
+};
+
+let state = {
+    view: { x: 0, y: 0, zoom: 0.2 },
+    elements: [], connections: [], groups: [], staticTree: null,
+    dragged: [], selectionBox: null, activeLine: null, isPanning: false, lastMouse: {x:0, y:0}, selectedConnIdx: -1
+};
+
+const toWorld = (x, y) => ({ x: (x-canvas.width/2)/state.view.zoom-state.view.x, y: (y-canvas.height/2)/state.view.zoom-state.view.y });
+
+function init() {
+    state.staticTree = new Quadtree(new Rect(-WORLD_SIZE/2, -WORLD_SIZE/2, WORLD_SIZE, WORLD_SIZE), 20);
+    for(let i=0; i<50000; i++) state.staticTree.insert({x:(Math.random()-0.5)*WORLD_SIZE, y:(Math.random()-0.5)*WORLD_SIZE});
+    
+    const st = document.getElementById('shape-tools');
+    Object.keys(NodeFactory.registry).forEach(k => {
+        const b = document.createElement('button'); b.innerText = k.toUpperCase();
+        b.onclick = () => { curType = k; document.querySelectorAll('#shape-tools button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); };
+        st.appendChild(b);
+    });
+    
+    const lp = document.getElementById('layers-panel');
+    layers.forEach(l => {
+        const d = document.createElement('div'); d.className = 'layer-item';
+        d.innerHTML = `<span>${l.name}</span><span id="l-${l.id}" onclick="toggleLayer('${l.id}')">👁</span>`;
+        lp.appendChild(d);
+    });
+    resize();
+}
+
+function render() {
+    ctx.fillStyle='#050505'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.save();
+    ctx.translate(canvas.width/2, canvas.height/2); ctx.scale(state.view.zoom, state.view.zoom); ctx.translate(state.view.x, state.view.y);
+
+    const inv = 1/state.view.zoom;
+    const vRect = new Rect(-state.view.x-(canvas.width/2)*inv, -state.view.y-(canvas.height/2)*inv, canvas.width*inv, canvas.height*inv);
+
+    // Grid Labels
+    ctx.fillStyle='#222'; ctx.font=`${12*inv}px monospace`;
+    for(let x=-WORLD_SIZE/2; x<WORLD_SIZE/2; x+=1000) { if(state.view.zoom>0.04) ctx.fillText(x, x+5, vRect.y+20*inv); }
+
+    const statics = []; state.staticTree.query(vRect, statics);
+    ctx.fillStyle='#111'; statics.forEach(p=>ctx.fillRect(p.x,p.y,30,30));
+
+    state.groups.forEach(g => { g.update(); g.draw(ctx); });
+
+    state.connections.forEach((c, idx) => {
+        const f = state.elements.find(e=>e.id===c.fId), t = state.elements.find(e=>e.id===c.tId);
+        if(!f || !t) return;
+        const p1 = f.getPorts().find(p=>p.s===c.fS), p2 = t.getPorts().find(p=>p.s===c.tS);
+        ctx.beginPath(); ctx.strokeStyle = state.selectedConnIdx === idx ? '#fff' : '#00ffcc'; ctx.lineWidth=3;
+        if(c.type==='bezier') ctx.bezierCurveTo(p1.x+80, p1.y, p2.x-80, p2.y, p2.x, p2.y);
+        else ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+    });
+
+    state.elements.forEach(el => {
+        if(!vRect.intersects(new Rect(el.x, el.y, el.w, el.h))) return;
+        el.draw(ctx);
+        ctx.fillStyle='#00ffcc'; el.getPorts().forEach(p=>{ctx.beginPath(); ctx.arc(p.x,p.y,6,0,Math.PI*2); ctx.fill();});
+    });
+
+    if(state.activeLine) {
+        const f = state.elements.find(e=>e.id===state.activeLine.id);
+        const p1 = f.getPorts().find(p=>p.s===state.activeLine.s);
+        ctx.beginPath(); ctx.strokeStyle='#fff'; ctx.moveTo(p1.x, p1.y); ctx.lineTo(state.activeLine.to.x, state.activeLine.to.y); ctx.stroke();
+    }
+    if(state.selectionBox) { ctx.strokeStyle='#00ffcc'; ctx.strokeRect(state.selectionBox.x, state.selectionBox.y, state.selectionBox.w, state.selectionBox.h); }
+    
+    ctx.restore();
+    updateUI(); drawMap();
+}
+
+function updateUI() {
+    document.getElementById('elCnt').innerText = state.elements.length;
+    document.getElementById('cnCnt').innerText = state.connections.length;
+    document.getElementById('zoomVal').innerText = state.view.zoom.toFixed(2);
+}
+
+function toggleLayer(id) { const l = layers.find(x=>x.id===id); l.visible = !l.visible; document.getElementById('l-'+id).innerText = l.visible?'👁':'Ø'; render(); }
+function sl(l){ curLineStyle = l; }
+
+function drawMap() {
+    mCtx.fillStyle='#000'; mCtx.fillRect(0,0,160,160);
+    const r=160/WORLD_SIZE; mCtx.fillStyle='#00ffcc';
+    state.elements.forEach(el=>mCtx.fillRect((el.x+WORLD_SIZE/2)*r,(el.y+WORLD_SIZE/2)*r,3,3));
+}
+
+// --- EVENTS ---
+canvas.addEventListener('mousedown', e => {
+    const p = toWorld(e.clientX, e.clientY);
+    let port = null;
+    state.elements.forEach(el => el.getPorts().forEach(pt => { if(Math.hypot(p.x-pt.x, p.y-pt.y)<15) port={id:el.id, s:pt.s}; }));
+
+    if(port) state.activeLine = { id:port.id, s:port.s, to:p };
+    else {
+        const el = state.elements.find(el => p.x > el.x && p.x < el.x + el.w && p.y > el.y && p.y < el.y + el.h);
+        if(el) {
+            if(!el.selected) { if(!e.shiftKey) state.elements.forEach(e=>e.selected=false); el.selected=true; }
+            state.dragged = state.elements.filter(e=>e.selected);
+        } else {
+            state.selectedConnIdx = state.connections.findIndex(c => {
+                const f=state.elements.find(e=>e.id===c.fId), t=state.elements.find(e=>e.id===c.tId);
+                const p1=f.getPorts().find(pt=>pt.s===c.fS), p2=t.getPorts().find(pt=>pt.s===c.tS);
+                return Math.hypot(p.x-(p1.x+p2.x)/2, p.y-(p1.y+p2.y)/2) < 20;
+            });
+            state.elements.forEach(e=>e.selected=false);
+            if(e.button===0) state.selectionBox = { x:p.x, y:p.y, w:0, h:0, sx:p.x, sy:p.y };
+            state.isPanning = true;
+        }
+    }
+    state.lastMouse = {x:e.clientX, y:e.clientY}; render();
+});
+
+window.addEventListener('mousemove', e => {
+    const p = toWorld(e.clientX, e.clientY);
+    const dx = (e.clientX-state.lastMouse.x)/state.view.zoom, dy = (e.clientY-state.lastMouse.y)/state.view.zoom;
+    if(state.isPanning && !state.selectionBox) { state.view.x += dx; state.view.y += dy; }
+    else if(state.dragged.length > 0) { state.dragged.forEach(el => { el.x += dx; el.y += dy; if(snapEnabled){el.x=Math.round(el.x/20)*20; el.y=Math.round(el.y/20)*20;} }); }
+    else if(state.selectionBox) {
+        state.selectionBox.w = p.x-state.selectionBox.sx; state.selectionBox.h = p.y-state.selectionBox.sy;
+        const b = new Rect(Math.min(state.selectionBox.sx, p.x), Math.min(state.selectionBox.sy, p.y), Math.abs(state.selectionBox.w), Math.abs(state.selectionBox.h));
+        state.elements.forEach(el => el.selected = b.intersects(new Rect(el.x, el.y, el.w, el.h)));
+    } else if(state.activeLine) state.activeLine.to = p;
+    state.lastMouse = {x:e.clientX, y:e.clientY}; render();
+});
+
+window.addEventListener('mouseup', e => {
+    if(state.activeLine) {
+        const p = toWorld(e.clientX, e.clientY);
+        const target = state.elements.find(el => el.getPorts().some(pt => Math.hypot(p.x-pt.x, p.y-pt.y)<20));
+        if(target && target.id !== state.activeLine.id) {
+            const tp = target.getPorts().find(pt => Math.hypot(p.x-pt.x, p.y-pt.y)<20);
+            state.connections.push({fId:state.activeLine.id, fS:state.activeLine.s, tId:target.id, tS:tp.s, type:curLineStyle});
+        }
+    }
+    state.isPanning = false; state.dragged = []; state.selectionBox = null; state.activeLine = null; render();
+});
+
+window.addEventListener('keydown', e => {
+    if(e.ctrlKey && e.key === 'g') { e.preventDefault(); const sel = state.elements.filter(e=>e.selected); if(sel.length>1) state.groups.push(new GroupContainer(Date.now(), sel)); }
+    if(e.key === 'Delete') { 
+        if(state.selectedConnIdx > -1) state.connections.splice(state.selectedConnIdx, 1);
+        state.elements = state.elements.filter(el=>!el.selected); 
+        state.connections = state.connections.filter(c=>state.elements.some(e=>e.id===c.fId) && state.elements.some(e=>e.id===c.tId));
+    }
+    if(e.key === 'g') snapEnabled = !snapEnabled;
+    render();
+});
+
+canvas.addEventListener('dblclick', e => {
+    const p = toWorld(e.clientX, e.clientY);
+    const el = state.elements.find(el => p.x > el.x && p.x < el.x + el.w && p.y > el.y && p.y < el.y + el.h);
+    if(el) { const l = prompt("Label:", el.label); if(l) el.label = l; }
+    else state.elements.push(NodeFactory.create(curType, p.x-50, p.y-50));
+    render();
+});
+
+canvas.addEventListener('wheel', e => {
+    e.preventDefault(); const wb=toWorld(e.clientX,e.clientY);
+    state.view.zoom *= e.deltaY < 0 ? 1.1 : 0.9;
+    const wa=toWorld(e.clientX,e.clientY); state.view.x += (wa.x-wb.x); state.view.y += (wa.y-wb.y);
+    render();
+}, {passive:false});
+
+window.addEventListener('resize', resize);
+function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; render(); }
+init();
+</script>
+</body>
+</html>

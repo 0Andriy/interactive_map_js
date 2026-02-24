@@ -33,6 +33,7 @@ CREATE TABLE USERS (
 -- Індекси
 CREATE INDEX IDX_USERS_LOGIN_ACT ON USERS(username, deleted_at);
 
+
 -- Коментарі
 COMMENT ON TABLE USERS IS 'Облікові записи для аутентифікації користувачів';
 COMMENT ON COLUMN USERS.id IS 'Первинний ключ (UUID або NUMBER)';
@@ -115,66 +116,199 @@ COMMENT ON COLUMN USER_ROLES.assigned_by IS 'Хто призначив роль 
 
 
 
--- Керування сесіями та Refresh токенами
-CREATE TABLE USER_SESSIONS (
-    id RAW(16) DEFAULT SYS_GUID(),
-    user_id RAW(16) NOT NULL,
-    refresh_token_hash VARCHAR2(512) NOT NULL,
-    device_fingerprint VARCHAR2(255),
-    device_info VARCHAR2(255),
-    ip_address VARCHAR2(45),
-    is_revoked NUMBER(1) DEFAULT 0,
-    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    -- Constraints
-    CONSTRAINT PK_USER_SESSIONS PRIMARY KEY (id),
-    CONSTRAINT FK_SESS_USER FOREIGN KEY (user_id) REFERENCES USERS (id) ON DELETE CASCADE,
-    CONSTRAINT CK_SESS_REVOKED CHECK (is_revoked IN (0, 1))
-);
-
---
-CREATE INDEX IDX_SESS_USER_ACTIVE ON USER_SESSIONS(user_id, expires_at, is_revoked);
--- Пришвидшує пошук сесій для видалення (expired або revoked)
-CREATE INDEX IDX_SESS_CLEANUP ON USER_SESSIONS(expires_at, is_revoked);
-
---
-COMMENT ON TABLE USER_SESSIONS IS 'Активні Refresh-сесії та дані пристроїв користувача';
-COMMENT ON COLUMN USER_SESSIONS.id IS 'ID сесії (JTI у контексті JWT)';
-COMMENT ON COLUMN USER_SESSIONS.user_id IS 'Власник сесії';
-COMMENT ON COLUMN USER_SESSIONS.refresh_token_hash IS 'Хешований Refresh-токен для безпечної перевірки';
-COMMENT ON COLUMN USER_SESSIONS.device_fingerprint IS 'Цифровий відбиток браузера/пристрою';
-COMMENT ON COLUMN USER_SESSIONS.device_info IS 'Текстова інформація про пристрій (User-Agent)';
-COMMENT ON COLUMN USER_SESSIONS.ip_address IS 'IP-адреса, з якої було здійснено вхід';
-COMMENT ON COLUMN USER_SESSIONS.is_revoked IS 'Чи була сесія примусово завершена (Logout/Admin)';
-COMMENT ON COLUMN USER_SESSIONS.last_activity IS 'Дата останнього звернення з цим токеном';
-COMMENT ON COLUMN USER_SESSIONS.expires_at IS 'Дата закінчення терміну дії сесії';
-COMMENT ON COLUMN USER_SESSIONS.created_at IS 'Час створення сесії (Login)';
+-- -- Керування сесіями та Refresh токенами
+-- CREATE TABLE USER_SESSIONS (
+--     id RAW(16) DEFAULT SYS_GUID(),
+--     user_id RAW(16) NOT NULL,
+--     refresh_token_hash VARCHAR2(512) NOT NULL,
+--     device_fingerprint VARCHAR2(255),
+--     device_info VARCHAR2(255),
+--     ip_address VARCHAR2(45),
+--     is_revoked NUMBER(1) DEFAULT 0,
+--     last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     expires_at TIMESTAMP NOT NULL,
+--     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     -- Constraints
+--     CONSTRAINT PK_USER_SESSIONS PRIMARY KEY (id),
+--     CONSTRAINT FK_SESS_USER FOREIGN KEY (user_id) REFERENCES USERS (id) ON DELETE CASCADE,
+--     CONSTRAINT CK_SESS_REVOKED CHECK (is_revoked IN (0, 1))
+-- );
 
 -- --
--- CREATE OR REPLACE PROCEDURE PRC_CLEANUP_EXPIRED_SESSIONS AS
--- BEGIN
---     -- Видаляємо прострочені або анульовані сесії
---     DELETE FROM USER_SESSIONS
---     WHERE expires_at < CURRENT_TIMESTAMP
---        OR is_revoked = 1;
+-- CREATE INDEX IDX_SESS_USER_ACTIVE ON USER_SESSIONS(user_id, expires_at, is_revoked);
+-- -- Пришвидшує пошук сесій для видалення (expired або revoked)
+-- CREATE INDEX IDX_SESS_CLEANUP ON USER_SESSIONS(expires_at, is_revoked);
 
---     COMMIT;
--- EXCEPTION
---     WHEN OTHERS THEN
---         ROLLBACK;
---         -- Тут можна додати запис у лог помилок, якщо він у вас є
---         RAISE;
--- END;
+-- --
+-- COMMENT ON TABLE USER_SESSIONS IS 'Активні Refresh-сесії та дані пристроїв користувача';
+-- COMMENT ON COLUMN USER_SESSIONS.id IS 'ID сесії (JTI у контексті JWT)';
+-- COMMENT ON COLUMN USER_SESSIONS.user_id IS 'Власник сесії';
+-- COMMENT ON COLUMN USER_SESSIONS.refresh_token_hash IS 'Хешований Refresh-токен для безпечної перевірки';
+-- COMMENT ON COLUMN USER_SESSIONS.device_fingerprint IS 'Цифровий відбиток браузера/пристрою';
+-- COMMENT ON COLUMN USER_SESSIONS.device_info IS 'Текстова інформація про пристрій (User-Agent)';
+-- COMMENT ON COLUMN USER_SESSIONS.ip_address IS 'IP-адреса, з якої було здійснено вхід';
+-- COMMENT ON COLUMN USER_SESSIONS.is_revoked IS 'Чи була сесія примусово завершена (Logout/Admin)';
+-- COMMENT ON COLUMN USER_SESSIONS.last_activity IS 'Дата останнього звернення з цим токеном';
+-- COMMENT ON COLUMN USER_SESSIONS.expires_at IS 'Дата закінчення терміну дії сесії';
+-- COMMENT ON COLUMN USER_SESSIONS.created_at IS 'Час створення сесії (Login)';
 
--- BEGIN
---     DBMS_SCHEDULER.CREATE_JOB (
---         job_name        => 'JOB_CLEANUP_SESSIONS',
---         job_type        => 'STORED_PROCEDURE',
---         job_action      => 'PRC_CLEANUP_EXPIRED_SESSIONS',
---         start_date      => SYSTIMESTAMP,
---         repeat_interval => 'FREQ=HOURLY; INTERVAL=1', -- Кожну годину
---         enabled         => TRUE,
---         comments        => 'Автоматичне видалення старих та анульованих сесій користувачів'
---     );
--- END;
+-- -- --
+-- -- CREATE OR REPLACE PROCEDURE PRC_CLEANUP_EXPIRED_SESSIONS AS
+-- -- BEGIN
+-- --     -- Видаляємо прострочені або анульовані сесії
+-- --     DELETE FROM USER_SESSIONS
+-- --     WHERE expires_at < CURRENT_TIMESTAMP
+-- --        OR is_revoked = 1;
+
+-- --     COMMIT;
+-- -- EXCEPTION
+-- --     WHEN OTHERS THEN
+-- --         ROLLBACK;
+-- --         -- Тут можна додати запис у лог помилок, якщо він у вас є
+-- --         RAISE;
+-- -- END;
+
+-- -- BEGIN
+-- --     DBMS_SCHEDULER.CREATE_JOB (
+-- --         job_name        => 'JOB_CLEANUP_SESSIONS',
+-- --         job_type        => 'STORED_PROCEDURE',
+-- --         job_action      => 'PRC_CLEANUP_EXPIRED_SESSIONS',
+-- --         start_date      => SYSTIMESTAMP,
+-- --         repeat_interval => 'FREQ=HOURLY; INTERVAL=1', -- Кожну годину
+-- --         enabled         => TRUE,
+-- --         comments        => 'Автоматичне видалення старих та анульованих сесій користувачів'
+-- --     );
+-- -- END;
+
+
+
+-- 1. Створення таблиці
+CREATE TABLE user_sessions (
+    -- Первинний ключ: RAW(16) швидший за VARCHAR і сумісний з UUID/JTI
+    id                  RAW(16) DEFAULT SYS_GUID(),
+    user_id             RAW(16) NOT NULL,
+
+    -- Безпека: зберігаємо лише SHA-256 хеш токена
+    token_hash          CHAR(64) NOT NULL,
+
+    -- Групування ланцюжка оновлень (Token Rotation)
+    family_id           RAW(16) NOT NULL,
+
+    -- Часові мітки (з урахуванням часових поясів)
+    created_at          TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    expires_at          TIMESTAMP WITH TIME ZONE NOT NULL,
+    last_activity       TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+
+    -- Логіка відкликання та використання
+    revoked_at          TIMESTAMP WITH TIME ZONE,
+    used_at             TIMESTAMP WITH TIME ZONE,
+
+    -- Рівні безпеки (MFA/2FA)
+    auth_level          NUMBER(1) DEFAULT 0 NOT NULL,
+    mfa_verified_at     TIMESTAMP WITH TIME ZONE,
+
+    -- Аудит та ідентифікація клієнта
+    ip_address          VARCHAR2(45),
+    device_info         VARCHAR2(500),
+    device_fingerprint  VARCHAR2(255),
+    refresh_count       NUMBER DEFAULT 0 NOT NULL,
+
+    -- Обмеження (Constraints)
+    CONSTRAINT pk_user_sessions PRIMARY KEY (id),
+    CONSTRAINT fk_sess_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    CONSTRAINT ck_sess_auth_level CHECK (auth_level IN (0, 1, 2))
+);
+
+-- 2. Індекси для високої продуктивності
+-- Пошук активної сесії за токеном (найчастіший запит)
+CREATE INDEX idx_sess_active_lookup ON user_sessions (token_hash)
+WHERE (revoked_at IS NULL AND expires_at > CURRENT_TIMESTAMP);
+
+-- Пошук усіх сесій користувача (наприклад, для списку пристроїв)
+CREATE INDEX idx_sess_user_all ON user_sessions (user_id, last_activity DESC);
+
+-- Індекс для швидкого пошуку найстарішої сесії конкретного користувача
+CREATE INDEX idx_sess_fifo_cleanup ON user_sessions(user_id, last_activity ASC);
+
+-- Пошук ланцюжка для відкликання (Rotation/Reuse detection)
+CREATE INDEX idx_sess_family ON user_sessions (family_id);
+
+-- 3. Коментарі для документації (Data Dictionary)
+COMMENT ON TABLE user_sessions IS 'Система керування сесіями користувачів та Refresh-токенами з підтримкою ротації';
+
+COMMENT ON COLUMN user_sessions.id IS 'Унікальний ID сесії (може бути використаний як JTI у JWT)';
+COMMENT ON COLUMN user_sessions.user_id IS 'Посилання на користувача (FK)';
+COMMENT ON COLUMN user_sessions.token_hash IS 'SHA-256 хеш Refresh-токена';
+COMMENT ON COLUMN user_sessions.family_id IS 'ID групи токенів. Змінюється лише при новому логіні. Використовується для анулювання всього ланцюжка при крадіжці.';
+COMMENT ON COLUMN user_sessions.created_at IS 'Дата створення сесії (Login)';
+COMMENT ON COLUMN user_sessions.expires_at IS 'Дата, після якої токен стає недійсним';
+COMMENT ON COLUMN user_sessions.revoked_at IS 'Якщо не NULL — час примусового відкликання (Logout/Admin)';
+COMMENT ON COLUMN user_sessions.used_at IS 'Час використання Refresh-токена для отримання нової пари. Допомагає виявити Reuse Attack.';
+COMMENT ON COLUMN user_sessions.auth_level IS 'Рівень довіри: 0-Пароль, 1-MFA пройшов, 2-Висока довіра (FIDO2)';
+COMMENT ON COLUMN user_sessions.ip_address IS 'Остання відома IP-адреса клієнта';
+COMMENT ON COLUMN user_sessions.refresh_count IS 'Кількість оновлень токенів у межах цієї сесії';
+
+-- 4. Автоматизація очищення (Maintenance)
+CREATE OR REPLACE PROCEDURE prc_cleanup_expired_sessions AS
+BEGIN
+    -- Видаляємо старі дані (наприклад, прострочені понад 30 днів) для економії місця
+    DELETE FROM user_sessions
+    WHERE expires_at < CURRENT_TIMESTAMP - INTERVAL '30' DAY;
+    COMMIT;
+END;
+/
+
+-- 5. Створення джоби (раз на добу)
+BEGIN
+    DBMS_SCHEDULER.CREATE_JOB (
+        job_name        => 'job_session_maintenance',
+        job_type        => 'STORED_PROCEDURE',
+        job_action      => 'prc_cleanup_expired_sessions',
+        start_date      => SYSTIMESTAMP,
+        repeat_interval => 'FREQ=DAILY; BYHOUR=3', -- О 3-й ночі
+        enabled         => TRUE,
+        comments        => 'Видалення застарілих сесій'
+    );
+END;
+/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- CREATE TABLE users (
+--     id                  RAW(16) DEFAULT SYS_GUID() PRIMARY KEY,
+--     email               VARCHAR2(255) UNIQUE NOT NULL,
+--     password_hash       VARCHAR2(512) NOT NULL,
+
+--     -- Контроль сесій
+--     -- NULL = безліміт, NUMBER = ліміт пристроїв
+--     max_sessions        NUMBER(3) DEFAULT 5,
+--     active_sessions_count NUMBER(3) DEFAULT 0 NOT NULL,
+
+--     -- Безпека (Глобальне відкликання)
+--     -- Всі токени створені ДО цієї дати - невалідні
+--     token_valid_after   TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+--     -- Стан акаунта
+--     status              VARCHAR2(20) DEFAULT 'ACTIVE' NOT NULL,
+--     failed_attempts     NUMBER(2) DEFAULT 0 NOT NULL,
+--     lockout_until       TIMESTAMP WITH TIME ZONE,
+
+--     CONSTRAINT ck_user_status CHECK (status IN ('ACTIVE', 'LOCKED', 'BANNED', 'PENDING')),
+--     CONSTRAINT ck_active_sessions CHECK (active_sessions_count >= 0)
+-- );
+
+-- -- Коментарі для розробників
+-- COMMENT ON COLUMN users.max_sessions IS 'Максимальна кількість паралельних сесій. NULL = безліміт.';
+-- COMMENT ON COLUMN users.token_valid_after IS 'Використовується для Force Logout (скидання всіх сесій).';

@@ -25,3 +25,29 @@ COMMENT ON COLUMN USER_PROFILES.phone IS 'Номер телефону';
 -- Індекси Profile Service
 CREATE INDEX IDX_PROF_EMAIL_ACT ON USER_PROFILES(email, deleted_at);
 CREATE INDEX IDX_PROF_NAME ON USER_PROFILES(last_name, first_name);
+
+
+
+
+
+
+
+
+-- Варіант 1
+CREATE TABLE user_settings (
+    user_id     RAW(16) PRIMARY KEY,
+    -- BLOB або VARCHAR2(4000) з CHECK-констрейнтом на JSON
+    settings_data JSON NOT NULL,
+    updated_at  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_settings_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Варіант 2: Таблиця EAV (Entity-Attribute-Value)
+CREATE TABLE user_preferences (
+    user_id    RAW(16),
+    pref_key   VARCHAR2(50), -- наприклад 'THEME'
+    pref_value VARCHAR2(255), -- наприклад 'DARK'
+    PRIMARY KEY (user_id, pref_key)
+);
+
