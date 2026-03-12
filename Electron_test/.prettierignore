@@ -1,0 +1,47 @@
+# Загальні файли та папки, які часто ігноруються
+node_modules/
+dist/
+build/
+release/
+out/
+coverage/
+.temp/
+.cache/
+
+.next/ # Для Next.js проєктів
+.nuxt/ # Для Nuxt.js проєктів
+
+# Логи та системні файли
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
+# Конфіги (краще не форматувати, щоб npm/yarn не конфліктували)
+package.json
+package-lock.json
+yarn.lock
+
+# Статика та мініфіковані файли
+*.min.js
+*.min.css
+*.asar
+src/generated/
+
+# Специфічне для Electron/Native
+*.node
+*.exe
+*.app
+*.dmg
+
+# # Файли, які генеруються автоматично або є частиною зовнішніх інструментів
+# src/generated/ # Якщо у вас є папка з автогенерованим кодом
+
+# # Конкретні файли, якщо потрібно
+# my-special-unformatted-file.js
+
+# # Зняття ігнорування (якщо папка ігнорується, але вам потрібен конкретний файл з неї)
+# # !node_modules/some-module/index.js
+
+*.md

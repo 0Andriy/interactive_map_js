@@ -1,0 +1,33 @@
+{
+  "name": "electron_test",
+  "version": "1.0.0",
+  "description": "Опис, який з'явиться в реєстрі",
+  "main": "src/main/index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.3.1"
+  },
+  "devDependencies": {
+    "electron": "^40.8.0"
+  },
+  "build": {
+    "appId": "com.yourcompany.myapp",
+    "productName": "My Awesome Desktop App",
+    "win": {
+      "target": "nsis",
+      "publisherName": "Your Company Name"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "My Awesome App"
+    }
+  }
+}

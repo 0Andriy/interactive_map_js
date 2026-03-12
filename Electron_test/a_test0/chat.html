@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<!-- <style>
+  body { margin: 0; background: transparent; }
+  .card { 
+    background: white; border-radius: 15px; height: 380px; 
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3); border: 1px solid #ccc;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .header { 
+    background: #333; color: white; padding: 10px; 
+    -webkit-app-region: drag; cursor: grab; display: flex; justify-content: space-between;
+  }
+  .close-btn { -webkit-app-region: no-drag; cursor: pointer; border: none; background: red; color: white; }
+
+  .draggable-header {
+  -webkit-app-region: drag; /* Робить елемент ручкою для перетягування */
+  cursor: grab;
+}
+.no-drag {
+  -webkit-app-region: no-drag; /* Кнопки всередині шапки мають працювати */
+}
+</style>
+<body>
+  <div class="card">
+    <div class="header">
+      <span>Мій Чат</span>
+      <button class="close-btn" onclick="window.api.api.send('close', {name: 'chat'})">X</button>
+    </div>
+    <div style="padding: 15px;">Тут ваш контент чату...</div>
+  </div>
+</body> -->
+
+<style>
+  body { margin: 0; background: transparent; }
+  .widget { background: white; border-radius: 12px; height: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow: hidden; border: 1px solid #ddd; }
+  .drag { -webkit-app-region: drag; background: #222; color: white; padding: 10px; cursor: grab; display: flex; justify-content: space-between; }
+  .no-drag { -webkit-app-region: no-drag; cursor: pointer; }
+</style>
+<body>
+  <div class="widget">
+    <div class="drag"><span>Чат</span><button class="no-drag" onclick="window.electron.do('close', {name:'chat'})">X</button></div>
+    <div style="padding: 15px;">Тут ваш чат...</div>
+  </div>
+</body>
+</html>

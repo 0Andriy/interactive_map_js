@@ -1,0 +1,301 @@
+<!-- <!doctype html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                background: transparent;
+                font-family: -apple-system, system-ui, sans-serif;
+            }
+            .notification-card {
+                background: rgba(33, 37, 41, 0.95);
+                color: white;
+                border-radius: 12px;
+                padding: 15px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                height: 70px; /* notifyHeight мінус падінги */
+                -webkit-app-region: drag; /* Дозволяє перетягувати */
+            }
+            .info {
+                flex-grow: 1;
+            }
+            .title {
+                font-size: 14px;
+                font-weight: bold;
+                margin-bottom: 2px;
+                color: #007bff;
+            }
+            .message {
+                font-size: 12px;
+                opacity: 0.8;
+            }
+            .close-btn {
+                background: none;
+                border: none;
+                color: white;
+                font-size: 22px;
+                cursor: pointer;
+                padding: 5px;
+                line-height: 1;
+                opacity: 0.5;
+                transition: opacity 0.2s;
+                -webkit-app-region: no-drag; /* Кнопка не тягнеться */
+            }
+            .close-btn:hover {
+                opacity: 1;
+                color: #ff4d4d;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="notification-card">
+            <div class="info">
+                <div class="title">Системне сповіщення</div>
+                <div id="notify-msg" class="message">Додаток працює у фоновому режимі</div>
+            </div>
+            <button class="close-btn" onclick="closeMe()">×</button>
+        </div>
+
+        <script>
+            function closeMe() {
+                // Використовуємо electronAPI для самозакриття
+                window.electronAPI.closeWindow({ name: 'notification' })
+            }
+
+            // Реагуємо на події з трею, якщо вони адресовані цьому вікну
+            if (window.electronAPI) {
+                window.electronAPI.on('tray:clicked', (id) => {
+                    const msgElement = document.getElementById('notify-msg')
+                    if (id === 'settings-notify') {
+                        msgElement.innerText = 'Отримано сигнал налаштувань! ⚙️'
+                        msgElement.style.color = '#ffc107'
+                    }
+                })
+            }
+        </script>
+    </body>
+</html> -->
+
+<!-- ------------------------------------------------------------------------ -->
+<!-- <!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <style>
+            body {
+                margin: 0;
+                background: transparent;
+                font-family: sans-serif;
+            }
+            .toast {
+                background: rgba(33, 37, 41, 0.95);
+                color: white;
+                border-radius: 12px;
+                padding: 15px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+                border-left: 5px solid #007bff;
+                height: 70px;
+                -webkit-app-region: drag;
+            }
+            .info {
+                flex-grow: 1;
+                padding-right: 10px;
+            }
+            .title {
+                font-size: 13px;
+                font-weight: bold;
+                color: #007bff;
+                margin-bottom: 3px;
+            }
+            #message {
+                font-size: 12px;
+                opacity: 0.9;
+            }
+            .close {
+                background: none;
+                border: none;
+                color: white;
+                font-size: 20px;
+                cursor: pointer;
+                -webkit-app-region: no-drag;
+                opacity: 0.5;
+            }
+            .close:hover {
+                opacity: 1;
+                color: #ff4d4d;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="toast">
+            <div class="info">
+                <div class="title">Сповіщення</div>
+                <div id="message">Очікування повідомлення...</div>
+            </div>
+            <button
+                class="close"
+                onclick="window.electronAPI.closeWindow({ name: 'notification' })"
+            >
+                ×
+            </button>
+        </div>
+
+        <script>
+            if (window.electronAPI) {
+                // Слухаємо кастомний канал від головного вікна
+                window.electronAPI.on('update-text', (data) => {
+                    const el = document.getElementById('message')
+                    el.innerText = data
+
+                    // Ефект "миготіння" при отриманні нового тексту
+                    document.body.style.opacity = '0.5'
+                    setTimeout(() => (document.body.style.opacity = '1'), 100)
+                })
+            }
+        </script>
+    </body>
+</html> -->
+
+<!-- ------------------------------------------------------------------------------- -->
+
+<!doctype html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <style>
+            /* Базові налаштування: вікно має бути фізично "щільним" */
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                width: 100vw;
+                height: 100vh;
+                background: transparent;
+                overflow: hidden;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                /* Важливо: не робимо body прозорим через opacity,
+               щоб він не втратив здатність ловити мишу */
+            }
+
+            /* Контейнер, який займає все вікно і ловить ховер */
+            .mouse-sensor {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(255, 255, 255, 0.001); /* Мінімальна щільність для миші */
+            }
+
+            /* Сама картка сповіщення */
+            .notification-card {
+                display: flex;
+                width: calc(100% - 20px);
+                height: calc(100% - 20px);
+                background: rgba(25, 25, 30, 0.85);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                border-radius: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+                overflow: hidden;
+
+                /* Ефект фокусу: початковий стан (тьмяний) */
+                opacity: 0.6;
+                filter: grayscale(0.5);
+                transform: scale(0.97);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            /* Активація при наведенні на сенсор */
+            .mouse-sensor:hover .notification-card {
+                opacity: 1;
+                filter: grayscale(0);
+                transform: scale(1);
+                border-color: rgba(0, 123, 255, 0.5);
+            }
+
+            /* Ручка для перетягування */
+            .drag-handle {
+                width: 10px;
+                background: linear-gradient(to bottom, #007bff, #00d4ff);
+                cursor: grab;
+                -webkit-app-region: drag; /* ПРАЦЮЄ ТУТ */
+                flex-shrink: 0;
+                opacity: 0.8;
+            }
+
+            .content {
+                flex: 1;
+                padding: 0 15px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                color: white;
+                pointer-events: none; /* Щоб миша проходила до сенсора */
+            }
+
+            .title {
+                font-size: 11px;
+                font-weight: 800;
+                color: #00d4ff;
+                text-transform: uppercase;
+                margin-bottom: 2px;
+            }
+            .message {
+                font-size: 13px;
+                line-height: 1.2;
+            }
+
+            .close-btn {
+                background: none;
+                border: none;
+                color: rgba(255, 255, 255, 0.3);
+                font-size: 20px;
+                cursor: pointer;
+                padding: 0 15px;
+                -webkit-app-region: no-drag;
+                transition: color 0.2s;
+            }
+            .close-btn:hover {
+                color: #ff4d4d;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Сенсор, який завжди ловить мишу над усім вікном -->
+        <div class="mouse-sensor">
+            <div class="notification-card">
+                <div class="drag-handle" title="Тягніть для переміщення"></div>
+                <div class="content">
+                    <div class="title">Система</div>
+                    <div id="msg-text" class="message">Очікування повідомлення...</div>
+                </div>
+                <button
+                    class="close-btn"
+                    onclick="window.electronAPI.closeWindow({ name: 'notification' })"
+                >
+                    &times;
+                </button>
+            </div>
+        </div>
+
+        <script>
+            if (window.electronAPI) {
+                window.electronAPI.on('update-text', (data) => {
+                    document.getElementById('msg-text').innerText = data
+                })
+            }
+        </script>
+    </body>
+</html>

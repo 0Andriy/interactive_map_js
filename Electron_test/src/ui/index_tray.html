@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Electron Senior App</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                background: #f0f0f0;
+                padding: 20px;
+            }
+            .card {
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            }
+            button {
+                cursor: pointer;
+                padding: 10px;
+                margin: 5px 0;
+                width: 100%;
+                border: none;
+                border-radius: 4px;
+                background: #007bff;
+                color: white;
+            }
+            #log {
+                font-family: monospace;
+                background: #333;
+                color: #0f0;
+                padding: 10px;
+                height: 150px;
+                overflow-y: auto;
+                margin-top: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h2>Керування Трей-меню</h2>
+            <button id="btn-create">1. Створити Трей (CRUD: Create)</button>
+            <button id="btn-update">2. Оновити Меню (CRUD: Update)</button>
+            <button id="btn-icon">3. Змінити іконку на URL</button>
+            <button id="btn-destroy">4. Видалити Трей (CRUD: Delete)</button>
+
+            <h3>Лог подій з трею:</h3>
+            <div id="log">Очікування дій...</div>
+        </div>
+
+        <script src="./app.js" type="module"></script>
+    </body>
+</html>

@@ -1,0 +1,457 @@
+<!-- <!doctype html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Головна Панель Керування</title>
+        <style>
+            :root {
+                --primary: #007bff;
+                --success: #28a745;
+                --bg: #f8f9fa;
+                --text: #212529;
+            }
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background-color: var(--bg);
+                color: var(--text);
+                margin: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+            }
+            .container {
+                background: white;
+                padding: 30px;
+                border-radius: 12px;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                width: 100%;
+                max-width: 450px;
+            }
+            h1 {
+                font-size: 22px;
+                margin-bottom: 20px;
+                text-align: center;
+                border-bottom: 2px solid var(--bg);
+                padding-bottom: 10px;
+            }
+            .btn-group {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            button {
+                padding: 12px 20px;
+                font-size: 14px;
+                font-weight: 600;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                background: var(--primary);
+                color: white;
+            }
+            button:hover {
+                opacity: 0.9;
+                transform: translateY(-1px);
+            }
+            button:active {
+                transform: translateY(0);
+            }
+            #log-area {
+                margin-top: 20px;
+                padding: 12px;
+                background: #212529;
+                color: #4af626;
+                border-radius: 6px;
+                font-family: 'Cascadia Code', 'Consolas', monospace;
+                font-size: 11px;
+                height: 100px;
+                overflow-y: auto;
+            }
+            .status-badge {
+                display: inline-block;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 10px;
+                margin-bottom: 10px;
+                text-transform: uppercase;
+            }
+            .status-online {
+                background: #d4edda;
+                color: #155724;
+            }
+            .status-offline {
+                background: #f8d7da;
+                color: #721c24;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="api-status" class="status-badge status-offline">API: Відключено</div>
+            <h1>Керування Electron</h1>
+
+            <div class="btn-group">
+                <button onclick="createTray()">1. Ініціалізувати Трей</button>
+                <button onclick="updateTrayMenu()">2. Оновити Меню Трею</button>
+                <button onclick="openNotification()">3. Відкрити Сповіщення</button>
+                <button onclick="closeNotification()" style="background: #6c757d">
+                    Закрити Сповіщення
+                </button>
+            </div>
+
+            <div id="log-area">Система готова...</div>
+        </div>
+
+        <script>
+            const logArea = document.getElementById('log-area')
+            const statusBadge = document.getElementById('api-status')
+
+            function writeLog(msg) {
+                const time = new Date().toLocaleTimeString()
+                logArea.innerHTML += `<div>[${time}] ${msg}</div>`
+                logArea.scrollTop = logArea.scrollHeight
+            }
+
+            // Перевірка наявності об'єкта electronAPI
+            if (window.electronAPI) {
+                statusBadge.innerText = 'API: Підключено'
+                statusBadge.classList.replace('status-offline', 'status-online')
+                writeLog('Electron API успішно ініціалізовано')
+
+                // Слухаємо події з трею
+                window.electronAPI.on('tray:clicked', (actionId) => {
+                    writeLog(`Подія з трею: <b>${actionId}</b>`)
+                    if (actionId === 'exit') {
+                        alert('Ви натиснули "Вихід" у треї!')
+                    }
+                })
+            } else {
+                writeLog('Критична помилка: electronAPI не знайдено!')
+            }
+
+            async function createTray() {
+                writeLog('Спроба створення трею...')
+                const result = await window.electronAPI.createTray({
+                    tooltip: 'Мій Сучасний Додаток',
+                    icon: 'tray-icon.png', // шлях відносно assets
+                })
+                writeLog(`Результат: ${result.status}`)
+            }
+
+            function updateTrayMenu() {
+                writeLog('Оновлення меню трею...')
+                window.electronAPI.setTrayMenu([
+                    {
+                        id: 'profile',
+                        label: 'Профіль користувача',
+                        iconSource: 'https://cdn-icons-png.flaticon.com',
+                    },
+                    {
+                        label: 'Налаштування',
+                        submenu: [
+                            { id: 'settings-ui', label: 'Інтерфейс', targetWindow: 'main' },
+                            {
+                                id: 'settings-notify',
+                                label: 'Сповіщення',
+                                targetWindow: 'notification',
+                            },
+                        ],
+                    },
+                    { type: 'separator' },
+                    {
+                        id: 'exit',
+                        label: 'Вийти з програми',
+                        iconSource: 'https://cdn-icons-png.flaticon.com',
+                    },
+                ])
+            }
+
+            function openNotification() {
+                writeLog('Відкриття вікна сповіщень...')
+                window.electronAPI.openWindow({
+                    name: 'notification',
+                    options: {
+                        width: 320,
+                        height: 100,
+                        file: 'notify.html',
+                    },
+                })
+            }
+
+            function closeNotification() {
+                window.electronAPI.closeWindow({ name: 'notification' })
+                writeLog('Сповіщення закрито')
+            }
+        </script>
+    </body>
+</html> -->
+
+<!-- ------------------------------------------------------------------------------------------------------------ -->
+<!-- <!doctype html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Main Control Center</title>
+        <style>
+            :root {
+                --primary: #007bff;
+                --bg: #f4f7f6;
+            }
+            body {
+                font-family: 'Segoe UI', system-ui, sans-serif;
+                background: var(--bg);
+                padding: 40px;
+                margin: 0;
+            }
+            .card {
+                background: white;
+                padding: 25px;
+                border-radius: 15px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+                max-width: 500px;
+                margin: 0 auto;
+            }
+            h1 {
+                margin-top: 0;
+                color: #2c3e50;
+                font-size: 22px;
+                border-bottom: 2px solid #eee;
+                padding-bottom: 10px;
+            }
+
+            .section {
+                margin-bottom: 20px;
+            }
+            label {
+                display: block;
+                font-size: 12px;
+                font-weight: bold;
+                margin-bottom: 5px;
+                color: #666;
+            }
+
+            input {
+                width: 100%;
+                padding: 10px;
+                box-sizing: border-box;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                margin-bottom: 10px;
+            }
+            button {
+                width: 100%;
+                padding: 12px;
+                margin-bottom: 8px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: bold;
+                transition: 0.2s;
+                background: var(--primary);
+                color: white;
+            }
+            button:hover {
+                opacity: 0.9;
+                transform: translateY(-1px);
+            }
+            .btn-alt {
+                background: #6c757d;
+            }
+            .btn-danger {
+                background: #e74c3c;
+            }
+
+            #console {
+                background: #2c3e50;
+                color: #00ff00;
+                padding: 10px;
+                border-radius: 6px;
+                font-family: monospace;
+                font-size: 11px;
+                height: 80px;
+                overflow-y: auto;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>Керування системою</h1>
+
+            <div class="section">
+                <label>Міжвіконна комунікація</label>
+                <input type="text" id="msgInput" placeholder="Введіть текст для сповіщення..." />
+                <button onclick="sendToNotify()">Відправити у Notify</button>
+            </div>
+
+            <div class="section">
+                <label>Керування вікнами та треєм</label>
+                <button class="btn-alt" onclick="initTray()">1. Створити Трей з меню</button>
+                <button class="btn-alt" onclick="openNotify()">2. Відкрити вікно сповіщення</button>
+            </div>
+
+            <div class="section">
+                <button class="btn-danger" onclick="window.electronAPI.quitApp()">
+                    Повний вихід з програми
+                </button>
+            </div>
+
+            <div id="console">> Система готова...</div>
+        </div>
+
+        <script>
+            const con = document.getElementById('console')
+            const log = (m) => {
+                con.innerHTML += `<div>> ${m}</div>`
+                con.scrollTop = con.scrollHeight
+            }
+
+            // Перевірка API
+            if (window.electronAPI) {
+                log('Electron API підключено.')
+
+                // Слухаємо події з трею
+                window.electronAPI.on('tray:clicked', (id) => {
+                    log(`Подія трею: ${id}`)
+                    if (id === 'test-msg') sendToNotify()
+                })
+            }
+
+            // 1. Створення трею
+            async function initTray() {
+                await window.electronAPI.createTray({ tooltip: 'Мій Додаток' })
+                window.electronAPI.setTrayMenu([
+                    { id: 'test-msg', label: 'Надіслати текст у Notify' },
+                    { type: 'separator' },
+                    { id: 'exit', label: 'Вийти', click: () => window.electronAPI.quitApp() },
+                ])
+                log('Трей ініціалізовано.')
+            }
+
+            // 2. Відкриття сповіщення
+            function openNotify() {
+                window.electronAPI.openWindow({
+                    name: 'notification',
+                    options: { file: 'notify.html' },
+                })
+                log('Вікно сповіщення запитано.')
+            }
+
+            // 3. ПЕРЕДАЧА ДАНИХ ІНШОМУ ВІКНУ
+            function sendToNotify() {
+                const text =
+                    document.getElementById('msgInput').value || 'Привіт з головного вікна!'
+                // Використовуємо наш новий метод sendTo(target, channel, data)
+                window.electronAPI.sendTo('notification', 'update-text', text)
+                log('Повідомлення надіслано в "notification"')
+            }
+
+            // Авто-вихід при закритті головного вікна
+            window.addEventListener('beforeunload', () => {
+                window.electronAPI.quitApp()
+            })
+        </script>
+    </body>
+</html> -->
+
+<!-- ------------------------------------------------------------------------------------------------------------ -->
+
+<!doctype html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Electron Pro</title>
+        <style>
+            body {
+                font-family: system-ui;
+                background: #f0f4f8;
+                padding: 20px;
+            }
+            .box {
+                background: white;
+                padding: 20px;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                font-size: 13px;
+                margin: 15px 0;
+            }
+            button {
+                width: 100%;
+                padding: 12px;
+                margin-top: 8px;
+                border: none;
+                border-radius: 8px;
+                background: #007bff;
+                color: white;
+                cursor: pointer;
+                font-weight: bold;
+            }
+            button:hover {
+                background: #0056b3;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="box">
+            <h3>Система та Керування</h3>
+            <div id="sys-info" class="grid">Завантаження...</div>
+            <button onclick="openNotify()">Відкрити Сповіщення</button>
+            <button onclick="sendMsg()" style="background: #28a745">
+                Змінити текст сповіщення
+            </button>
+            <button onclick="window.electronAPI.quitApp()" style="background: #dc3545">
+                Вийти
+            </button>
+        </div>
+
+        <script>
+            const PRESETS = {
+                notification: {
+                    width: 320,
+                    height: 100,
+                    frame: false,
+                    transparent: true,
+                    alwaysOnTop: true,
+                    skipTaskbar: true,
+                },
+            }
+
+            async function init() {
+                const data = await window.electronAPI.getSystemInfo()
+                document.getElementById('sys-info').innerHTML = `
+                <div><b>Платформа:</b> ${data.os.platform}</div>
+                <div><b>Пам'ять:</b> ${data.os.freeMem}</div>
+            `
+
+                window.electronAPI.on('tray:clicked', (id) => {
+                    console.log('Трей клік:', id)
+                })
+            }
+
+            function openNotify() {
+                window.electronAPI.openWindow({
+                    name: 'notification',
+                    source: { type: 'file', value: 'notify.html' },
+                    options: { ...PRESETS.notification, x: window.screen.availWidth - 340, y: 20 },
+                })
+            }
+
+            function sendMsg() {
+                window.electronAPI.sendTo(
+                    'notification',
+                    'update-text',
+                    'Час: ' + new Date().toLocaleTimeString(),
+                )
+            }
+
+            init()
+        </script>
+    </body>
+</html>
