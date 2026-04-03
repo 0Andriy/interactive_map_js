@@ -101,7 +101,7 @@ export async function createExpressApp({ staticFilesDir = 'public' } = {}) {
     // Вони мають бути перед будь-якими middleware або маршрутами, які потребують доступу до `req.body`.
 
     // Для парсингу JSON-кодованих тіл запитів.
-    app.use(express.json())
+    app.use(express.json({ limit: '1mb' }))
 
     // Для парсингу URL-кодованих тіл запитів.
     app.use(express.urlencoded({ extended: true }))

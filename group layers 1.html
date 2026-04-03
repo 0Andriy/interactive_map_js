@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Ultimate Diagram Engine Pro - Final Build</title>
+    <style>
+        :root { --bg: #1a1a1b; --side: #252526; --accent: #007acc; --border: #333; }
+        body { margin: 0; display: flex; height: 100vh; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #ccc; overflow: hidden; }
+        
+        #sidebar { width: 280px; background: var(--side); display: flex; flex-direction: column; border-right: 1px solid var(--border); box-shadow: 2px 0 10px rgba(0,0,0,0.5); z-index: 10; }
+        .panel { padding: 15px; border-bottom: 1px solid var(--border); }
+        
+        #canvas-wrap { flex-grow: 1; position: relative; background: #111; overflow: hidden; }
+        canvas { display: block; outline: none; }
+
+        h4 { margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #888; }
+        button { background: #333; color: white; border: 1px solid #444; padding: 8px; cursor: pointer; border-radius: 4px; width: 100%; text-align: left; margin-bottom: 5px; font-size: 13px; }
+        button:hover { border-color: var(--accent); background: #3e3e3e; }
+        
+        input, select { background: #1a1a1a; color: #eee; border: 1px solid #444; padding: 6px; width: 100%; box-sizing: border-box; margin-bottom: 10px; border-radius: 4px; }
+        
+        /* Ієрархічне контекстне меню */
+        .menu-container { 
+            position: fixed; display: none; background: #2a2a2a; border: 1px solid #444; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 10000; min-width: 200px; 
+            border-radius: 6px; padding: 5px 0; user-select: none;
+        }
+        .menu-item { 
+            padding: 8px 15px; cursor: pointer; font-size: 13px; display: flex; 
+            justify-content: space-between; align-items: center; position: relative;
+        }
+        .menu-item:hover { background: var(--accent); color: white; }
+        .menu-item.has-children::after { content: '▶'; font-size: 10px; margin-left: 10px; }
+        .submenu { position: absolute; left: 100%; top: -5px; display: none; border-left: 1px solid #444; }
+        .menu-item:hover > .submenu { display: block; }
+        .menu-sep { border-top: 1px solid #444; margin: 5px 0; }
+
+        .hint { font-size: 11px; color: #555; padding: 15px; line-height: 1.4; border-top: 1px solid var(--border); margin-top: auto; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <div class="panel">
+        <h4>Проект</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+            <button onclick="saveToFile()">💾 Save JSON</button>
+            <button onclick="loadFile()">📂 Load JSON</button>
+        </div>
+        <button onclick="handleGrouping()" style="background:var(--accent); margin-top:10px">📦 Group (G)</button>
+    </div>
+
+    <div class="panel" id="inspector" style="display:none">
+        <h4>Властивості</h4>
+        <label style="font-size: 11px;">Текст / Назва</label>
+        <input type="text" id="prop-text">
+        <label style="font-size: 11px;">Зображення (URL)</label>
+        <input type="text" id="prop-img" placeholder="https://...">
+        <label style="font-size: 11px;">Колір</label>
+        <input type="color" id="prop-color">
+    </div>
+
+    <div class="panel">
+        <h4>Тип лінії</h4>
+        <select id="line-style">
+            <option value="orthogonal">Ортогональна</option>
+            <option value="bezier">Крива Bezier</option>
+            <option value="straight">Пряма</option>
+        </select>
+        <button onclick="handleDelete()" style="background:#a43737">🗑️ Видалити (Del)</button>
+    </div>
+    
+    <div class="hint">
+        <b>ПКМ</b>: Контекстне меню<br>
+        <b>G</b>: Групувати виділене<br>
+        <b>Shift + Клік</b>: Мультивибір<br>
+        <b>Тягніть за плашку</b>: Рух групи
+    </div>
+</div>
+
+<div id="canvas-wrap">
+    <canvas id="canvas" tabindex="1"></canvas>
+    <div id="main-menu" class="menu-container"></div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const mainMenu = document.getElementById('main-menu');
+const GRID_SIZE = 20;
+
+let elements = [], connections = [], selection = [];
+let isDragging = false, isConnecting = false, isResizing = false;
+let dragOffset = {x:0, y:0}, connData = null, tempPoint = {sx:0, sy:0, x:0, y:0};
+let lastMousePos = {x:0, y:0};
+const imgCache = new Map();
+
+// Конфігурація ієрархічного меню
+const menuConfig = [
+    { 
+        label: "Створити", 
+        children: [
+            { label: "Прямокутник", action: () => addAtPos('rect'), icon: "⬛" },
+            { label: "Коло", action: () => addAtPos('circle'), icon: "⚪" }
+        ] 
+    },
+    { type: "separator" },
+    { label: "Згрупувати", action: () => handleGrouping(), icon: "📦" },
+    { label: "Видалити", action: () => handleDelete(), icon: "🗑️" }
+];
+
+class DiagramElement {
+    constructor(x, y) {
+        this.id = 'id_' + Math.random().toString(36).substr(2, 5);
+        this.x = x; this.y = y; this.w = 110; this.h = 65;
+        this.color = "#007acc"; this.text = "Блок"; this.imgUrl = "";
+    }
+    getAnchors() {
+        return [
+            {x: this.x + this.w/2, y: this.y}, {x: this.x + this.w, y: this.y + this.h/2},
+            {x: this.x + this.w/2, y: this.y + this.h}, {x: this.x, y: this.y + this.h/2}
+        ];
+    }
+}
+
+class Shape extends DiagramElement {
+    constructor(type, x, y) { super(x, y); this.type = type; }
+    getBounds() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+    draw(isSelected, showAnchors) {
+        ctx.save();
+        ctx.fillStyle = "#2d2d2d";
+        ctx.strokeStyle = isSelected ? "#007acc" : "#555";
+        ctx.lineWidth = isSelected ? 3 : 1.5;
+        ctx.beginPath();
+        if(this.type === 'rect') ctx.rect(this.x, this.y, this.w, this.h);
+        else ctx.ellipse(this.x+this.w/2, this.y+this.h/2, this.w/2, this.h/2, 0, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+
+        if (this.imgUrl) {
+            let img = imgCache.get(this.imgUrl);
+            if(!img) { img = new Image(); img.src = this.imgUrl; img.onload = () => render(); imgCache.set(this.imgUrl, img); }
+            if(img && img.complete) { ctx.save(); if(this.type === 'circle') ctx.clip(); ctx.drawImage(img, this.x+5, this.y+5, this.w-10, this.h-10); ctx.restore(); }
+        }
+
+        ctx.fillStyle = "white"; ctx.textAlign = "center"; ctx.font = "11px Arial";
+        ctx.fillText(this.text, this.x + this.w/2, this.y + this.h/2 + 5);
+        
+        if (isSelected) {
+            ctx.fillStyle = "#007acc"; ctx.fillRect(this.x + this.w - 8, this.y + this.h - 8, 8, 8);
+            ctx.fillStyle = "#ff4444"; this.getAnchors().forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill(); });
+        } else if (showAnchors) {
+            ctx.fillStyle = "#ff4444"; this.getAnchors().forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill(); });
+        }
+        ctx.restore();
+    }
+}
+
+class Group extends DiagramElement {
+    constructor(name, members) { super(0,0); this.text = name; this.members = members; this.headerH = 22; }
+    updateBounds() {
+        const objs = elements.filter(e => this.members.includes(e.id));
+        if (!objs.length) return;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        objs.forEach(m => {
+            if (m instanceof Group) m.updateBounds();
+            const b = m instanceof Group ? m.bounds : m.getBounds();
+            minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
+            maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
+        });
+        const p = 20;
+        this.bounds = { x: minX - p, y: minY - p - this.headerH, w: (maxX - minX) + p*2, h: (maxY - minY) + p*2 + this.headerH };
+        this.x = this.bounds.x; this.y = this.bounds.y; this.w = this.bounds.w; this.h = this.bounds.h;
+    }
+    getBounds() { this.updateBounds(); return this.bounds; }
+    draw(isSelected) {
+        const b = this.getBounds();
+        if (!b) return;
+        ctx.save();
+        ctx.fillStyle = isSelected ? "rgba(0,122,204,0.1)" : "rgba(255,255,255,0.03)";
+        ctx.strokeStyle = isSelected ? "#007acc" : this.color;
+        ctx.strokeRect(b.x, b.y, b.w, b.h); ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.fillStyle = this.color; ctx.fillRect(b.x, b.y, b.w, this.headerH);
+        ctx.fillStyle = "white"; ctx.font = "bold 10px sans-serif";
+        ctx.fillText(this.text.toUpperCase(), b.x + 8, b.y + 15);
+        ctx.restore();
+    }
+}
+
+function checkCollision(items, dx, dy, dw=0, dh=0) {
+    const movingIds = new Set();
+    const collect = (i) => { movingIds.add(i.id); if(i instanceof Group) elements.filter(m => i.members.includes(m.id)).forEach(collect); };
+    items.forEach(collect);
+
+    for (let item of items) {
+        const b1 = item instanceof Group ? {...item.getBounds()} : item.getBounds();
+        b1.x += dx - 2; b1.y += dy - 2; b1.w += dw + 4; b1.h += dh + 4;
+        const parentId = elements.find(g => g instanceof Group && g.members.includes(item.id))?.id || 'root';
+        const obs = elements.filter(o => o.id !== item.id && !movingIds.has(o.id) && 
+            (elements.find(g => g instanceof Group && g.members.includes(o.id))?.id || 'root') === parentId);
+        for (let o of obs) {
+            const b2 = o.getBounds();
+            if (b1.x < b2.x + b2.w && b1.x + b1.w > b2.x && b1.y < b2.y + b2.h && b1.y + b1.h > b2.y) return true;
+        }
+    }
+    return false;
+}
+
+function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Draw Grid
+    ctx.beginPath(); ctx.strokeStyle = "#222"; ctx.lineWidth = 0.5;
+    for(let x=0; x<canvas.width; x+=GRID_SIZE) { ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); }
+    for(let y=0; y<canvas.height; y+=GRID_SIZE) { ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); }
+    ctx.stroke();
+
+    connections.forEach(c => {
+        const s1 = elements.find(e => e.id === c.fId), s2 = elements.find(e => e.id === c.tId);
+        if(!s1 || !s2) return;
+        const p1 = s1.getAnchors()[c.fIdx], p2 = s2.getAnchors()[c.tIdx];
+        ctx.beginPath(); ctx.strokeStyle = "#888"; ctx.lineWidth = 2;
+        if(c.type === 'straight') { ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); }
+        else if(c.type === 'bezier') { ctx.moveTo(p1.x, p1.y); ctx.bezierCurveTo(p1.x, p1.y+60, p2.x, p2.y-60, p2.x, p2.y); }
+        else { const mx = p1.x + (p2.x-p1.x)*0.5; ctx.moveTo(p1.x, p1.y); ctx.lineTo(mx, p1.y); ctx.lineTo(mx, p2.y); ctx.lineTo(p2.x, p2.y); }
+        ctx.stroke();
+    });
+
+    const sorted = [...elements].sort((a,b) => (b.getBounds().w*b.getBounds().h) - (a.getBounds().w*a.getBounds().h));
+    sorted.forEach(el => el.draw(selection.includes(el), isConnecting));
+    
+    if(isConnecting) {
+        ctx.beginPath(); ctx.strokeStyle="#ff4444"; ctx.lineWidth=2;
+        ctx.moveTo(tempPoint.sx, tempPoint.sy); ctx.lineTo(tempPoint.x, tempPoint.y); ctx.stroke();
+    }
+}
+
+// Menu Building
+function buildMenu(config, parentEl) {
+    config.forEach(item => {
+        if(item.type === "separator") {
+            const sep = document.createElement("div"); sep.className = "menu-sep"; parentEl.appendChild(sep);
+        } else {
+            const div = document.createElement("div");
+            div.className = "menu-item" + (item.children ? " has-children" : "");
+            div.innerHTML = `<span>${item.icon || ''} ${item.label}</span>`;
+            if(item.children) {
+                const sub = document.createElement("div"); sub.className = "menu-container submenu";
+                buildMenu(item.children, sub); div.appendChild(sub);
+            } else {
+                div.addEventListener('mousedown', (e) => {
+                    e.stopPropagation(); item.action(); mainMenu.style.display = 'none';
+                });
+            }
+            parentEl.appendChild(div);
+        }
+    });
+}
+
+canvas.oncontextmenu = (e) => {
+    e.preventDefault();
+    lastMousePos = { x: e.offsetX, y: e.offsetY };
+    mainMenu.innerHTML = "";
+    buildMenu(menuConfig, mainMenu);
+    mainMenu.style.display = 'block';
+    mainMenu.style.left = e.clientX + "px"; mainMenu.style.top = e.clientY + "px";
+};
+
+window.addEventListener('mousedown', (e) => { if(!mainMenu.contains(e.target)) mainMenu.style.display = 'none'; });
+
+canvas.onmousedown = (e) => {
+    const mx = e.offsetX, my = e.offsetY;
+    if(selection.length === 1 && selection[0] instanceof Shape) {
+        const s = selection[0]; if(mx > s.x + s.w - 10 && my > s.y + s.h - 10) { isResizing = true; return; }
+        const ans = s.getAnchors();
+        for(let i=0; i<4; i++) if(Math.hypot(ans[i].x-mx, ans[i].y-my)<12) { isConnecting=true; connData={s, i}; tempPoint={sx:ans[i].x, sy:ans[i].y, x:mx, y:my}; return; }
+    }
+    let hit = elements.slice().reverse().filter(el => el instanceof Shape).find(s => {
+        const b = s.getBounds(); return mx >= b.x && mx <= b.x+b.w && my >= b.y && my <= b.y+b.h;
+    });
+    if (!hit) hit = elements.filter(el => el instanceof Group).find(g => {
+        const b = g.getBounds(); return mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + 22;
+    });
+    selection = hit ? (e.shiftKey ? [...selection, hit] : [hit]) : [];
+    if(hit) { isDragging = true; dragOffset = {x: mx, y: my}; }
+    updateInspector(); render();
+};
+
+window.onmousemove = (e) => {
+    const mx = e.offsetX, my = e.offsetY;
+    if(isResizing && selection.length) {
+        const s = selection[0];
+        const nw = mx - s.x, nh = my - s.y;
+        if(nw > 40 && nh > 30 && !checkCollision([s], 0, 0, nw-s.w, nh-s.h)) { s.w = nw; s.h = nh; }
+    } else if(isDragging && selection.length) {
+        const dx = mx - dragOffset.x, dy = my - dragOffset.y;
+        if (!checkCollision(selection, dx, dy)) {
+            const allToMove = new Set();
+            const collect = (i) => {
+                allToMove.add(i); if(i instanceof Group) elements.filter(m => i.members.includes(m.id)).forEach(collect);
+            };
+            selection.forEach(collect);
+            allToMove.forEach(m => { m.x += dx; m.y += dy; });
+            dragOffset = {x: mx, y: my};
+        }
+    }
+    if(isConnecting) { tempPoint.x = mx; tempPoint.y = my; }
+    render();
+};
+
+window.onmouseup = () => {
+    if (isConnecting) {
+        elements.forEach(s => { if(s instanceof Shape && s !== connData.s) s.getAnchors().forEach((p, idx) => {
+            if(Math.hypot(p.x - tempPoint.x, p.y - tempPoint.y) < 20) connections.push({fId: connData.s.id, fIdx: connData.i, tId: s.id, tIdx: idx, type: document.getElementById('line-style').value});
+        }); });
+    }
+    isDragging = isConnecting = isResizing = false; render();
+};
+
+function updateInspector() {
+    const p = document.getElementById('inspector');
+    if(selection.length === 1) {
+        p.style.display = 'block'; const s = selection[0];
+        document.getElementById('prop-text').value = s.text;
+        document.getElementById('prop-color').value = s.color || "#007acc";
+        document.getElementById('prop-img').value = s.imgUrl || "";
+        document.getElementById('prop-text').oninput = (e) => { s.text = e.target.value; render(); };
+        document.getElementById('prop-color').oninput = (e) => { s.color = e.target.value; render(); };
+        document.getElementById('prop-img').oninput = (e) => { s.imgUrl = e.target.value; render(); };
+    } else p.style.display = 'none';
+}
+
+function addAtPos(type) { elements.push(new Shape(type, lastMousePos.x - 55, lastMousePos.y - 30)); render(); }
+function addShape(t) { elements.push(new Shape(t, 60, 60)); render(); }
+function handleGrouping() {
+    if(selection.length < 2) return;
+    elements.push(new Group("Група", selection.map(s => s.id)));
+    selection = [elements[elements.length-1]]; render();
+}
+function handleDelete() {
+    const ids = new Set(selection.map(s => s.id));
+    elements = elements.filter(e => !selection.includes(e));
+    connections = connections.filter(c => !ids.has(c.fId) && !ids.has(c.tId));
+    selection = []; render();
+}
+
+function saveToFile() {
+    const data = JSON.stringify({ elements, connections });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'application/json'}));
+    a.download = 'diagram.json'; a.click();
+}
+
+function loadFile() {
+    const inp = document.createElement('input'); inp.type = 'file';
+    inp.onchange = e => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const d = JSON.parse(reader.result);
+            elements = d.elements.map(el => Object.assign(el.members ? new Group(el.text, el.members) : new Shape(el.type, el.x, el.y), el));
+            connections = d.connections; render();
+        };
+        reader.readAsText(e.target.files[0]);
+    };
+    inp.click();
+}
+
+window.onkeydown = (e) => { if(e.key === "Delete") handleDelete(); if(e.key.toLowerCase() === 'g') handleGrouping(); };
+window.onresize = () => { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; render(); };
+window.onresize();
+</script>
+</body>
+</html>

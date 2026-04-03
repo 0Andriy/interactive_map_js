@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Physical Hierarchy Diagram</title>
+    <style>
+        :root { --bg: #1a1a1a; --side: #252526; --accent: #007acc; --border: #333; }
+        body { margin: 0; display: flex; height: 100vh; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #ccc; overflow: hidden; }
+        #sidebar { width: 260px; background: var(--side); display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+        .panel { padding: 15px; border-bottom: 1px solid var(--border); }
+        #layers-tree { flex-grow: 1; overflow-y: auto; padding: 10px; font-size: 13px; background: #151515; }
+        #canvas-wrap { flex-grow: 1; position: relative; background: #111; overflow: hidden; }
+        canvas { display: block; outline: none; }
+        h4 { margin: 0 0 10px 0; font-size: 11px; text-transform: uppercase; color: #666; }
+        button { background: #333; color: white; border: 1px solid #444; padding: 7px; cursor: pointer; border-radius: 4px; width: 100%; text-align: left; margin-bottom: 5px; }
+        button:hover { border-color: var(--accent); }
+        .layer-item { padding: 4px 8px; cursor: pointer; border-radius: 3px; }
+        .layer-selected { background: var(--accent) !important; color: white; }
+        .hint { font-size: 11px; color: #555; padding: 10px; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <div class="panel">
+        <h4>Фігури</h4>
+        <button onclick="addShape('rect')">⬛ Прямокутник</button>
+        <button onclick="addShape('circle')">⚪ Коло</button>
+        <button onclick="groupSelected()" style="background:var(--accent)">📦 Згрупувати (G)</button>
+        <button onclick="deleteSelected()" style="background:#a43737">🗑️ Видалити</button>
+    </div>
+    <div id="layers-tree"><h4>Шари</h4></div>
+    <div class="hint"><b>Collision System:</b> Об'єкти на одному рівні не перекриваються. Спробуйте штовхнути один блок іншим.</div>
+</div>
+
+<div id="canvas-wrap"><canvas id="canvas" tabindex="1"></canvas></div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const layersTree = document.getElementById('layers-tree');
+
+let shapes = [], groups = [], selection = [];
+let isDragging = false, dragOffset = {x:0, y:0};
+
+class Shape {
+    constructor(type, x, y) {
+        this.id = 's' + Math.random().toString(36).substr(2, 5);
+        this.type = type; this.x = x; this.y = y; this.w = 100; this.h = 50;
+        this.text = "Блок " + shapes.length;
+    }
+    getBounds() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+    draw(isSelected) {
+        ctx.save();
+        ctx.fillStyle = "#2d2d2d";
+        ctx.strokeStyle = isSelected ? "#007acc" : "#555";
+        ctx.lineWidth = isSelected ? 3 : 1;
+        ctx.beginPath();
+        if(this.type === 'rect') ctx.rect(this.x, this.y, this.w, this.h);
+        else ctx.ellipse(this.x+this.w/2, this.y+this.h/2, this.w/2, this.h/2, 0, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "11px Arial";
+        ctx.fillText(this.text, this.x + this.w/2, this.y + this.h/2 + 4);
+        ctx.restore();
+    }
+}
+
+class Group {
+    constructor(name, memberIds) {
+        this.id = 'g' + Math.random().toString(36).substr(2, 5);
+        this.name = name; this.memberIds = memberIds;
+        this.bounds = {x:0, y:0, w:0, h:0}; this.headerH = 20;
+    }
+    update() {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        const members = [...shapes, ...groups].filter(m => this.memberIds.includes(m.id));
+        if (members.length === 0) return;
+        members.forEach(m => {
+            if (m instanceof Group) m.update();
+            const b = m instanceof Group ? m.bounds : m.getBounds();
+            minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
+            maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
+        });
+        const p = 15;
+        this.bounds = { x: minX-p, y: minY-p-this.headerH, w: (maxX-minX)+p*2, h: (maxY-minY)+p*2+this.headerH };
+    }
+    draw(isSelected) {
+        this.update();
+        const b = this.bounds;
+        ctx.save();
+        ctx.fillStyle = isSelected ? "rgba(0,122,204,0.1)" : "rgba(255,255,255,0.02)";
+        ctx.strokeStyle = isSelected ? "#007acc" : "#444";
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.fillStyle = isSelected ? "#007acc" : "#333";
+        ctx.fillRect(b.x, b.y, b.w, this.headerH);
+        ctx.fillStyle = "#fff"; ctx.font = "bold 9px sans-serif";
+        ctx.fillText(this.name.toUpperCase(), b.x + 8, b.y + 14);
+        ctx.restore();
+    }
+}
+
+function getObjParent(id) { return groups.find(g => g.memberIds.includes(id))?.id || 'root'; }
+
+function checkCollision(movingItems, dx, dy) {
+    const movingIds = new Set(movingItems.map(i => i.id));
+    for (let item of movingItems) {
+        const b1 = item instanceof Group ? {...item.bounds} : item.getBounds();
+        b1.x += dx; b1.y += dy;
+
+        const parentId = getObjParent(item.id);
+        const obstacles = [...shapes, ...groups].filter(o => 
+            o.id !== item.id && !movingIds.has(o.id) && getObjParent(o.id) === parentId
+        );
+
+        for (let obs of obstacles) {
+            const b2 = obs instanceof Group ? obs.bounds : obs.getBounds();
+            if (b1.x < b2.x + b2.w && b1.x + b1.w > b2.x && b1.y < b2.y + b2.h && b1.y + b1.h > b2.y) return true;
+        }
+    }
+    return false;
+}
+
+/*const MIN_DISTANCE = 10; // Мінімальний проміжок між елементами
+
+function checkCollision(movingItems, dx, dy) {
+    const movingIds = new Set(movingItems.map(i => i.id));
+    
+    for (let item of movingItems) {
+        // Отримуємо поточні межі та додаємо зміщення
+        const b1 = item instanceof Group ? {...item.bounds} : item.getBounds();
+        b1.x += dx; 
+        b1.y += dy;
+
+        // ВАЖЛИВО: Для перевірки зіткнення розширюємо межі на MIN_DISTANCE
+        const b1WithPadding = {
+            x: b1.x - MIN_DISTANCE,
+            y: b1.y - MIN_DISTANCE,
+            w: b1.w + MIN_DISTANCE * 2,
+            h: b1.h + MIN_DISTANCE * 2
+        };
+
+        const parentId = getObjParent(item.id);
+        const obstacles = [...shapes, ...groups].filter(o => 
+            o.id !== item.id && 
+            !movingIds.has(o.id) && 
+            getObjParent(o.id) === parentId
+        );
+
+        for (let obs of obstacles) {
+            const b2 = obs instanceof Group ? obs.bounds : obs.getBounds();
+            
+            // Перевірка перетину b1WithPadding та b2
+            if (b1WithPadding.x < b2.x + b2.w && 
+                b1WithPadding.x + b1WithPadding.w > b2.x && 
+                b1WithPadding.y < b2.y + b2.h && 
+                b1WithPadding.y + b1WithPadding.h > b2.y) {
+                return true; // Зіткнення (враховуючи дистанцію)
+            }
+        }
+    }
+    return false;
+}*/
+
+function render() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const sorted = [...groups].sort((a,b) => (b.bounds.w*b.bounds.h) - (a.bounds.w*a.bounds.h));
+    sorted.forEach(g => g.draw(selection.includes(g)));
+    shapes.forEach(s => s.draw(selection.includes(s)));
+    updateLayers();
+}
+
+function updateLayers() {
+    let html = '<h4>Шари</h4>';
+    const build = (ids, level) => {
+        ids.forEach(id => {
+            const o = [...shapes, ...groups].find(x => x.id === id);
+            if (!o) return;
+            html += `<div class="layer-item ${selection.includes(o)?'layer-selected':''}" style="padding-left:${level*15+10}px" onclick="selectLayer('${o.id}')">
+                ${o instanceof Group ? '📦' : '📄'} ${o.name || o.text}</div>`;
+            if (o instanceof Group) build(o.memberIds, level + 1);
+        });
+    };
+    build([...shapes, ...groups].filter(i => !groups.some(g => g.memberIds.includes(i.id))).map(i => i.id), 0);
+    layersTree.innerHTML = html;
+}
+
+function selectLayer(id) { selection = [[...shapes, ...groups].find(o => o.id === id)]; render(); }
+
+canvas.onmousedown = (e) => {
+    const mx = e.offsetX, my = e.offsetY;
+    let hit = shapes.slice().reverse().find(s => mx >= s.x && mx <= s.x+s.w && my >= s.y && my <= s.y+s.h);
+    if (!hit) hit = groups.find(g => mx >= g.bounds.x && mx <= g.bounds.x + g.bounds.w && my >= g.bounds.y && my <= g.bounds.y + g.headerH);
+    if (hit) {
+        if (e.shiftKey) selection.includes(hit) ? selection = selection.filter(i => i !== hit) : selection.push(hit);
+        else { if(!selection.includes(hit)) selection = [hit]; isDragging = true; dragOffset = {x: mx, y: my}; }
+    } else selection = [];
+    render();
+};
+
+window.onmousemove = (e) => {
+    if (!isDragging) return;
+    const dx = e.offsetX - dragOffset.x, dy = e.offsetY - dragOffset.y;
+    const moving = [];
+    const collect = (i) => { moving.push(i); if(i instanceof Group) [...shapes, ...groups].filter(m => i.memberIds.includes(m.id)).forEach(collect); };
+    selection.forEach(collect);
+
+    if (!checkCollision(moving, dx, 0)) { moving.forEach(m => m.x += dx); dragOffset.x = e.offsetX; }
+    if (!checkCollision(moving, 0, dy)) { moving.forEach(m => m.y += dy); dragOffset.y = e.offsetY; }
+    render();
+};
+
+window.onmouseup = () => isDragging = false;
+function addShape(t) { shapes.push(new Shape(t, 100, 100)); render(); }
+function groupSelected() {
+    if (selection.length < 2) return;
+    const ids = selection.map(s => s.id);
+    groups.forEach(g => g.memberIds = g.memberIds.filter(id => !ids.includes(id)));
+    groups.push(new Group("Група", ids));
+    selection = [groups[groups.length-1]]; render();
+}
+function deleteSelected() {
+    const ids = new Set();
+    const collect = (i) => { ids.add(i.id); if(i instanceof Group) [...shapes, ...groups].filter(m => i.memberIds.includes(m.id)).forEach(collect); };
+    selection.forEach(collect);
+    shapes = shapes.filter(s => !ids.has(s.id)); groups = groups.filter(g => !ids.has(g.id));
+    selection = []; render();
+}
+window.onkeydown = (e) => { if(e.key === "Delete") deleteSelected(); if(e.key.toLowerCase()==="g") groupSelected(); };
+window.onresize = () => { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; render(); };
+window.onresize();
+</script>
+</body>
+</html>

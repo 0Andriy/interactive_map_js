@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Advanced OOP Diagram Editor</title>
+    <style>
+        body { display: flex; flex-direction: column; align-items: center; gap: 10px; background: #f0f2f5; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 20px; }
+        .toolbar { display: flex; gap: 10px; background: white; padding: 15px; border-radius: 10px; shadow: 0 2px 10px rgba(0,0,0,0.1); border: 1px solid #ccc; z-index: 10; }
+        canvas { background: white; border: 1px solid #999; box-shadow: 0 5px 15px rgba(0,0,0,0.1); cursor: crosshair; }
+        button { padding: 8px 15px; border: 1px solid #ddd; background: #fff; cursor: pointer; border-radius: 4px; font-weight: 500; }
+        button:hover { background: #f0f0f0; }
+        button.active { background: #007bff; color: white; border-color: #0056b3; }
+        .info { color: #666; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+<div class="toolbar">
+    <button onclick="setMode('rect')">Прямокутник</button>
+    <button onclick="setMode('circle')">Коло</button>
+    <button onclick="createGroup()" style="background: #fff3cd;">Згрупувати обране</button>
+    <span style="border-left: 1px solid #ddd; margin: 0 5px;"></span>
+    <button id="line-straight" class="active" onclick="setLine('straight')">Пряма лінія</button>
+    <button id="line-ortho" onclick="setLine('ortho')">Ламана лінія</button>
+    <button onclick="undo()" style="color: red;">Undo</button>
+</div>
+<div class="info">ЛКМ + Shift: Мультиселект | Тягніть від якорів для ліній | Drag за "шапку" групи для переміщення</div>
+<canvas id="editor" width="1000" height="600"></canvas>
+
+<script>
+// --- 1. STRATEGY PATTERN FOR LINES ---
+class LineStrategy {
+    draw(ctx, start, end) {}
+}
+
+class StraightStrategy extends LineStrategy {
+    draw(ctx, start, end) {
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+    }
+}
+
+class OrthogonalStrategy extends LineStrategy {
+    draw(ctx, start, end) {
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        const midY = (start.y + end.y) / 2;
+        ctx.lineTo(start.x, midY);
+        ctx.lineTo(end.x, midY);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+    }
+}
+
+// --- 2. BASE COMPONENT (COMPOSITE PATTERN) ---
+class Component {
+    constructor(x, y) {
+        this.x = x; // Відносно батька
+        this.y = y;
+        this.parent = null;
+        this.selected = false;
+    }
+
+    getGlobalPos() {
+        if (!this.parent) return { x: this.x, y: this.y };
+        const pPos = this.parent.getGlobalPos();
+        // Для групи додаємо зміщення відносно її шапки/контенту
+        return { x: pPos.x + this.x, y: pPos.y + this.y };
+    }
+
+    draw(ctx) {}
+    isPointInside(x, y) { return false; }
+}
+
+// --- 3. ANCHORS ---
+class Anchor {
+    constructor(owner, ox, oy) {
+        this.owner = owner;
+        this.ox = ox; // Offset X
+        this.oy = oy; // Offset Y
+    }
+    getPos() {
+        const base = this.owner.getGlobalPos();
+        return { x: base.x + this.ox, y: base.y + this.oy };
+    }
+    draw(ctx, active = false) {
+        const pos = this.getPos();
+        ctx.fillStyle = active ? "red" : "#444";
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+// --- 4. LEAF COMPONENTS (SHAPES) ---
+class BaseShape extends Component {
+    constructor(x, y, color) {
+        super(x, y);
+        this.color = color;
+        this.anchors = this.createAnchors();
+    }
+    createAnchors() { return []; }
+}
+
+class Rectangle extends BaseShape {
+    createAnchors() {
+        return [new Anchor(this, 0, -25), new Anchor(this, 0, 25), new Anchor(this, -40, 0), new Anchor(this, 40, 0)];
+    }
+    draw(ctx) {
+        const pos = this.getGlobalPos();
+        ctx.fillStyle = this.color;
+        ctx.strokeStyle = this.selected ? "#007bff" : "#333";
+        ctx.lineWidth = this.selected ? 3 : 1;
+        ctx.fillRect(pos.x - 40, pos.y - 25, 80, 50);
+        ctx.strokeRect(pos.x - 40, pos.y - 25, 80, 50);
+        this.anchors.forEach(a => a.draw(ctx));
+    }
+    isPointInside(px, py) {
+        const pos = this.getGlobalPos();
+        return px > pos.x - 40 && px < pos.x + 40 && py > pos.y - 25 && py < pos.y + 25;
+    }
+}
+
+class Circle extends BaseShape {
+    createAnchors() {
+        return [new Anchor(this, 0, -30), new Anchor(this, 0, 30), new Anchor(this, -30, 0), new Anchor(this, 30, 0)];
+    }
+    draw(ctx) {
+        const pos = this.getGlobalPos();
+        ctx.fillStyle = this.color;
+        ctx.strokeStyle = this.selected ? "#007bff" : "#333";
+        ctx.lineWidth = this.selected ? 3 : 1;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 30, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        this.anchors.forEach(a => a.draw(ctx));
+    }
+    isPointInside(px, py) {
+        const pos = this.getGlobalPos();
+        return Math.hypot(pos.x - px, pos.y - py) < 30;
+    }
+}
+
+// --- 5. COMPOSITE COMPONENT (GROUP) ---
+class Group extends Component {
+    constructor(name) {
+        super(0, 0);
+        this.name = name;
+        this.children = [];
+        this.headerHeight = 20;
+        this.padding = 15;
+    }
+
+    add(child) {
+        child.parent = this;
+        this.children.push(child);
+        this.updateBounds();
+    }
+
+    updateBounds() {
+        if (this.children.length === 0) return;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        
+        this.children.forEach(c => {
+            const pos = {x: c.x, y: c.y}; // relative coordinates
+            minX = Math.min(minX, pos.x - 40);
+            maxX = Math.max(maxX, pos.x + 40);
+            minY = Math.min(minY, pos.y - 30);
+            maxY = Math.max(maxY, pos.y + 30);
+        });
+
+        // Встановлюємо x, y групи як центр її дітей, а дітей зміщуємо відносно неї
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        
+        this.x += centerX;
+        this.y += centerY;
+        
+        this.children.forEach(c => {
+            c.x -= centerX;
+            c.y -= centerY;
+        });
+
+        this.width = (maxX - minX) + this.padding * 2;
+        this.height = (maxY - minY) + this.padding * 2 + this.headerHeight;
+    }
+
+    draw(ctx) {
+        const pos = this.getGlobalPos();
+        const w = this.width, h = this.height;
+        const startX = pos.x - w/2, startY = pos.y - h/2;
+
+        ctx.fillStyle = "rgba(0, 123, 255, 0.05)";
+        ctx.strokeStyle = this.selected ? "#007bff" : "#999";
+        ctx.setLineDash([5, 5]);
+        ctx.fillRect(startX, startY, w, h);
+        ctx.strokeRect(startX, startY, w, h);
+        ctx.setLineDash([]);
+
+        // Header
+        ctx.fillStyle = "rgba(0,0,0,0.1)";
+        ctx.fillRect(startX, startY, w, this.headerHeight);
+        ctx.fillStyle = "#333";
+        ctx.font = "10px sans-serif";
+        ctx.fillText(this.name.toUpperCase(), startX + 5, startY + 14);
+
+        this.children.forEach(c => c.draw(ctx));
+    }
+
+    isPointInside(px, py) {
+        const pos = this.getGlobalPos();
+        return px > pos.x - this.width/2 && px < pos.x + this.width/2 && 
+               py > pos.y - this.height/2 && py < pos.y + this.height/2;
+    }
+}
+
+// --- 6. CONNECTION ---
+class Connection {
+    constructor(fromA, toA, strategy) {
+        this.from = fromA;
+        this.to = toA;
+        this.strategy = strategy;
+    }
+    draw(ctx) {
+        ctx.strokeStyle = "#555";
+        ctx.lineWidth = 1.5;
+        this.strategy.draw(ctx, this.from.getPos(), this.to.getPos());
+    }
+}
+
+// --- 7. APP ENGINE ---
+class Editor {
+    constructor() {
+        this.canvas = document.getElementById('editor');
+        this.ctx = this.canvas.getContext('2d');
+        this.components = []; // Тільки кореневі об'єкти (Root level)
+        this.connections = [];
+        
+        this.mode = 'select'; 
+        this.currentStrategy = new StraightStrategy();
+        
+        this.isDragging = false;
+        this.isConnecting = false;
+        this.dragTarget = null;
+        this.startAnchor = null;
+        this.mousePos = {x: 0, y: 0};
+
+        this.setupEvents();
+        this.render();
+    }
+
+    setupEvents() {
+        this.canvas.onmousedown = e => this.handleDown(e);
+        this.canvas.onmousemove = e => this.handleMove(e);
+        this.canvas.onmouseup = () => this.handleUp();
+    }
+
+    getPos(e) {
+        const r = this.canvas.getBoundingClientRect();
+        return { x: e.clientX - r.left, y: e.clientY - r.top };
+    }
+
+    getAllShapes(list = this.components) {
+        let shapes = [];
+        list.forEach(c => {
+            if (c instanceof BaseShape) shapes.push(c);
+            if (c instanceof Group) shapes.push(...this.getAllShapes(c.children));
+        });
+        return shapes;
+    }
+
+    handleDown(e) {
+        const pos = this.getPos(e);
+        const allShapes = this.getAllShapes();
+        
+        // Перевірка якорів (для з'єднань)
+        for (let s of allShapes) {
+            for (let a of s.anchors) {
+                if (Math.hypot(a.getPos().x - pos.x, a.getPos().y - pos.y) < 8) {
+                    this.isConnecting = true;
+                    this.startAnchor = a;
+                    return;
+                }
+            }
+        }
+
+        // Перевірка об'єктів (для перетягування та виділення)
+        const hit = [...this.components].reverse().find(c => c.isPointInside(pos.x, pos.y));
+        
+        if (hit) {
+            if (!e.shiftKey && !hit.selected) {
+                this.components.forEach(c => c.selected = false);
+            }
+            hit.selected = true;
+            this.isDragging = true;
+            this.dragTarget = hit;
+            this.lastMouse = pos;
+        } else {
+            if (this.mode === 'rect') this.components.push(new Rectangle(pos.x, pos.y, "#e3f2fd"));
+            if (this.mode === 'circle') this.components.push(new Circle(pos.x, pos.y, "#f1f8e9"));
+            this.components.forEach(c => c.selected = false);
+            this.mode = 'select';
+        }
+        this.render();
+    }
+
+    handleMove(e) {
+        this.mousePos = this.getPos(e);
+        if (this.isDragging && this.dragTarget) {
+            const dx = this.mousePos.x - this.lastMouse.x;
+            const dy = this.mousePos.y - this.lastMouse.y;
+            this.components.filter(c => c.selected).forEach(c => {
+                c.x += dx; c.y += dy;
+            });
+            this.lastMouse = this.mousePos;
+        }
+        this.render();
+    }
+
+    handleUp() {
+        if (this.isConnecting) {
+            const targetShape = this.getAllShapes().find(s => s.isPointInside(this.mousePos.x, this.mousePos.y));
+            if (targetShape) {
+                const endAnchor = targetShape.anchors[0]; // спрощено: беремо перший якір
+                this.connections.push(new Connection(this.startAnchor, endAnchor, this.currentStrategy));
+            }
+        }
+        this.isDragging = false;
+        this.isConnecting = false;
+        this.render();
+    }
+
+    createGroup() {
+        const selected = this.components.filter(c => c.selected);
+        if (selected.length < 2) return;
+
+        const group = new Group("Група " + (this.components.length));
+        selected.forEach(c => {
+            this.components.splice(this.components.indexOf(c), 1);
+            group.add(c);
+        });
+        this.components.push(group);
+        this.render();
+    }
+
+    undo() {
+        this.connections.pop() || this.components.pop();
+        this.render();
+    }
+
+    render() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.connections.forEach(c => c.draw(this.ctx));
+        if (this.isConnecting) {
+            this.ctx.setLineDash([5, 5]);
+            this.currentStrategy.draw(this.ctx, this.startAnchor.getPos(), this.mousePos);
+            this.ctx.setLineDash([]);
+        }
+        this.components.forEach(c => c.draw(this.ctx));
+    }
+}
+
+const editor = new Editor();
+function setMode(m) { editor.mode = m; }
+function setLine(t) {
+    editor.currentStrategy = t === 'ortho' ? new OrthogonalStrategy() : new StraightStrategy();
+    document.getElementById('line-straight').className = t === 'straight' ? 'active' : '';
+    document.getElementById('line-ortho').className = t === 'ortho' ? 'active' : '';
+}
+function createGroup() { editor.createGroup(); }
+function undo() { editor.undo(); }
+
+</script>
+</body>
+</html>
