@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- License: Apache. Made by googlefonts: https://github.com/googlefonts/noto-emoji -->
+<svg width="50" height="70" viewBox="0 0 365 560" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" preserveAspectRatio="xMidYMid meet">
+    <!-- Title and Description for better accessibility -->
+    <title>Map Marker Icon with House</title>
+    <desc>A map marker with a blue color, circular center, and a house image centered on top.</desc>
+
+    <!-- Фон маркера -->
+    <path fill="#c9a924" d="M182.9,551.7c0,0.1,0.2,0.3,0.2,0.3S358.3,283,358.3,194.6c0-130.1-88.8-186.7-175.4-186.9
+        C96.3,7.9,7.5,64.5,7.5,194.6c0,88.4,175.3,357.4,175.3,357.4S182.9,551.7,182.9,551.7z M122.2,187.2c0-33.6,27.2-60.8,60.8-60.8
+        c33.6,0,60.8,27.2,60.8,60.8S216.5,248,182.9,248C149.4,248,122.2,220.8,122.2,187.2z"/>
+
+    <!-- Додаємо коло для закриття дірки -->
+    <circle cx="182.9" cy="187.2" r="64.8" fill="#c9a924"/>
+
+    <!-- Додаємо зображення, центруючи його на дірці -->
+    <!-- <image x="82.9" y="87.2" width="200" height="200"
+        href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAHYAAAB2AH6XKZyAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAB3hJREFUeJztmWlsVNcZhp9z7p07Gx7bGC8YHIMBg0xblrA5EMLiVJQsFEpEI9JQo0BUslDaJFJbQhKkZpGK0pClUVqClKolCgktCWRpUrEkVCqLi1kSY0qITR1jmxnssWe8zdzbH4OxPR4TC47HSJlHGmnmu+ee7513zna/gQQJEiRIkCBBggQDxlhg1kCLGEjus+kEgfyBSC4HImkUtVJgT08VewBHvJNfDwbU5Y/g4qRxMuOGoXLzQIsZCCaOzqG28gOsJLdoBybFM/n1MAJCoTBaTiY8u9ah52brb8Yz+fVggK5rCID7lzRj2MQoTWNRvJLH2wAJ2KJinhQPIQBNwtMPO7TsDO3leAqKJ7c77OKTqFhGekqnjiVzguiazAJmxkNQvA3wtrRas6OG+MiCPFyXBYkwa+/xaHnD9OfiISjeBmR53ISyM7TL253LyazJ43B2bfST20zO+8IzoNOY/iKuBrgdrHzmIQg2W9lEtjsRDjFn6vju7QYPaqJwgksARf2tKZ4GzDUMZhcvQl9xp10bliFXAROSk7DG3BDV0mpnUVGyHJGtrexvUfEyIMdpsH3rk7iddlg81xKGIRbbbTyw8k7ssW6YWgDtIebESV+/kuRycHrjz2i1SrCsEqymfwnLpgvTYRD434eRWPQrcHioZdiECd0MukXX+FCluP4eAdLlYPvSW8l6fBVGR9DtsHA7hfWLexDDMmLf6DLaGZKqmUBWR8xhZ71hU7s96io7i0ZKVuUNp/CP6xkUfW3HJk3Onmw6Y90HgBXG6RAAaUAFMN3QKWxqxgkkAw1KNKropBdSbDrPvbERjxF99gPmTmlHu1J2YeJ2SAALkE4HLz39EIbLQQhwqxLZbwZISfGCQsSkcVfbg4avIQwQkJJH8oYx+v4fYbNpmICmTKeCPlYkD6LcMPg1XQoaDjsP/Hw5nqvttKVVUn0hJIFCt50NO35HiiahMYgBXFCgG1BjwJ5ACyOnFbDB7eQMMAHIloKhN0+++k4ranRME1I9vPLpVtz5ufB1HdgNmoFmBboBNQZUJrvYtnAmxtanGDrIyafAqikFBK80x0vKYH9J79dHZvrZvRlRsRvXhEvVwgOlkOrhcwWaL6NkDfD6+cOWnQTuKkJse5YkIXiiIC/2AaeDA0dh3mp44S+xrxtakB/MhKQuy92ufbTX+jgDFAMPA/O5xgVR1WJS1dzCb1bcgW1qAUhBaNZEHGNHRAodsfA1wIlSwZ5DgmQPfNNi6Q9A8VOQnsrI5Qv5YVYaC8or+ammccqyKL1a4arOAZbdzrEjnzMjJxMeX92j6NEDtxMMHT76scG8F1uZPQVGDe+9/Xv74NZpiHc2kRRohkl3E/S4ecwf4I1rEa5sG2wMsO9oeaSy0xfa2kGXMDZNsPZGnY2vXLn98oXwt+eRNh3WPENrY5A/+QM8f626lRlgmpQcPhl7df7iLLz8Fhz/b2fsyyrIckdmyINTdPYeigzzK6FJKC2HDw7Q5K3nMRW6VR6Ezp2pwop14WwVPLoJFq0RLHsk8kWPnISpmZH0LhtMGSrZtf+bk7z6NmEp2Ay0qhCt0oCaC/Wx+1twE6Qnw66lBhlBjWW/hN37YUFeZ/NpmZJj5ZH3ZV/B6zu7j5gO3v6EkM/PdlWiVRpQ62+KvfVJCYvnw8dnTV4osnGxRpDrEUzM6kzv1AXHy2HxWrhlBTzxe8Hew9378TZAUxABnFIlWqUBwfYQmhVzEsD0CfDv82GkgFe/b+OlIlvUzRb/OAjTDJ2KBx1kJcP4Ud37qK6DpEHUAaYq0Sofh02bTqAxSJInxtFkRDbUXloiu/7yHdw2RmN2ruSm4RILKKu1+E6UAQ1NYOjUKdSsth5g6NSdvxDbgIpqSLvCf7/fzRBw6dx0rsHC7YCMwd3bnPeCJqlSp1jx43DIpOzgydjD881dsHh03w6eX9ZbjMzqGT94Aquphf9ck8golBrQ0sqOd/7Z81G17iJ8VgqLxvbNAG/QYkhqz1P0zr0EfPXqdgBQXxB57/3P8DQ0dQ8e+QKm5UicfZxwvmZIH9x9NS0pgxofLcAxNVIjqDagFvjrb7fg7xosr4AxKb0+F/XA22yRntY99qsXabEsNqgQ2RXlJbG2dtZv3oYs+6ozFgqDTfTdgLoWyBzS+fndfXDoBN6GJl5TpzRCf9QEq1vbWDN/NfUdUyE/F455+751l14wyc+NvD9dCcVPErzYyB1AWLXY/iqK/rmuni0z7sVf64Oi6XC02uS0r5dTUhdOeS2OVpvMmxo5Es8spqW1jftA7erfgbLqajSmycf1frQtf+fGGd/DMW4EPPOuyfLxOnovtreGYcmONlbdDedqYemjBIJt3Bts5q3+0tn3iXn13O5y8trNE3FV1ZCcbApeX2iQn9Y99Smvxcr32zjbaJGVTqDiayp9fpYBx+Ogsd+xS8k6j4tKwNIlVlG+tNYV6ta6Qt2any8tXWIJgZmWwklN4y7i8+PEJ0kU+cA8XZLjdjFaStobg5wJhTgDfATUDICmBAkSJEiQIEGCBAm+bfwfdDY29r0ZaDAAAAAASUVORK5CYII=" /> -->
+
+
+    <!-- Додаємо SVG замість картинки доміка, центруючи його на дірці -->
+    <g transform="translate(182.9, 187.2) scale(2.2) translate(-60, -70)">
+        <style>
+            /* Встановлюємо білий колір для максимального контрасту */
+            .st0 {
+                fill-rule: evenodd;
+                clip-rule: evenodd;
+                fill: currentColor;
+            }
+            .body, .head, .decoration { fill: #ffffff; }
+            /* Додаємо тонку обводку, щоб деталі не зливалися */
+            .st0 { stroke: #ffffff; stroke-width: 0.5px; }
+        </style>
+
+        <g id="illustration">
+            <g id="body_base" class="body">
+                <path class="st0" d="M47.46,72.38c5.54,16.29,28.66,16.88,33.86,0c1.97,1.77,5.19,3.09,8.86,4.19l-11.87,13.5 c4.37,1.39,7.38,3.47,9.36,5.89l11.28-17.18c5.31,1.21,10.39,2.34,13.33,3.98c2.13,1.19,4.06,2.7,5.6,4.75 c3.23,4.26,9.83,31.34-0.88,32.16H80.08c-0.37,0.06-0.73,0.09-1.1,0.09H4.21c-2.32,0-4.21-1.88-4.21-4.21 c0-0.63,0.14-1.23,0.39-1.77l8.64-22.78c0.15-0.4,0.35-0.75,0.59-1.07c0.44-1.07,0.88-1.9,1.26-2.41c1.55-2.05,3.47-3.56,5.6-4.75 C23.23,78.99,41.34,77.89,47.46,72.38z M12.96,92.46h51.73c32.2,0,21.4,23.08,14.29,23.08H4.21L12.96,92.46z"/>
+            </g>
+
+            <g id="neck_collar" class="head">
+                <path class="st0" d="M43.22,38.63c-1.16,0.05-2.04,0.29-2.64,0.69 c-0.34,0.23-0.6,0.52-0.76,0.87c-0.18,0.39-0.26,0.86-0.25,1.4c0.05,1.59,0.88,3.67,2.49,6.07l0.02,0.03l5.24,8.32 c2.1,3.34,4.3,6.74,7.03,9.24c2.63,2.4,5.82,4.03,10.04,4.04c4.57,0.01,7.91-1.68,10.62-4.22c2.82-2.64,5.05-6.26,7.24-9.87 l5.9-9.71c1.1-2.51,1.5-4.19,1.25-5.17c-0.15-0.59-0.8-0.87-1.9-0.93c-0.23-0.01-0.47-0.01-0.72-0.01 c-0.26,0.01-0.54,0.03-0.82,0.05c-0.16,0.01-0.31,0-0.45-0.03c-0.52,0.03-1.06-0.01-1.62-0.09l0.49-2.15l2.63-2.62 c1.21-1.2,1.22-3.16,0.02-4.38l-0.99-1l3.63,0.95l-0.16,6.63c1.45,0.44,2.38,1.36,2.76,2.85c0.42,1.65-0.04,3.98-1.44,7.15l-5.97,9.83c-2.3,3.79-4.63,7.58-7.75,10.5c-3.23,3.02-7.2,5.03-12.64,5.02 c-5.08-0.01-8.9-1.95-12.03-4.82c-3.03-2.77-5.34-6.34-7.54-9.84l-5.23-8.32c-1.91-2.86-2.91-5.47-2.97-7.61 c-0.03-1.01,0.14-1.92,0.51-2.72c0.39-0.84,0.99-1.55,1.8-2.09c0.38-0.25,0.8-0.47,1.27-0.65c-0.34-4.51-0.47-10.2-0.25-14.97 c0.11-1.13,0.33-2.26,0.65-3.39c0.05-0.17,0.1-0.34,0.15-0.51l22.72,5.93c0.15,0.35,0.37,0.69,0.65,0.98l2.91,2.95l-0.76,0.77 c-7-1.81-14.06-3.26-22.4,0.18l1.14,10.54C44.38,38.74,43.78,38.71,43.22,38.63z"/>
+            </g>
+
+            <g id="head_top" class="head">
+                <path class="st0" d="M43.36,11.13 c8.86-15.58,29.32-13.81,41.36-0.79c2.91,3.15,4.73,7.31,5.13,12.83l-1.99-0.52c0.21-0.99-0.07-2.07-0.84-2.84l-4.2-4.21 c-1.22-1.2-3.19-1.19-4.4,0.04l-2.82,2.86l-2.82-2.86c-1.21-1.22-3.18-1.22-4.4-0.01l-1.56,1.56L43.36,11.13z"/>
+            </g>
+
+            <g id="symbol_plus" class="decoration">
+                <path class="st0" d="M49.67,102.78l-0.01,4.46l-5.4,0.04l-0.04,5.4l-4.45-0.01 l0.04-5.37l-5.38,0.04l0.01-4.46l5.4-0.04l0.04-5.4l4.45,0.01l-0.04,5.37L49.67,102.78z"/>
+            </g>
+
+            <g id="symbol_x" class="decoration">
+                <path class="st0" d="M80.62,17.88l4.2,4.21 l-5.06,5.13l5.06,5.13l-4.21,4.2l-5.03-5.1l-5.04,5.11l-4.2-4.22l5.06-5.13l-5.06-5.13l4.21-4.2l5.03,5.1L80.62,17.88z"/>
+            </g>
+        </g>
+    </g>
+
+</svg>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; padding: 20px;">
+  <h2>Головне вікно</h2>
+  <button onclick="window.electron.do('open-chat')">Відкрити Чат</button>
+  <button onclick="window.electron.do('set-autostart', {state: true})">Увімкнути Автозапуск</button>
+  <div id="status" style="margin-top: 20px; color: blue;"></div>
+  <script>
+    window.electron.on('from-main', (data) => {
+      document.getElementById('status').innerText = `${data.msg}: ${data.time}`;
+    });
+  </script>
+</body>
+</html>

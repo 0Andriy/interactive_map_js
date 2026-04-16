@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Infinity Graph OS v14</title>
+    <style>
+        body, html { margin: 0; padding: 0; overflow: hidden; background: #050505; color: #00ffcc; font-family: 'Consolas', monospace; }
+        canvas { display: block; }
+        .ui-panel { position: absolute; top: 15px; left: 15px; background: rgba(10, 10, 10, 0.95); padding: 15px; border: 1px solid #00ffcc; border-radius: 4px; z-index: 100; pointer-events: none; min-width: 260px; }
+        .stat-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+        .toolbar { position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); background: #111; padding: 10px; border: 1px solid #444; border-radius: 6px; display: flex; gap: 8px; z-index: 110; }
+        button { background: #222; border: 1px solid #555; color: #00ffcc; padding: 6px 12px; cursor: pointer; font-size: 11px; }
+        button.active { background: #00ffcc; color: #000; border-color: #fff; }
+        #map-box { position: absolute; bottom: 20px; right: 20px; width: 180px; height: 180px; background: #000; border: 1px solid #333; z-index: 90; }
+    </style>
+</head>
+<body>
+
+<div class="ui-panel">
+    <b style="color:#00ffcc">CORE ENGINE v14</b><hr style="border:0;border-top:1px solid #333">
+    <div class="stat-row">Static (Quadtree): <span class="val">50,000</span></div>
+    <div class="stat-row">Nodes / Conns: <span class="val"><span id="elCnt">0</span> / <span id="cnCnt">0</span></span></div>
+    <div class="stat-row">Zoom: <span class="val" id="zoomVal">1.0</span></div>
+    <div class="stat-row">Grid Snap (G): <span class="val" id="gridStatus">ON</span></div>
+    <hr style="border:0;border-top:1px solid #333">
+    <div id="sel-info">Selection: <span id="selType">NONE</span></div>
+    <div class="stat-row">X: <span id="selX">-</span> | Y: <span id="selY">-</span></div>
+</div>
+
+<div class="toolbar">
+    <button onclick="st('rect')" id="b-rect" class="active">Rect(2)</button>
+    <button onclick="st('circle')" id="b-circle">Circ(4)</button>
+    <button onclick="st('rhombus')" id="b-rhombus">Rhom(4)</button>
+    <div style="width:1px; background:#444; margin:0 5px;"></div>
+    <button onclick="sl('bezier')" id="l-bezier" class="active">Bezier</button>
+    <button onclick="sl('straight')" id="l-straight">Straight</button>
+    <button onclick="sl('poly')" id="l-poly">Poly</button>
+</div>
+
+<div id="map-box"><canvas id="map-cvs" width="180" height="180"></canvas></div>
+<canvas id="canvas"></canvas>
+
+<script>
+const WORLD_SIZE = 60000;
+let snapEnabled = true, curShape = 'rect', curLine = 'bezier';
+const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+const mCvs = document.getElementById('map-cvs'), mCtx = mCvs.getContext('2d');
+
+class Rect {
+    constructor(x, y, w, h) { this.x = x; this.y = y; this.w = w; this.h = h; }
+    intersects(r) { return !(r.x > this.x + this.w || r.x + r.w < this.x || r.y > this.y + this.h || r.y + r.h < this.y); }
+    contains(p) { return (p.x >= this.x && p.x <= this.x + this.w && p.y >= this.y && p.y <= this.y + this.h); }
+}
+
+class Quadtree {
+    constructor(boundary, capacity) {
+        this.boundary = boundary; this.capacity = capacity;
+        this.items = []; this.divided = false;
+    }
+    subdivide() {
+        const {x,y,w,h} = this.boundary;
+        this.nw = new Quadtree(new Rect(x,y,w/2,h/2), this.capacity);
+        this.ne = new Quadtree(new Rect(x+w/2,y,w/2,h/2), this.capacity);
+        this.sw = new Quadtree(new Rect(x,y+h/2,w/2,h/2), this.capacity);
+        this.se = new Quadtree(new Rect(x+w/2,y+h/2,w/2,h/2), this.capacity);
+        this.divided = true;
+    }
+    insert(item) {
+        const itemRect = new Rect(item.x, item.y, item.w||1, item.h||1);
+        if (!this.boundary.intersects(itemRect)) return false;
+        if (this.items.length < this.capacity) { this.items.push(item); return true; }
+        if (!this.divided) this.subdivide();
+        return this.nw.insert(item) || this.ne.insert(item) || this.sw.insert(item) || this.se.insert(item);
+    }
+    query(range, found) {
+        if (!this.boundary.intersects(range)) return;
+        for (let it of this.items) {
+            if (range.intersects(new Rect(it.x, it.y, it.w||1, it.h||1))) found.push(it);
+        }
+        if (this.divided) { this.nw.query(range,found); this.ne.query(range,found); this.sw.query(range,found); this.se.query(range,found); }
+    }
+}
+
+let state = {
+    view: { x: 0, y: 0, zoom: 0.15 },
+    elements: [], connections: [], staticTree: null,
+    draggedId: null, selectedId: null, selectedConnIdx: -1,
+    activeLine: null, isPanning: false, lastMouse: { x: 0, y: 0 }
+};
+
+function st(t){ curShape=t; document.querySelectorAll('button[id^="b-"]').forEach(b=>b.classList.remove('active')); document.getElementById('b-'+t).classList.add('active'); }
+function sl(t){ curLine=t; document.querySelectorAll('button[id^="l-"]').forEach(b=>b.classList.remove('active')); document.getElementById('l-'+t).classList.add('active'); }
+
+const toWorld = (x, y) => ({ x: (x-canvas.width/2)/state.view.zoom-state.view.x, y: (y-canvas.height/2)/state.view.zoom-state.view.y });
+
+const getPorts = (el) => {
+    const p = [{x:el.x, y:el.y+el.h/2, s:'l'}, {x:el.x+el.w, y:el.y+el.h/2, s:'r'}];
+    if(el.type!=='rect') p.push({x:el.x+el.w/2, y:el.y, s:'t'}, {x:el.x+el.w/2, y:el.y+el.h, s:'b'});
+    return p;
+};
+
+function init() {
+    state.staticTree = new Quadtree(new Rect(-WORLD_SIZE/2, -WORLD_SIZE/2, WORLD_SIZE, WORLD_SIZE), 25);
+    for(let i=0; i<50000; i++) state.staticTree.insert({x:(Math.random()-0.5)*WORLD_SIZE, y:(Math.random()-0.5)*WORLD_SIZE, w:30, h:30});
+    resize();
+}
+
+function drawGrid(inv) {
+    const step = 1000, sub = 200;
+    const sX = Math.floor((-state.view.x-(canvas.width/2)*inv)/sub)*sub;
+    const eX = sX + canvas.width*inv + sub*2;
+    const sY = Math.floor((-state.view.y-(canvas.height/2)*inv)/sub)*sub;
+    const eY = sY + canvas.height*inv + sub*2;
+    ctx.font = `${12*inv}px monospace`; ctx.fillStyle = '#222';
+    for(let x=sX; x<=eX; x+=sub) {
+        ctx.strokeStyle = x%step===0?'#333':'#111'; ctx.beginPath(); ctx.moveTo(x,sY); ctx.lineTo(x,eY); ctx.stroke();
+        if(x%step===0 && state.view.zoom > 0.04) ctx.fillText(x, x+5, sY+20*inv);
+    }
+    for(let y=sY; y<=eY; y+=sub) {
+        ctx.strokeStyle = y%step===0?'#333':'#111'; ctx.beginPath(); ctx.moveTo(sX,y); ctx.lineTo(eX,y); ctx.stroke();
+        if(y%step===0 && state.view.zoom > 0.04) ctx.fillText(y, sX+5, y-5*inv);
+    }
+}
+
+function render() {
+    ctx.fillStyle='#050505'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.save();
+    ctx.translate(canvas.width/2, canvas.height/2);
+    ctx.scale(state.view.zoom, state.view.zoom);
+    ctx.translate(state.view.x, state.view.y);
+
+    const inv = 1/state.view.zoom;
+    const vRect = new Rect(-state.view.x-(canvas.width/2)*inv, -state.view.y-(canvas.height/2)*inv, canvas.width*inv, canvas.height*inv);
+    
+    drawGrid(inv);
+
+    const statics = []; state.staticTree.query(vRect, statics);
+    ctx.fillStyle='#111'; statics.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
+
+    // Connections Drawing
+    state.connections.forEach((c, idx) => {
+        const f = state.elements.find(e=>e.id===c.fId), t = state.elements.find(e=>e.id===c.tId);
+        if(!f || !t) return;
+        const p1 = getPorts(f).find(p=>p.s===c.fS), p2 = getPorts(t).find(p=>p.s===c.tS);
+        ctx.beginPath(); ctx.strokeStyle = state.selectedConnIdx===idx ? '#fff' : '#00ffcc'; ctx.lineWidth=3;
+        
+        if(c.type==='bezier'){ ctx.moveTo(p1.x,p1.y); ctx.bezierCurveTo(p1.x+(c.fS==='r'?100:-100),p1.y, p2.x+(c.tS==='r'?100:-100),p2.y, p2.x,p2.y); }
+        else if(c.type==='straight'){ ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); }
+        else { const mX=(p1.x+p2.x)/2; ctx.moveTo(p1.x,p1.y); ctx.lineTo(mX,p1.y); ctx.lineTo(mX,p2.y); ctx.lineTo(p2.x,p2.y); }
+        ctx.stroke();
+    });
+
+    // Elements Drawing (With Precision Culling)
+    state.elements.forEach(el => {
+        if(!vRect.intersects(new Rect(el.x-20, el.y-20, el.w+40, el.h+40))) return;
+        const s = state.selectedId===el.id;
+        ctx.fillStyle=s?'#1a1a1a':'#0a0a0a'; ctx.strokeStyle=s?'#00ffcc':'#444'; ctx.lineWidth=2;
+        ctx.beginPath();
+        if(el.type==='rect') ctx.rect(el.x,el.y,el.w,el.h);
+        else if(el.type==='circle') ctx.arc(el.x+el.w/2,el.y+el.h/2,el.w/2,0,Math.PI*2);
+        else { ctx.moveTo(el.x+el.w/2,el.y); ctx.lineTo(el.x+el.w,el.y+el.h/2); ctx.lineTo(el.x+el.w/2,el.y+el.h); ctx.lineTo(el.x,el.y+el.h/2); ctx.closePath(); }
+        ctx.fill(); ctx.stroke();
+        
+        ctx.fillStyle='#555'; ctx.font='12px monospace'; 
+        ctx.fillText(`X:${Math.round(el.x)} Y:${Math.round(el.y)}`, el.x, el.y-10);
+        ctx.fillStyle='#00ffcc'; getPorts(el).forEach(p=>{ctx.beginPath(); ctx.arc(p.x,p.y,7,0,Math.PI*2); ctx.fill();});
+    });
+
+    if(state.activeLine){
+        const f = state.elements.find(e=>e.id===state.activeLine.fId);
+        const p1 = getPorts(f).find(p=>p.s===state.activeLine.s);
+        ctx.beginPath(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.moveTo(p1.x,p1.y); ctx.lineTo(state.activeLine.to.x, state.activeLine.to.y); ctx.stroke();
+    }
+
+    ctx.restore();
+    updateUI(); drawMap();
+}
+
+function updateUI(){
+    document.getElementById('elCnt').innerText=state.elements.length;
+    document.getElementById('cnCnt').innerText=state.connections.length;
+    document.getElementById('zoomVal').innerText=state.view.zoom.toFixed(2);
+    document.getElementById('gridStatus').innerText=snapEnabled?'ON':'OFF';
+    const sel = state.elements.find(e=>e.id===state.selectedId);
+    document.getElementById('selType').innerText=sel?sel.type.toUpperCase():'NONE';
+    document.getElementById('selX').innerText=sel?Math.round(sel.x):'-';
+    document.getElementById('selY').innerText=sel?Math.round(sel.y):'-';
+}
+
+function drawMap(){
+    mCtx.fillStyle='#000'; mCtx.fillRect(0,0,180,180);
+    const r=180/WORLD_SIZE; mCtx.fillStyle='#00ffcc';
+    state.elements.forEach(el=>mCtx.fillRect((el.x+WORLD_SIZE/2)*r,(el.y+WORLD_SIZE/2)*r,4,4));
+}
+
+// INTERACTION LOGIC
+canvas.addEventListener('dblclick', e => {
+    const p = toWorld(e.clientX,e.clientY);
+    state.elements.push({id:Date.now(), x:p.x-60, y:p.y-35, w:120, h:70, type:curShape});
+    render();
+});
+
+canvas.addEventListener('mousedown', e => {
+    const p = toWorld(e.clientX,e.clientY);
+    let node = null;
+    state.elements.forEach(el => getPorts(el).forEach(pt => { if(Math.hypot(p.x-pt.x, p.y-pt.y)<15) node={id:el.id, s:pt.s}; }));
+    
+    if(node) state.activeLine = { fId:node.id, s:node.s, to:p };
+    else {
+        const el = state.elements.find(el=>p.x>el.x && p.x<el.x+el.w && p.y>el.y && p.y<el.y+el.h);
+        if(el) { state.draggedId=el.id; state.selectedId=el.id; state.selectedConnIdx=-1; }
+        else {
+            // Вибір зв'язку кліком поблизу
+            state.selectedConnIdx = state.connections.findIndex(c => {
+                const f=state.elements.find(e=>e.id===c.fId), t=state.elements.find(e=>e.id===c.tId);
+                const p1=getPorts(f).find(pt=>pt.s===c.fS), p2=getPorts(t).find(pt=>pt.s===c.tS);
+                const midX=(p1.x+p2.x)/2, midY=(p1.y+p2.y)/2;
+                return Math.hypot(p.x-midX, p.y-midY) < 25;
+            });
+            state.isPanning=true; state.selectedId=null;
+        }
+    }
+    state.lastMouse={x:e.clientX, y:e.clientY};
+});
+
+window.addEventListener('mousemove', e => {
+    const p = toWorld(e.clientX, e.clientY);
+    if(state.isPanning){ state.view.x+=(e.clientX-state.lastMouse.x)/state.view.zoom; state.view.y+=(e.clientY-state.lastMouse.y)/state.view.zoom; }
+    else if(state.draggedId){
+        let el=state.elements.find(e=>e.id===state.draggedId);
+        let tX = p.x-60, tY = p.y-35;
+        if(snapEnabled){ el.x=Math.round(tX/20)*20; el.y=Math.round(tY/20)*20; } else { el.x=tX; el.y=tY; }
+    } else if(state.activeLine) state.activeLine.to = p;
+    state.lastMouse={x:e.clientX, y:e.clientY};
+    render();
+});
+
+window.addEventListener('mouseup', e => {
+    if(state.activeLine){
+        const p = toWorld(e.clientX,e.clientY);
+        state.elements.forEach(el => getPorts(el).forEach(pt => {
+            if(Math.hypot(p.x-pt.x, p.y-pt.y)<20 && el.id!==state.activeLine.fId)
+                state.connections.push({fId:state.activeLine.fId, fS:state.activeLine.s, tId:el.id, tS:pt.s, type:curLine});
+        }));
+    }
+    state.isPanning=false; state.draggedId=null; state.activeLine=null;
+    render();
+});
+
+canvas.addEventListener('wheel', e => {
+    e.preventDefault(); const wb=toWorld(e.clientX,e.clientY);
+    state.view.zoom *= e.deltaY<0?1.12:0.88;
+    state.view.zoom = Math.min(Math.max(state.view.zoom, 0.005), 15);
+    const wa=toWorld(e.clientX,e.clientY); state.view.x+=(wa.x-wb.x); state.view.y+=(wa.y-wb.y);
+    render();
+}, {passive:false});
+
+window.addEventListener('keydown', e => {
+    if(e.key==='Delete'){
+        if(state.selectedId){
+            state.elements=state.elements.filter(el=>el.id!==state.selectedId);
+            state.connections=state.connections.filter(c=>c.fId!==state.selectedId && c.tId!==state.selectedId);
+            state.selectedId=null;
+        } else if(state.selectedConnIdx > -1) {
+            state.connections.splice(state.selectedConnIdx, 1);
+            state.selectedConnIdx = -1;
+        }
+    }
+    if(e.key.toLowerCase()==='g') snapEnabled=!snapEnabled;
+    render();
+});
+
+function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; render(); }
+window.addEventListener('resize', resize);
+init();
+</script>
+</body>
+</html>
