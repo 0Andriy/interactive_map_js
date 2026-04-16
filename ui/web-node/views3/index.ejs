@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= locals.pageTitle || 'Головна' %></title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <% if (locals.showHeader !== false) { %>
+        <%- include('partials/header') %>
+    <% } %>
+
+    <div class="app-body">
+        
+        <% if (locals.showLeftSidebar !== false) { %>
+            <%- include('partials/sidebar-left') %>
+        <% } %>
+
+        <main class="main-content">
+            <section>
+                <h1><%= locals.mainTitle || 'Огляд' %></h1>
+                
+                <div class="content-body">
+                    <%- locals.pageContent || '<p>Тут буде основний вміст сторінки.</p>' %>
+                </div>
+                
+                <div style="height: 1500px; margin-top: 2rem; border: 2px dashed var(--border-color); padding: 1rem; border-radius: 8px;">
+                    Блок для тестування вертикального скролу. Прокрутіть донизу.
+                </div>
+            </section>
+        </main>
+
+        <% if (locals.showRightSidebar !== false) { %>
+            <%- include('partials/sidebar-right') %>
+        <% } %>
+
+    </div>
+    
+    <% if (locals.showFooter !== false) { %>
+        <%- include('partials/footer') %>
+    <% } %>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>

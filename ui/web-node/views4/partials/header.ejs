@@ -1,0 +1,45 @@
+<% 
+  // Опційна обробка даних користувача
+  const userName = locals.user?.name || 'Гість';
+  const userRole = locals.user?.role || 'Відвідувач';
+  const userEmail = locals.user?.email || 'Невідомо';
+  const userAvatar = locals.user?.avatarInitials || 'Г';
+  const appName = locals.appName || 'AppLogo';
+%>
+<header class="app-header glass-panel">
+    <div class="header-left">
+        <a href="/" class="logo-link">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="url(#grad1)">
+                <defs>
+                    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#60A5FA;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#3B82F6;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <path d="M12 2L2 22h20L12 2z"/>
+            </svg>
+            <span><%= appName %></span>
+        </a>
+    </div>
+    
+    <div class="header-center"></div>
+
+    <div class="header-right">
+        <div class="user-profile" id="userProfileBtn">
+            <div class="user-info">
+                <div class="user-name"><%= userName %></div>
+                <div class="user-role"><%= userRole %></div>
+            </div>
+            <div class="avatar"><%= userAvatar %></div>
+        </div>
+
+        <nav class="user-dropdown glass-panel" id="userDropdown">
+            <div class="dropdown-header">
+                <div class="user-name"><%= userName %></div>
+                <div class="user-email"><%= userEmail %></div>
+            </div>
+            <a href="/profile" class="dropdown-item">Профіль</a>
+            <a href="/logout" class="dropdown-item" style="color: #ef4444;">Вийти</a>
+        </nav>
+    </div>
+</header>

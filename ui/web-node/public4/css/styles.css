@@ -1,0 +1,161 @@
+:root {
+  --bg-main-from: #0B1121;       
+  --bg-main-to: #151E32;         
+  --bg-surface: rgba(30, 41, 59, 0.7);
+  --bg-surface-hover: rgba(51, 65, 85, 0.85);
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --accent: #3B82F6;        
+  --accent-gradient: linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%);
+  --success: #10B981; /* Колір для статусу "Отримуються дані" */
+  --border-color: rgba(255, 255, 255, 0.1);
+  --shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.5);
+  
+  --header-height: 72px;
+  --sidebar-left-width: 260px;
+  --sidebar-right-width: 320px;
+  --transition-speed: 0.3s ease;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: radial-gradient(circle at top center, var(--bg-main-to), var(--bg-main-from) 80%);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.glass-panel {
+  background-color: var(--bg-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+}
+
+/* ================= HEADER ================= */
+.app-header {
+  height: var(--header-height);
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 1.5rem; position: sticky; top: 0; z-index: 1000;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Кнопка мобільного меню (з'являється тільки на малих екранах) */
+.mobile-menu-btn {
+  display: none; background: none; border: none; color: var(--text-primary); cursor: pointer;
+}
+
+.user-profile { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-weight: bold; }
+
+/* ================= LAYOUT ================= */
+.app-body { display: flex; flex: 1; position: relative; align-items: flex-start; }
+
+/* ================= SIDEBARS (З Адаптивом) ================= */
+.sidebar-left, .sidebar-right-wrapper {
+  position: sticky; top: var(--header-height); height: calc(100vh - var(--header-height));
+  z-index: 50; transition: all var(--transition-speed);
+}
+
+.sidebar-left { width: var(--sidebar-left-width); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar-left.collapsed { width: 72px; }
+.sidebar-left.collapsed .nav-text { display: none; }
+
+.nav-item { display: flex; align-items: center; gap: 1rem; padding: 1rem; color: var(--text-secondary); text-decoration: none; border-left: 3px solid transparent; }
+.nav-item:hover, .nav-item.active { background: var(--bg-surface-hover); color: var(--text-primary); border-left-color: var(--accent); }
+.nav-item svg { flex-shrink: 0; width: 24px; height: 24px; }
+
+.sidebar-right-wrapper { display: flex; }
+.sidebar-right-content { width: var(--sidebar-right-width); border-left: 1px solid var(--border-color); padding: 1.5rem; overflow-y: auto; transition: width var(--transition-speed); background: var(--bg-surface); }
+.sidebar-right-wrapper.collapsed .sidebar-right-content { width: 0; padding: 0; border: none; overflow: hidden; }
+
+/* ================= MAIN CONTENT & WIDGET ================= */
+.main-content { flex: 1; padding: 1.5rem; width: 100%; overflow-x: hidden; }
+
+/* Складний Контейнер-Схема */
+.schema-widget {
+  display: flex; flex-direction: column;
+  border-radius: 12px; overflow: hidden; margin-bottom: 2rem;
+  box-shadow: var(--shadow-panel);
+  transition: all var(--transition-speed);
+}
+
+/* Повноекранний режим */
+.schema-widget.fullscreen {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  z-index: 9999; border-radius: 0; margin: 0;
+}
+
+.schema-header {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  padding: 0.75rem 1rem; background: rgba(15, 23, 42, 0.9);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.schema-btn {
+  background: var(--bg-surface-hover); border: 1px solid var(--border-color);
+  color: var(--text-primary); padding: 0.5rem; border-radius: 8px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.schema-btn:hover { background: var(--accent); }
+
+.status-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--success); font-weight: 600; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 2s infinite; }
+
+.schema-selects { display: flex; gap: 0.5rem; flex: 1; }
+.schema-select { background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0.4rem; border-radius: 6px; outline: none; }
+
+.schema-timestamp { font-family: monospace; font-size: 0.85rem; color: var(--text-secondary); margin-left: auto; }
+
+/* Тіло схеми (Тут живе магія SVG та Абсолютних блоків) */
+.schema-body {
+  position: relative; flex: 1; min-height: 500px;
+  background: url('https://www.transparenttextures.com/patterns/cubes.png') rgba(11, 17, 33, 0.8); /* Темний патерн для фону */
+  overflow: hidden;
+}
+
+/* SVG для ліній має бути розтягнутий на 100% контейнера */
+.schema-svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.schema-line { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 4; animation: dash 20s linear infinite; }
+
+/* Інформаційні блоки на схемі */
+.schema-node {
+  position: absolute; z-index: 2; padding: 0.5rem 1rem;
+  background: var(--bg-surface-hover); border: 1px solid var(--accent);
+  border-radius: 8px; color: white; font-size: 0.85rem;
+  transform: translate(-50%, -50%); /* Центруємо відносно координат */
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  cursor: pointer; transition: transform 0.2s;
+}
+.schema-node:hover { transform: translate(-50%, -50%) scale(1.05); }
+
+/* Анімації */
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+@keyframes dash { to { stroke-dashoffset: -1000; } }
+
+/* ================= АДАПТИВНІСТЬ (MOBILE) ================= */
+@media (max-width: 992px) {
+  .mobile-menu-btn { display: block; }
+  
+  /* Сайдбари стають оверлеями (Drawers) */
+  .sidebar-left, .sidebar-right-wrapper {
+    position: fixed; top: var(--header-height); height: calc(100vh - var(--header-height));
+    z-index: 2000; box-shadow: var(--shadow-panel);
+  }
+  
+  /* Лівий ховаємо за лівий край */
+  .sidebar-left { left: 0; transform: translateX(-100%); width: 260px; }
+  .sidebar-left.mobile-open { transform: translateX(0); }
+  
+  /* Правий ховаємо за правий край */
+  .sidebar-right-wrapper { right: 0; transform: translateX(100%); }
+  .sidebar-right-wrapper.mobile-open { transform: translateX(0); }
+  .sidebar-right-content { width: 300px; } /* Фіксована ширина на мобільному */
+  
+  .schema-header { flex-direction: column; align-items: flex-start; }
+  .schema-timestamp { margin-left: 0; }
+}

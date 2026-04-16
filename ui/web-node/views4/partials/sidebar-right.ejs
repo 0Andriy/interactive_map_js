@@ -1,0 +1,16 @@
+<% 
+  const rightPanelTitle = locals.rightPanelTitle || 'Фільтри';
+  const rightPanelContent = locals.rightPanelContent || '<p style="color: var(--text-secondary); font-size: 0.9rem;">Оберіть елементи для відображення.</p>';
+%>
+<aside class="sidebar-right-wrapper" id="sidebarRightWrapper">
+    <button class="sidebar-right-toggle" id="toggleRightBtn" aria-label="Фільтри">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    
+    <div class="sidebar-right-content">
+        <h3><%= rightPanelTitle %></h3>
+        <div style="margin-top: 1.5rem;">
+            <%- rightPanelContent %>
+        </div>
+    </div>
+</aside>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise UI</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <%- include('partials/header') %>
+
+    <div class="app-body">
+        <%- include('partials/sidebar-left') %>
+
+        <main class="main-content">
+            <div class="schema-container glass" id="mainSchema">
+                <div class="schema-toolbar">
+                    <button class="schema-select" id="fsToggle" title="Повноекранний режим">⛶</button>
+                    
+                    <div class="status-tag">
+                        <div class="status-dot"></div>
+                        <span>ONLINE</span>
+                    </div>
+
+                    <select class="schema-select">
+                        <option>Виберіть блок</option>
+                        <option>Блок енергосистеми А1</option>
+                    </select>
+
+                    <select class="schema-select">
+                        <option>Всі шари</option>
+                    </select>
+
+                    <div class="timestamp-ms" id="clock">00:00:00.000</div>
+                </div>
+
+                <div class="schema-viewport" id="viewport">
+                    <svg class="schema-svg" id="svgConnections"></svg>
+                    
+                    <div class="schema-node glass" id="node1" style="left: 20%; top: 30%;">
+                        <div>Вузол А</div>
+                        <div style="font-size: 0.7rem; color: var(--accent);">Active</div>
+                    </div>
+
+                    <div class="schema-node glass" id="node2" style="left: 50%; top: 60%;">
+                        <div>Контролер</div>
+                        <div style="font-size: 0.7rem; color: var(--success);">Normal</div>
+                    </div>
+
+                    <div class="schema-node glass" id="node3" style="left: 80%; top: 30%;">
+                        <div>Термінал</div>
+                        <div style="font-size: 0.7rem; color: #94a3b8;">Standby</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <%- include('partials/sidebar-right') %>
+    </div>
+
+    <% if (locals.showFooter !== false) { %>
+        <footer style="padding: 1rem; text-align: center; font-size: 0.8rem; opacity: 0.5;">
+            &copy; 2026 Core Infrastructure v4.2
+        </footer>
+    <% } %>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>

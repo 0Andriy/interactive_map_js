@@ -1,0 +1,248 @@
+:root {
+  /* Темно-синя палітра */
+  --bg-main: #0B1120;       /* Основний фон */
+  --bg-surface: #1E293B;    /* Фон панелей (сайдбари, хедер) */
+  --bg-surface-hover: #334155;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --accent: #3B82F6;        /* Акцентний колір (кнопки, активні елементи) */
+  --border-color: #334155;
+  
+  /* Розміри */
+  --header-height: 64px;
+  --sidebar-left-width: 260px;
+  --sidebar-left-collapsed: 68px;
+  --sidebar-right-width: 300px;
+  --transition-speed: 0.3s;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh; /* Футер завжди буде внизу */
+  overflow-x: hidden;
+}
+
+/* ================= HEADER ================= */
+.app-header {
+  height: var(--header-height);
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.header-right {
+  position: relative;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  transition: background var(--transition-speed);
+}
+
+.user-profile:hover {
+  background-color: var(--bg-surface-hover);
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  min-width: 200px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all var(--transition-speed);
+}
+
+.user-dropdown.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: background var(--transition-speed);
+}
+
+.dropdown-item:hover {
+  background-color: var(--bg-surface-hover);
+}
+
+/* ================= MAIN LAYOUT ================= */
+.app-body {
+  display: flex;
+  flex: 1; /* Займає весь вільний простір, відштовхуючи футер вниз */
+  position: relative;
+}
+
+/* ================= SIDEBAR LEFT ================= */
+.sidebar-left {
+  width: var(--sidebar-left-width);
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--border-color);
+  transition: width var(--transition-speed);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-left.collapsed {
+  width: var(--sidebar-left-collapsed);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all var(--transition-speed);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.nav-item:hover, .nav-item.active {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+  border-left: 3px solid var(--accent);
+}
+
+.nav-item svg {
+  min-width: 24px;
+}
+
+.sidebar-toggle-btn {
+  position: absolute;
+  top: 1.5rem;
+  right: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--accent);
+  color: white;
+  border: 2px solid var(--bg-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: transform var(--transition-speed);
+}
+
+.sidebar-left.collapsed .sidebar-toggle-btn {
+  transform: rotate(180deg);
+}
+
+/* ================= MAIN CONTENT ================= */
+.main-content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+/* ================= SIDEBAR RIGHT ================= */
+.sidebar-right {
+  width: var(--sidebar-right-width);
+  background-color: var(--bg-surface);
+  border-left: 1px solid var(--border-color);
+  transition: margin-right var(--transition-speed), opacity var(--transition-speed);
+  position: relative;
+  padding: 1.5rem;
+}
+
+.sidebar-right.collapsed {
+  margin-right: calc(var(--sidebar-right-width) * -1); /* Повністю ховаємо за межі екрану */
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar-right-toggle {
+  position: absolute;
+  top: 1.5rem;
+  left: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--accent);
+  color: white;
+  border: 2px solid var(--bg-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  pointer-events: auto; /* Щоб кнопка працювала, коли сайдбар прихований */
+}
+
+/* ================= FOOTER ================= */
+.app-footer {
+  background-color: var(--bg-surface);
+  border-top: 1px solid var(--border-color);
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-secondary);
+}

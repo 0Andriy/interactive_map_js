@@ -1,0 +1,51 @@
+/* 1. Використовуємо зручну бокс-модель для всіх елементів */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* 2. Прибираємо зовнішні відступи у популярних елементів */
+* {
+  margin: 0;
+  padding: 0;
+  font: inherit;
+}
+
+/* 3. Налаштовуємо висоту для зручної роботи з layout */
+html, body {
+  height: 100%;
+}
+
+/* 4. Покращуємо рендеринг тексту та прибираємо горизонтальний скрол */
+body {
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* 5. Покращуємо роботу з картинками та медіа */
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* 6. Видаляємо стандартне оформлення списків (за бажанням) */
+ul, ol {
+  list-style: none;
+}
+
+/* 7. Робимо посилання зручнішими (без ліній знизу за замовчуванням) */
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* 8. Виправляємо поведінку кнопок та форм */
+button, input, textarea, select {
+  outline: none;
+  background: transparent;
+  border: none;
+}
+
+button {
+  cursor: pointer;
+}

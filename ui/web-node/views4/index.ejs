@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Модульна Система</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+    <% if (locals.showHeader !== false) { %>
+        <%- include('partials/header') %>
+    <% } %>
+
+    <div class="app-body">
+        
+        <% if (locals.showLeftSidebar !== false) { %>
+            <%- include('partials/sidebar-left') %>
+        <% } %>
+
+        <main class="main-content">
+            <div class="schema-widget glass-panel" id="schemaWidget">
+                
+                <div class="schema-header">
+                    <!-- <button class="schema-btn" id="toggleFullscreen" title="На весь екран">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                    </button> -->
+                    
+                    <div class="status-indicator">
+                        <div class="status-dot"></div>
+                        Отримання даних...
+                    </div>
+
+                    <div class="schema-selects">
+                        <select class="schema-select">
+                            <option value="block1">Блок 1 (Активний)</option>
+                            <option value="block2">Блок 2</option>
+                        </select>
+                        <select class="schema-select">
+                            <option value="temp">Температура</option>
+                            <option value="pressure">Тиск</option>
+                        </select>
+                    </div>
+
+                    <div class="schema-timestamp" id="liveTimestamp">
+                        0000-00-00 00:00:00.000
+                    </div>
+
+                    <button class="schema-btn" id="toggleFullscreen" title="На весь екран">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                    </button>
+                </div>
+
+                <div class="schema-body" id="schemaBody">
+                    <svg class="schema-svg-layer" id="svgLayer">
+                        </svg>
+
+                    <div class="schema-node" id="node-a" style="left: 20%; top: 30%;">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:-3px; margin-right:4px;"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                        Насос А (75%)
+                    </div>
+                    
+                    <div class="schema-node" id="node-b" style="left: 50%; top: 70%;">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:-3px; margin-right:4px;"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        Турбіна 1
+                    </div>
+                    
+                    <div class="schema-node" id="node-c" style="left: 80%; top: 40%;">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:-3px; margin-right:4px;"><path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4"/></svg>
+                        Резервуар
+                    </div>
+                </div>
+            </div>
+            <p style="color: var(--text-secondary);">Інший контент сторінки продовжується тут...</p>
+        </main>
+
+        <% if (locals.showRightSidebar !== false) { %>
+            <%- include('partials/sidebar-right') %>
+        <% } %>
+
+    </div>
+
+    <% if (locals.showFooter !== false) { %>
+        <%- include('partials/footer') %>
+    <% } %>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>

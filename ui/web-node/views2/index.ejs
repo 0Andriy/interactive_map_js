@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Модульний Веб-додаток</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <%- include('partials/header') %>
+
+    <div class="app-body">
+        <%- include('partials/sidebar-left') %>
+
+        <main class="main-content">
+            <section>
+                <h1>Головна панель</h1>
+                <p>Тут розміщується основний контент. Якщо прибрати один із сайдбарів з коду, цей блок автоматично розтягнеться на звільнене місце завдяки Flexbox.</p>
+                <div style="height: 1500px; margin-top: 2rem; border: 2px dashed var(--border-color); padding: 1rem; border-radius: 8px;">
+                    Блок для тестування скролу та прилипання футера.
+                </div>
+            </section>
+        </main>
+
+        <%- include('partials/sidebar-right') %>
+    </div>
+
+    <%- include('partials/footer') %>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
