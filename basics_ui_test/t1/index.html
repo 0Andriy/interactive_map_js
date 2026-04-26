@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сучасний Веб Застосунок</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-left">
+            <button id="toggle-left" class="icon-btn" aria-label="Меню">
+                <i class="ph ph-list"></i>
+            </button>
+            <div class="brand" id="app-logo" title="На головну">
+                <i class="ph-fill ph-hexagon"></i>
+                <span class="brand-text">ModulApp</span>
+            </div>
+        </div>
+        
+        <div class="header-center">
+            </div>
+        
+        <div class="header-right">
+            <button id="toggle-right" class="icon-btn highlight-btn" aria-label="Панель інструментів">
+                <i class="ph ph-sidebar-simple"></i>
+            </button>
+            
+            <div class="user-profile" id="user-profile-trigger">
+                <div class="user-info">
+                    <span class="user-name">Олександр Коваленко</span>
+                    <span class="user-login">@al_kovalenko</span>
+                </div>
+                <div class="user-avatar" id="user-avatar">
+                    </div>
+                
+                <div class="user-dropdown" id="user-dropdown">
+                    <ul>
+                        <li><i class="ph ph-user"></i> Мій профіль</li>
+                        <li><i class="ph ph-gear"></i> Налаштування</li>
+                        <div class="divider"></div>
+                        <li class="danger"><i class="ph ph-sign-out"></i> Вийти</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="app-layout">
+        <aside class="left-sidebar collapsed" id="left-sidebar">
+            <nav class="sidebar-nav">
+                <div class="nav-group">
+                    <span class="group-title">Основне</span>
+                    <a href="#" class="nav-item active"><i class="ph ph-squares-four"></i><span class="nav-text">Дашборд</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-chart-line-up"></i><span class="nav-text">Аналітика</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-users"></i><span class="nav-text">Клієнти</span></a>
+                </div>
+                <div class="nav-group">
+                    <span class="group-title">Система</span>
+                    <a href="#" class="nav-item"><i class="ph ph-shield-check"></i><span class="nav-text">Безпека</span></a>
+                    <a href="#" class="nav-item"><i class="ph ph-database"></i><span class="nav-text">БД Оракл</span></a>
+                </div>
+            </nav>
+        </aside>
+
+        <div class="main-wrapper">
+            <main class="app-main">
+                <div class="content-container">
+                    <h1>Вітаємо в системі</h1>
+                    <p>Цей макет демонструє повну модульність. Спробуйте видалити вузол <code>&lt;header&gt;</code>, <code>&lt;aside&gt;</code> або <code>&lt;footer&gt;</code> через DevTools (F12), і ви побачите, як інтерфейс адаптивно заповнить порожнечі.</p>
+                    
+                    <div class="cards-grid">
+                        <div class="card"><h3>Блок 1</h3><p>Незалежний скрол працює у кожному регіоні.</p></div>
+                        <div class="card"><h3>Блок 2</h3><p>Використано CSS Nesting для стилів.</p></div>
+                        <div class="card"><h3>Блок 3</h3><p>Сучасний UI з нейтральними кольорами.</p></div>
+                        <div class="card" style="height: 600px;"><h3>Блок 4 (Високий)</h3><p>Скрольте донизу, щоб побачити футер.</p></div>
+                    </div>
+                </div>
+            </main>
+            
+            <footer class="app-footer">
+                <p>&copy; 2026 ModulApp System. Усі права захищені.</p>
+                <div class="footer-links">
+                    <a href="#">Підтримка</a>
+                    <a href="#">Документація</a>
+                </div>
+            </footer>
+        </div>
+
+        <aside class="right-sidebar collapsed" id="right-sidebar">
+            <div class="right-sidebar-header">
+                <h3>Фільтри</h3>
+            </div>
+            <div class="right-sidebar-content">
+                <div class="filter-group">
+                    <label>Статус</label>
+                    <select><option>Активні</option><option>Архівні</option></select>
+                </div>
+                <div class="filter-group">
+                    <label>Період</label>
+                    <input type="date">
+                </div>
+                <button class="btn-primary">Застосувати</button>
+            </div>
+        </aside>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ModulApp - BEM & Nesting</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="page">
+    <header class="header">
+        <div class="header__left">
+            <button class="icon-btn" id="toggle-left" aria-label="Меню">
+                <i class="ph ph-list"></i>
+            </button>
+            <div class="header__brand" id="app-logo" title="На головну">
+                <i class="ph-fill ph-hexagon"></i>
+                <span class="header__brand-text">ModulApp</span>
+            </div>
+        </div>
+        
+        <div class="header__right">
+            <button class="icon-btn" id="theme-toggle" aria-label="Змінити тему">
+                <i class="ph ph-sun" id="theme-icon"></i>
+            </button>
+            
+            <div class="user-profile" id="user-profile-trigger">
+                <div class="user-profile__info">
+                    <span class="user-profile__name">Олександр Коваленко</span>
+                    <span class="user-profile__login">@al_kovalenko</span>
+                </div>
+                <div class="user-profile__avatar" id="user-avatar"></div>
+                
+                <div class="dropdown" id="user-dropdown">
+                    <ul class="dropdown__list">
+                        <li class="dropdown__item"><i class="ph ph-user"></i> Профіль</li>
+                        <div class="dropdown__divider"></div>
+                        <li class="dropdown__item dropdown__item--danger"><i class="ph ph-sign-out"></i> Вийти</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar sidebar--left" id="left-sidebar">
+            <nav class="sidebar__nav">
+                <div class="sidebar__group">
+                    <span class="sidebar__group-title">Основне</span>
+                    <a href="#" class="nav-item nav-item--active">
+                        <div class="nav-item__icon-wrapper"><i class="ph ph-squares-four"></i></div>
+                        <span class="nav-item__text">Дашборд</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <div class="nav-item__icon-wrapper"><i class="ph ph-chart-line-up"></i></div>
+                        <span class="nav-item__text">Аналітика</span>
+                    </a>
+                </div>
+                <div class="sidebar__group">
+                    <span class="sidebar__group-title">Система</span>
+                    <a href="#" class="nav-item">
+                        <div class="nav-item__icon-wrapper"><i class="ph ph-database"></i></div>
+                        <span class="nav-item__text">БД Оракл</span>
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <div class="layout__main-wrapper">
+            <button class="toggle-right-btn" id="toggle-right" aria-label="Відкрити панель">
+                <i class="ph ph-caret-left"></i>
+            </button>
+
+            <main class="main-content">
+                <div class="main-content__container">
+                    <h1 class="main-content__title">Професійна BEM Архітектура</h1>
+                    <p class="main-content__desc">Усі баги виправлено. Нативний CSS Nesting працює, відступи зафіксовано, мобільна версія не ламається.</p>
+                    
+                    <div class="cards">
+                        <div class="card card--gradient">
+                            <h3 class="card__title">Блок 1</h3>
+                            <p class="card__text">Кольоровий акцент для уникнення монотонності.</p>
+                        </div>
+                        <div class="card">
+                            <h3 class="card__title">Блок 2</h3>
+                            <p class="card__text">Адаптивна сітка автоматично перелаштовується на мобільному.</p>
+                        </div>
+                        <div class="card" style="height: 600px;">
+                            <h3 class="card__title">Високий Блок</h3>
+                            <p class="card__text">Скрольте донизу, щоб перевірити незалежний скрол.</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            
+            <footer class="footer">
+                <p class="footer__text">&copy; 2026 ModulApp. Усі права захищені.</p>
+            </footer>
+        </div>
+
+        <aside class="sidebar sidebar--right sidebar--collapsed" id="right-sidebar">
+            <div class="sidebar__header">
+                <h3 class="sidebar__title">Інструменти</h3>
+            </div>
+            <div class="sidebar__content">
+                <div class="filter">
+                    <label class="filter__label">Статус вузла</label>
+                    <select class="filter__select">
+                        <option>Активні</option>
+                        <option>Зупинені</option>
+                    </select>
+                </div>
+                <button class="btn btn--primary">Оновити</button>
+            </div>
+        </aside>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
