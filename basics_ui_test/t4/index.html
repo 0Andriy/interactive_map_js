@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="uk" data-theme="dark">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Enterprise Web App v7</title>
+
+        <!-- styles -->
+        <link rel="stylesheet" href="reset.css" />
+        <link rel="stylesheet" href="style.css" />
+
+        <!-- js -->
+        <!-- Скрипт завантажиться відразу, але чекатиме повної побудови сторінки -->
+        <script defer type="module" src="script.js"></script>
+    </head>
+    <body>
+        <div class="page-layout">
+            <!-- HEADER (Optional) -->
+            <header class="page-layout__header">
+                <div class="page-layout__container header">
+                    <div class="header__left">
+                        <button
+                            class="header__burger"
+                            id="sidebar-toggle"
+                            aria-label="Toggle Sidebar"
+                        >
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </button>
+                        <a href="/" class="header__logo logo">
+                            <div class="logo__icon">
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    class="logo_svg"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2.5"
+                                >
+                                    <path
+                                        d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    ></path>
+                                </svg>
+                                <!-- <img
+                                    src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAAADhCAMAAAAJbSJIAAABSlBMVEX///8BOHn///0AQH0ARYAAPHoAN3j//v8AWYUBQ38AOnkARXwBcIwBWIUANHgAUH/i5PEAZIgATIAMT3r0+/4ADF6euMcASIF5haYAXIUAVIIAUoIAaYkAbIsBY4gATX7R4eYAQncAX34AYIkAL3IAcYvR4eUAWH8AXoEAZoQAVHkAT4IAO3UBTIPV3eUAJ2wALGkAGGYAWHgAO28ANG3q8PcAJXAAJWff8fOHsLwAX3mxzdXG4OWYucOGp7lxlas3boyyws5siaJIbI80XIiVnK/I0t6irsEALXUAKHJfcZUAHmLs//9flqVCgpWrydIqd5Kj0dp3n61WjJqLtb8AaH5YiZ9Tgp5nmLLK190/dY05aImBn7VcgJ5CcJF9obQAQG1HZ46Cmbpid5ZHX4isuMo1VIGIladleJIAAF1FWIxZbJfBxtNCVHiVCK6YAAAgAElEQVR4nO1d+V/aStcPCWEJChfIFUF2UHbcQFGw7uJSl8f71D622tZa7X1an///1/ecMwlrMrQ1tr2f11OLJDOZOd+zzySgIDzTMz3TMz3TMz3TMz3TMz3TMz3TMz3TM/2/Jie9iqIT/gvwir86hO+xg6ifdva2/qMI0em8qy8bQDP48lKlRhIAg+f8dTz+KGlagx+10VpbOT45KyykGS0srK6enRyvrLUahBRU/I/UIbKsJk/PT2LpQjQWG+unGFAhnR47OT+dUaGv8x+oRKGxdjy9WgBo02ODpOOdHkOc08drjV/N7LeQU3AyhyJ1zKycEbp+YNNj09ODJ/F8IX220qJBnMy2f0ubFTGqYNQQheTKWToaG9DdNCoMtQdv+pvwRCwGIGdwEBzhtwRI8kfne3l6kkYkAyCAxvBf5/yA7cIl0fTJ6Usa6jeFSPGwcf6qoIUVA3MkFRp6JjsVK7xaaTA7+A0JmWodr8Z6wAx62xlzwumzwisD9MyQo6vHM8Lvmh41fNPTvVY4HZvW1LPSaBXoVKHVWHnVZ8YxzB5j+nWrxy2tHPhtcggVLg3AF+tjujDNIALG6fQKeNhMmprSSbDmldWur756FYv2yiS2etzAoCP+NsUOxpeVrn1iSoimC+f/Ootp1lo4a2GnHoSg8TNdILGzf6H39hp0bBUk8rvAExDh6atCj+vFCoXjpir8FdOVeaxSKmEIY2nKCoJ6rMeksb8EtXlcKOhKZHo9Rctw/h4xp3HCWEd3GhtjQV8Uzgsxdmp1BTs5CSFCAoS0qhBW0jGiscI5dFBPT/JRJic8N7Z6gpXOr0RITGKKWIP0rrFKsRCrE1FsLjBOY+l/62wm01SPMivFq/+djjHNp5u0wmr9hZUCgxgDS1/rlEq/CiOaXuMkH9MBgr7OIUaAusTGKmgTuU2vdPTAEGp+SOEJIE5TIH3VYFVR43y1MD2mD1cANbLV5a8imLr5SsOGpRfGQIzywNOFn0wWDbCzRpzpRShQCXpeiBLC6F8q9qGYnI7qEMeir5qC+AtLHJh5ZZXgEeVPZtDbiJ3TNAMePWHWTDSAEMts4YQ5b6xwipBxUKF1ktZ0CJmjxwR+OmGOOEnr8CD7NcnOiNFGWsMdfSl2Ic70WylZ6stXWmRJN7DsZrGzOV3QIKKlqr8EI7q/2BqLki0hh5jAtPwFXB77GWw9qDCaYYrNd0+CObdWY1TTRI970p+60oleseirll7V/0zCaNJcjcaixEjUfzbTY41iSws+/pW+ixjCWA9CpBWSRjSWb/ViaJ0UojrI1abg/OnhBszxNM0UBTAXVtRuBQLYT1iL/0ztCxLDOsSB1DNNVye9pwH5qoYwGl04FX7yegN9ay1Nk0MwKbxqafuChNEpNJkKowstURhG2KtDipOtBQYl1+yexwtbBb/uA/m1nwWNcUXJOg/pIIr/8hcq2xfVSixQCp4HFR6jMfdANLBSShnktdFo9KxnFvQ8qJWiUZJiLL8iiD/NEwnMSj5KXEEwOVf7m3UVxtKD+0vJHMlkwA+hOtDCSr4p9AcU9TxPCFGOK8z5fwqJBJAhpMqqpwl/pnHzEJhaGbzQBKETgw0Nd9ZfvwCgNbJgv26oPwUhanBtgQIMlo6twWaxmWbxp6AOXmqCEJJiIUaj5ftGI8dugaHSVP782s9a+zuF0wWaFX5WZ7RKRGcKqxTWlh4ODogwamClgrDGDNt/0t+ATpzMs7ouFi2e/gyEIsU+P+QqAtgYuuMiMhiAUB0yKa1pCCGsFTGkUE4cnAzqo1fUBrTQevJwQzdakqtRjV41BpMUyPjczwCuDHtNMkeX5ZIDo8JVFLmiUVooDrQKDSbPsShKVHzacIMI1TO/BnB1CCDGxTw1+6HMHGLFBCGhSPujeOFqfXhOsfGKxhzzR6GEeNKVBhnNhT9aKEQLUf9CY9hiIAjlCYX/3GBZp1mpEUJUPcIYTu1kqAvRAhv24mmtVKRECIz44f/CjOF9TU3D6aTBytUEIYZMcWaBEA7EGjanKMwsMNuP5p92MeWkCosJc6FpuPZuYLu/4D8xWpubIkQ6YaJZmGGm0mlkC+NmkZoLGG0E4am24WDF9FKPMgssOQ3Ns0KKKORPjQaYMfNDpNN8AS0RliNif8B0sjJYE2208JK2bqyBNEhYQUY7bqYVlX0d1AJ2KPjTL42uN400dGk6ShAL/dqnbW/8f84mLoArCk8H8TSnCdJ/ttKikmVAiS1mpPFjw8t5CAVh3V8o+P1+WpB0h2WrJrW1oofwQvH06VJGQ7cUoHgufTGRHCzMXsSpsdgyZIAhLBgidIotbPVH8y8G764lJy7yC3E/Q4gx7uWTbL+hbx/HtZjNZvPn8+mLtRnWzGLeBrSAIa0OlaSMVYZhKNKIhFBNs1HPhB6IM2sXqwt5HNWPDoC/o2AhT1DaoFlcFiln+TEZMpDwmi8uXKy1aHcayp0i8hDNnAuGN1WSOeLQOJaCpzEDyM0wfI3LlYtcLu/vEpvX7y82n2CVAQjVDbCUuJ/kqSGkzOjPxHMLGxdrzYa6lo9jn9wl3eUcypZmCNmaWmgW40j5NbXR/PfFRrGIo0XZnDQhyJa921CfpLBZy7Hh4/F4j1xhXsZGJlwsRBl4XDeZ6NBvgFB/YErFoeNYMuXCGZqEjadL1J/RwbrWniDviypzdn/+4iKfy3Tkqk1PMOOahqPnE81kYzhhmCBEcI1kc+I8qo0ESKLM8/w9wszkFi4utOOiYTZ6HEDhfR5cPe6Pp1VBbb73R8JpRNTRZ7TnfTyeyRWLRf+bi/MXa6fNy5mZhorUyqENx4tJAQ4ajZnkZfN07cX6xZtosZjLZbTr4ySlHh0ihYsb502YOU0thcx7rZyzEGFjwU9umFsjk1IhyPWoEhr6TJcxBzYXDudzQAt5pALZM6oIDvC0C5rz+YEre/2A3DqTy0HIZpZ/miNzia82mNwtpPMME++G2qlkAOXrHISDTAZyPPESH2S070wmSkMUOqoy6efvDpXPF4uAjmySPSa3ESdp5nEhaWlSRBWioxVbtGvoZLUGLM6TE//ZWChmmIn18sl4BIPVm7RIrP1iUSWeGVKgNgioOVfcWKeigm1SUpEotop4ZTS+0LC4+l7JMfZOcB4nPdoldm4mNC4nLjYikXw/o/EejpmS0AxQ3f29BjHCcTiS27iYuGS7kaL+lCaznNeZKF4BpY9lpRst7HPMlEzKMSR15iJPqorn47rd6b+6CuvRdLyrUdZMCsU3+YsZ7bHMzotOTjEZZGadV61DiGuXnB/Zy3CX2BeEIOP/z+vCAgTHcDiMFoqUYVqMs1fmssxAyYop7hSLhdf/oZOZ+IU5MyIokcbMWbfRj6KKMjcKDu6O9nYTMEjG/a51gZ6abVIe2IiHc8VIxOUCwK68hg+wh3OucVcwWMzlN95crL+YaLKnaS+YGtMchOJlUbMR60KpU2gFmdzecAYVGy7SkGtCj7VUp0DiSyYvMfGtTbzPE8Lc+4k1TJOXySTkSaHTF14mXGAEEM8a5lFEVN8whEFzj/leEoX1MBpgPHfKS0GXEb82sahtPQxWpkmIuWgJye7I+l4PLWk7+nFd4j1wI5AYck5ZUAgbL0J/gEThZY7Z1wK34J3IkQ6LxisnpGSRfLCLcIgaRXLX3IrAq1iKLEBxZvpeOh2HCJDO515wM9A6s+QN8x6EMM5BiAkdRwmvD27W9NGLMEXmnOFm0A+QKFyEYd58JpjkGv4GIQybx8HRCAWcCsPsRs8982GaCaIcMnnOVN9FYqOIvGfCvDgDMSVHeTD8wrzLNyB8Ee4kO85cb/KQYzIYkKyh0/EMULw4IfACTSOImSzu4pjOaCsVmxEUZr5ocE+gh9ZYrIlwI9930EUeBJbJ5PgSaxZRrJkix5STQRRVxpc06yBCF5wqE2zy/FBsREiHYKaWrPXVBSxN8vk3/G4o1wws9DlyQITAGAcheAQhdHHtRRTehbEbBncrlNgivvLhEVXS+zApyOC2YYeSPkLI80MhTaO43vMnW3MRwmDLEoQrLjRSPl8CRkFcKXI1jQi5Vgr0hgTluuB9TkjUrCHsemGBmUKlG2ZuOKLjBok1vM7pQgjDmUTVtIcTyydEuMFLvYAqlwljeH9tBUK1mA+D1bu2OH3wZSGM3SJDD2D0ECKEBQfHD53Ci/EMFeY81kWqI7FbUX30OpgMAobKRyZ4QzlF9QOulsJTE5zBkj7kKpNIms8mbE5hn3DwJa/IhxIxQgjRdR6NcBMQZsJ5YItrD40PIHxXONLkzJhMMIQ8K92MEMIPBjeY+4YKMkGcPhIhRqr3uCEGY/Ge8sSHQoIuXajmbBHCMAeh2GF9hEDVInUbX39kLEWEb4hz1xuOY4i0Jc8445UFoxEKQl1D2OSwjuXOO+rmevdYhOBfOSas9xyEaCcTzLqCnHQ4GiFuxDKEOZ4/Y0X3nvGV4xewo0mEcpMhXOPpEFfn42EW3DijjUYIEmW24OIiBFYmghRNH118i8Klj+nmkuPRiPAF02GRZzXfYqVCnrwiwlmi4HziJUneNaoOGUUgqybjKljncI4I1xnCt7w8NlqHcPFbPYRw2RIaNJbL1+T0+xYSdf/K8UOpKGy5dM9/BEJ87OIdG4hTYLAbJ6zbOM+av4VE4Wq8oxtu1Lqmfq7rR1kpbkt1BhqR6N4yhFePC6ZiRzdvRt3Lumb9uBsLGsIAxw9F4YIGCl+PWtxu0HyuRyZE3GGmCceveXcJUL2aca3zJE8IXVyEgrA+Tpy/G4UQRe8Ku14/EiFkVheyHuE5PtFbMq4Id10HCIEnFx/h+wjM6Mq9HTXhugsp8m5UPz6Bbm6Ybq4nRlCY9XvN6/Peh9oJB694nZjRhPOjJrzOoexdN4+20h02YcQXjCR8HGLxYdwV5PSJIMDxcC5i3iPoY7EbMl3EvBtSLkzWtfNYhOq4SyN4M25C1MA6jXO66V1GdGDWNx4x7aV3jeDL+KMRBl066z3zD1CYCcDV/WVMMERYk4J5D+4IA32h8/gjt/ZFtSPTEfNFNIBhHkvAUITPdVdU/I7d/o9FKER6RjO30g4GDYlZN/oXNu0RGXd1FMwzd6Sw1vXRt2d2utybqjHX0R0qybQbDcBQmqqk53K+1Wg6Ht95HDxI8jvM4yPBYDHIoSLz1PEcr1MwwiRlPgr2YXqMcKcDgk6RiCvyyFgKCN9OIeu+dXUEvSVJ+N7z+uylSA6BS16n9z4S1dtRE66XQO6uqbePRviOOJ/aEvkkMISRdYHTqfohNz6eG/dUOZ2EdRSpK/KWNxD222IIH7uNIQivGeev+ZV3VxK8XtUUjBRxpbiVNyEcn9rm7dPgz+spGCsCjD1qFwN0uJ4ghNzVEzbdMmvmrp4YwnFzhDjQNRMVbyDCxIwmMbJg5hNM+CIRIVI59/Ow5XoKeI8gY+YyBYQRrg5RiLc+nI6LEHuqkSmAGPHxdju+gXDHJ0AAEyqHdWzYmiLGeMalIeTq0Cls00CJrRF3JFQm+cQj1/gwyZ6HRkoluQidwhWJPsJd9HwTwreMc97uJdJMCm0mktobCYJLTqeQTNGMAd4OLd1RYbou8oZjCCN8PwzSOCWu9UG/ZkqX/OPI2bGGUfbeRoRTkQ8vR1opB6ETSv0PTKKj9ktBolPwL8Hbgf4WgstzzMG2uF/3IwqbTIeLvBmrmtx5OqwvMolujtrbQ8lPPTbhE8JrUuLUDve+uihcpiIoikXeHZXRCAUhyRB+uOT4PbaEUYORxMgNqxGEzv4iMKUph5sPk2WymtTlYxACXbI+XEnht9gsRgjhi8ciRPNLlcAagHUeQqdQL0OnqakAz7qq0AfYKvPurm16ppDKQ5+W7e92maJuHt5030K0fQ7mB3wFrngTQkRKoVtMcSPEaIQC5F9iPcXLv3ibROtWf+R9fCfyHvRNTZWmStsj+o7TlAFeFfUtCK+IdR/P7bHC2C5ht1LRkkeGtgKonKnFEYvpdwk009I1p8u3ILxO4GSJbR7rYDGLhDCwZcljX5t2QFiKgMlzCFczJFXempsQTnEQ4u6ljxBy1ygYHDQ3tOTD6/UaMF7i2x/QbgCNeSrASYgM4RRPh2oAECamAvxHWYX1AMh8qrTY4D3+9u20UwGApVKQb6YQc1GHMKlpF0DoG4GwscgiyCb3VpcaLJHQd6z56iERnd8HvF9yu1UXS8j+IqcUHqlDKPQXtS5c1i8Xp3y+kq9yJVjyeVnxEnn3lSp8M62XEaEvxUkX34BwgixharHONb71CiCEXpeCNR+cAZsAgaGZcv36voTTDsmB7aoQVeUSWoPMsdJ1ShYlH+f+qIgMlYghgfs4+DcTrP3I/RMpbjSFFOUD0wkY5U3ECCuxqjyFuUCp6rtJw8xvB2CMUsI8+aLONlPgNDAVpwj5LhLBxRJIAe4CXrjyIEJfYDgg6XCqZWC+VFKqgkmEENUEWovPnHf61sJ3gUQpkPCNCAzfQZCkAoiwVOPESQymKH5fLTlwdc9uooIAE7UqPS9ipMVkzYcYOdYCV9ZrgQRifOR2d++YQjuFCDF2cfwQNIQTm3OnXpZ9gNAntVSzxLMJEwHGsrl2cEfVg7aS8LS/GcIIwg/n1YB3kNri8DMnYucTQCpwh6LtWJhaT15u3rWvtq5vtz/tBIMfgglm7R8+BIM7Nze311tX7bvNy2q98+En8HjgvQR1t9Mp6N9gP8BMfRGEAMZQs+wj67RXiGZaSrjbgwjJ1LRzb1EKEGrq1c325+ubxGKtVk55PAFGiX4KBCrY4vGkynNzi8Gb68/tzWpjG0QEbWzD2+hBaPBDZlCJwKjduO+DWK0B875EZejBPO1j9zTXOng/cB5YXFwEXBWwNx9CRvumH2S+n0p0GgJUohKye1K1xQBGEC3z0sdwh0BAMGJU4yxYvx+hKNxUfMhfatD2dTE3Nq9uIwkI9cB1IFBi3JeY4kqlQQUaUIDl3AR1jdxebRovgbsq3NY+O2sFQFrplyF+lQIlgzVUffPqZnFOsodCGAahExK9ArRAJWBGJSTogD0q9MOQ4sWhULm2eGMAU1QXK2QKqU2rv2B4p1IpBSqllF4Ksu95qE5s3StlD2oNuC0xdMR0haEssRdsLhlhTuhooXelp6WCx55y7f6afZqbvpEG57xKVWjgR943NKBNGTgAFhb1hxTVZPvW43CHjJRUYboIsEtC4GNIbk+lRArzpFIeRpoKEU6pA7djA9S3rARu21X2yCXmwkoA/5X59dUPEGR9YiXhuaUneTe3UjVgEPNDYhBjAoGFgH+pDLaWgsRwuLV+ddVuX9nJI+0f27u7V+tbt4c7wQ8Qb8uS2w6CqoS65tur40TA46592NrE7xAVbj0VGD4Qsizb91DTwUJCea/a3q6hZSI+X6IvihBTkDdT99uTV+2HvWS9N7lXcYhKqdZTeauUNCeurrfvU4saKH0gfWQM0WixN+3kXpkgJ2qPfax0mEBv2x7yj0qqlgolmHDBHHtM08NyXyKw0+iBRXmNfTsBIMQODkRIf1Gmr3RTGztsIE8nh6IMaSaCXHHXPAGymRC/Qv5RhEksbEIJPZhU0NkSms947I65++v2NfGUsJms7qoO9MOEw3D1JIqNGrN3GOe+VpM0mAk04IAeoDAXVSq15FN8A48obLkhflQ60q2wmUPlcnln666KatuTSdbSUOnTQRgwRQjVr0QjKxhEMErvlGV3hUBRvNJiLPqlNVtsgwBFTEUBFlYqTHmVUHnOc9veU1k7JKsy2bHH5IHBqgNbzXQo3DAQeP+A2a66195OzUkU0CraxDB1KMXdEP9Bor2CzRpZJwRKcIWA27EIYVxDp33X062dQuKcMQtVL16f8BohFMX6HI1tPxRE7dP5eF6ttm9rWUDJZiYb3RSf4uu9qbLZdmsIPe65nd09tbN6Z19AIgh3MiJEMzVEmAX+QgFjhEJbhswZqpTvuo99aFW9erm7MyeFGMSKfVsw3CCwBGV90Y6GUgm4P/Z8+UgP1Wv2gAfizg59vdWgnAEhpMlA1hjhjgdbK3Oq4QZA/WOZ1Qj2xaewUY0JKE+zLI6GgmrvuqnL5ran4gEjnqsyq+0nLsLknCfkCaGRDjsxuvg9q4JCjs2nUR/NA5D+lkJghaGE+5MqGtnKXRnYDAWkz4LB34jhIRQ+S9AIiX3ToKCGgT65AwRQ/tsiNIYESVoNejDMhALyrWAUstUaqDBUCaVU0fldOlRTlP8qNaOPakEIKxNAj5370TELSBSTNYAHswUcnw17bKVABNBqVBnzEG4qqMJAastw1EkbAqx4QrWqZatCA9LC5RxMhOJUtq4mh+mrm8n63qDtUKIrpUODtvsUii3k+WrQdrWloGTARrOb1typMCMnrdI+O5jBeFKSJPeTJCtSSGuVlIFG2eaGpQmiH7wMCRbQ8FPxuAeHBCrbQWzg33YF3fspv7ac/XFC4cbOKIT/+wmOPezNYAs7yXAYkTbgUDObyYPXYRKybuvCGCF+8mrvRnK7NYxuj72f3CHtjCfktg8RNLrtBuc1gjUy/Dc4rY1td0s3e09QkPZBFOqHWbcnZdeW6J7Om0Eixswav5fs2kgpjzt72/vFUtaCo/T+UCtbxfYPUrn2IBhVExYARIRXWbtlivkxsqfss5+fxFKpfvk76wmZetHPIo/kmHySv1aCAL1291Bs+QUQ7d6/n0CLmAeziG4wFLqR2BvtUD/dbdIvGujZHWPwqDt095fW5sH32Y/0HJalOEXhbtkgzvfOPsC11Nupe7a3v1uSOmD7zrt7rx2e1m3P3mlcWYgwOSsxpXSpw3P3BGpO0t7a7QBAO6Jmqatu/VDXIJxCtD2jdC5w902hkbRcte7OEwMo7tg8gwBJIfr0dolZpqQDcHetUdKxDfFKatSE0LVst35B58TgZR75E/v+VOuonfVIQ+SWvUDAIjuywYEs9RzYkEHqop9V8Kx+pF3tlqgvviGiC7X+eOBV9JbOMHAC7NS6+g2/raIseYZsRZIPd4FkrcHxGQ6+kGECwEk4+Ky4pXvs8kl2ow16FLzgUEGtSXb5EzZVJLcDf0/aUJ8gtAocfHTQIJK7vMsu6J+Xpiir1pWoeCPfa2ArkjKJzV8ZA9IiHnxWmPtkcTNlb9/tXsazbYedODvAlWF1llmag7ar5jxSFh+jqs9poqFlZwptG058woNJxWByt8NkU/aHEIpCzQigW6ph266DDpVb7Lk3y2Scwuk/g1yW9qAYIlCgIAc+c6QusuuX8YbSXtbutn3EeumejM8NcEEzk6h0ySPvijT5cKgBKltppg+zA56g+cMs6mRvlg4wgIuiukzuY6M7VPcyuOEu3taEdR6MIB/ScLfME8u4X7HrBWO/Rzv5m51dxochxLssgZrFpUR1yWhuyb7/YOGTCreyHSPD0CTAvlNQs3Qwy25WfEUvk+ba0FBHtBj04GxZxujAtlHv6ALlK+rgCw6axXuSd16UAnSn5y2WSenLOGbbNjivFqhurcFHT3E7DKcAVd0gl59QQ6AIKs7JY+2z+FDQJiGZQ/bRkiVZS2JVVDopF7wPBYVxUage4FsHnoVO92UYBscUhBuZ5DuM0GHdptTlgbGRAvv4TMtHBfPAFtvcry6hw2Vx8kkSfvYBRgB3AyGktIcr7KS4PTT/LCrONomgsnj2YE/7/KSCasbz6tyw8TA64H77xHcQ6cUYofsAHAXYRIZxn7OOLqdZIARE4gzYh7NZTJEYevHheoIOunUKk140RtmNs3ylK0FkGIb1MZ3i3r5kPLvba9VDUciR4RxoarhWq4PVyUcQIep4dAthEGytEyHK9zjIPejKewewcVmwuQ+Zhqz6SxkR2pfQqHdBbcohvPkMR+oy+i1i/eyQDI0UqoFJyxB+MjQTnLf8BXtguYNv7uglSzEQyyDqJi+h2iBxQCwC/fwX9Fw/kmS0TKG+VIbMb5dAG6AsCEwUi76gW2IIWmQB2US6kvLJMoQmGkRCroVDh+Qg9QEY4Q/Q6BK64VctPu3fMbXZPGjRf+KnXL4oVHUJd/skg7LtK34v4ZEsH6D6DlCRu17Jhrcw6rNls7nRuK0hp2KOcH+T/FSizDW39ADIPLL8BS3wSOviwKhen6e4IUzu49FHhzRPoqFYBKH4CCPWJ0UuQ+PD0hyWAksSVS0PIDATjHLZqoxvkiwY+5PkcTIG1eqSAz1j0osOAtUNi4Gy7EA7KCsHmKFrthqyfVBW0AIdzAJlCKGEm0ab9KK41Dl5topRyVs2NlNZlhXLEJqkXCZHVNesA/K6uLuPR2CQ+3jTYldbUZQliiO3tnkw3eqRNI+GOK9g0VOd1xFScnyY3b+DwTxKFgPVoeMIJ/coBqWGxQhFp4mv0zzzWHZ8PcAIAVaG7Nfnqbz5ZNMuk/ehUWzPYkxte8sE5tNBm6ybaVnCoAFRaBZNF+35CzbOYjUER7KxEnHL37K69MvQLYguAfugvT8h+UJMkLNtjH6Q2elII1SwUP0vKuaTUkYwwu5/q1DWfdVvTcjlZXTLlAeRZWUZRCRU/9zVjoyprCj3FuGjgGCK0IEBbw+yobB5AIXUDVwweai5GuNflpfBSdV5cDV1VlFkKDaFvT9VzHmaECQZnBTnQTf+Cs55AKneuYy+eegwRSh7Dy1D+HnfHKE0iyEd55r0gmcgmIc2HUlMLpKCcQTYByE8HMhwtCkKKhbYewfd+1NejDFtgKkegePBkVM4RLXOmU4M5vPRIoROZMyclqhwQxuDYC+jLupYL94rcof97GfsgrCz0CWLYDCtfMzqXUCXaKBVSKd7S2B/NhkF5cTwbOYgioJ6t4rqs+YAlf1dtuVfnQdmFEoUeMk88U3sK7Z77b6mG/m1pehOJKwfbN1R5KM/RJLmRy/0Kc9X2VMQu6ZuCMMe8b6t8rsIeAH3UbmWUoIAAAMbSURBVEykiXEE77q19wGRAoULLfDuZsvlbh8MrigE0A9whtnDSSVbT5d93AEVaSogTWwQkM39Q7m3bBsDQt8+ydmAwJOyKj2i9AnqAuhyVKWb4bcOvTv+nn2ghxHb+3BUVvbZmuABEHb5996ype8S2p/i/UQiUbluuGvZ3WAn5CjiVxkm2SYtPeCevwpmKYPZHbBHmhSbfgG+YK3jxCQukyV/pb+JNelljRrN0e3duwN2ap5Wt1C6GczJJoZMbNmT7MDbV69ihI+m2sfIIT4csCMvpgqoVsioGUKw3TI9+bdswzM22yx9FsSj2HrGpGIBAqhXseEhE9vHfdlmBlGxKlewRzD25hVjHQL7ji+qoEKYxCPgZ04V0B4RYaeLcvQHnNw7srE+R8C+8Mc8AO+OU6aFk1rTEGG+cAr3DmO5omggv1p6i+3Qa2Kl6ELLy0dHDnYIDB4dLR9lB7vNHsFpWdfaLFww61D6RpSz0OXIqyG00ZHDWIPoD2Dq1j6UUT1SDGez2fC/TdFa4R1MTif6uzkUm5f11k7gj9wzJp5wdC+kYZWhcfRGm+Ooau0tRAinBzaHyXTEpy57RgY82dh/pgS9T1/H3itlxXAcvaM8i0WrpQ+eiML/vGZOT6zYeuDalEHzstm8to4wtDPDkmKiYIdem4bScEbv/6x/dEisz3kNJmQGqiOkZjC2If7RrhzEmk3pKNo2oEGl19ptmt0OgcOffXoI2dq7a0DVZWCPnOxXEpqHd9liJ0TCLL4371W8ymgmnpRAyt6jvSf4s9UifeJ5ad/xiwlEvD9bfYqnTdhtnvr90i9G6LUd3NeZvC2HyF4m570wjdfhxdl+KjT2a//Pj/inZZ7qGVOs36r38/sOvB1PMJ8epJcRQfR6j77sPenzpcz8N+/nD2hKxPgz6WD+/kH7tMnTIdSC6mR2fml/3+v4aQiz2dn5uck99sGVp3xGWHBqTz6qe7tfy3/+PKp9xU/oiPSXlp/2GVqxt1ZS63/8HKp3Ps5oyZcmPdMzPdMzPdMzPdMzPdMzPdMzPdMzPdMzPdOvoP8D453Jnoj1xS4AAAAASUVORK5CYII="
+                                /> -->
+                            </div>
+                            <span class="logo__name">WebApp</span>
+                        </a>
+                    </div>
+
+                    <div class="header__center"></div>
+
+                    <div class="header__user user" id="user-menu-trigger">
+                        <div class="user__info">
+                            <span class="user__name">Олександр Коваль</span>
+                            <span class="user__login">@oleks_koval</span>
+                        </div>
+                        <div class="user__avatar avatar" data-initials="ОК">
+                            <img
+                                src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAAADhCAMAAAAJbSJIAAAAclBMVEX///8AAADx8fEJCQn39/fw8PD8/PzZ2dn09PTi4uKWlpZwcHDQ0NB9fX1jY2Ps7OxJSUm3t7cqKiqlpaVoaGiFhYW/v79DQ0MXFxd5eXktLS1dXV0lJSXIyMigoKA4ODgdHR1VVVWPj4+tra1PT0+Tk5Na8LRmAAAEkElEQVR4nO3d63aqMBAFYCPIpaiI1vut2vb9X/GUti57LJjLkExi9/e/a2UvQJLJkPZ6AAAAAAAAAAAAAAAAAAAAAAAAAH9VEmf9LE64h2FHklaj8XK6ilbT5XhUpY8Wc1HsxP92xYJ7UN0pz6LZueQeWifKdUu+2voBMj7dyVd74h4gUbqRBBRik3IPkmImzVc7cA/TWFIoBRSiCPTVkbwpBhTiLciI8VE5oBDHmHu4+uKJRkAhluFF3GoFFGLLPWBdI82AQsy5h6yn0g4oRMU9aB25QUAhQprB6T6EXwJ6FE3u0Vow92liGFCIUF78suVEu0AWGrFxQCHCeO8fCAmDWGYkU0LCaQhP4oIQUIgQylPPpIQF9/DlMlJAITLuAFK0mzSE21R/UfG/EXcAKWJAEXEHkBlQE4oBdwQJ6mPo/4OoViG9Z8YdQYL2Nqz5/kZckhMuuSNIUCalX6bcESReyAlfuCPcF0fkhCu/14h9esLI75lpFwn73CHuyjpI6Pdd+vi/NL3bphJ9O+4IEjqbhs2O3BEkxuSEY+4IEubV4Avfq8KmWxZXvm9emO2r/ZRzR5AhJ+QOIEVdID5zB5B6JSZ85Q4gVRITBrDVfSIFPHEPXwHtNvX/Ju31BpTlReR7tfQTpa4fRtsQ5aUfwO9MTbWt9Dffa6UX5i+MQC6h+QLD92XFVSLvX29yDKFN4dveKOGQe9g62r6SuefMPWg96l3sF2/cQ9aU6Rbddn6Xuhvovve9X9r/phcxwIB6EYMM+DG3Ud0unQYzl7mVqNWHx57vxdyl0prhe/OFRC5r298G+gj+sL/3Zlz53h+kZtH2kdfyMfLV0vnvXbfjPOjPY39J8tn62k20XM/ygJZK6pI4T4dp/qjHRgCAU3m1MKjOl2Uo89P8syKsWxncf0wLNk8hLPSHl4noRqd0Vn6vQla+Z0wWPyulJ9VJy2D+46/WHk91ssPtkvdZZbT5/OavTnvrQzUyOK8aJteTSjKB2Tetko8ebpT2by/EVdF+SYbztu3UlWfr4oGkxr2dpf2ba9lPZ5LGlJk/L49Yaa9pWYwO1X6YDvfVYVSonAuye/Vkiv5K75pts/GhyW1oL1/tyP3uKM13tFWtWdszqC1eSiK+W7U8uQj4Ycv0gQK9WVYdR1EuoX7wq8d9K9FA76ArujfHd2pK/zZGV+S0/D90nq/msFfDrJmEztmqiucK1hxdRfoHB+acPIvafSRd2rlYUdG/R6dw8LGCy5lME+uTVOrxM3S2y43t5RhXLM/f+C+h7YtI/7yQzu6JZ2bNv93a2AyYcqf7ZLN0Qz99pgs2i8X2604qbH6Vod/bbIPFfumYfvpMF6b2JqdZ0+6Seyt7b8QOTi7pgsXTT5DQESREQiTkZzFhZnc3VJXNT6Rcb1Y0m9gL+Adm3tyFti82y22k8xK6YvfcBf5Sm+1iG+W/AnTFcmGffk4wlfUt/XfmgO+2A3JHdBCQ90Z11HUSt3aF2hXN3fVjDqpisotc2k2KynWDW9Z3yfMWfgAAAAAAAAAAAAAAAAAAAAAAAABF/wCB50Scz71fkQAAAABJRU5ErkJggg=="
+                            />
+                        </div>
+
+                        <!-- USER DROPDOWN -->
+                        <div class="user__dropdown dropdown" id="user-dropdown">
+                            <a href="/profile" class="dropdown__item">
+                                <div class="dropdown_icon">
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                </div>
+                                <span>Профіль</span>
+                            </a>
+
+                            <a href="/settings" class="dropdown__item">
+                                <div class="dropdown_icon">
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path
+                                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                                        ></path>
+                                    </svg>
+                                </div>
+                                <span>Налаштування</span>
+                            </a>
+
+                            <hr class="dropdown__divider" />
+
+                            <a href="/logout" class="dropdown__item dropdown__item--logout">
+                                <div class="dropdown_icon">
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                        <polyline points="16 17 21 12 16 7"></polyline>
+                                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                                    </svg>
+                                </div>
+                                <span>Вийти</span>
+                            </a>
+
+                            <!-- <a href="#" class="dropdown__item"><i>👤</i>Профіль</a>
+                            <a href="#" class="dropdown__item"><i>⚙️</i>Налаштування</a>
+                            <hr class="dropdown__divider" />
+                            <a href="#" class="dropdown__item dropdown__item--logout"
+                                ><i>🚗</i>Вийти</a
+                            > -->
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- BODY -->
+            <main class="page-layout__main">
+                <div class="page-layout__body">
+                    <!-- LEFT SIDEBAR (Optional) -->
+                    <aside
+                        class="page-layout__sidebar page-layout__sidebar--left is-collapsed"
+                        id="left-sidebar"
+                    >
+                        <nav class="page-layout__nav">
+                            <a href="#" class="page-layout__nav-item active">
+                                <div class="page-layout__nav-icon">🏠</div>
+                                <span class="page-layout__nav-label">Головна</span>
+                            </a>
+                            <a href="#" class="page-layout__nav-item">
+                                <div class="page-layout__nav-icon">📊</div>
+                                <span class="page-layout__nav-label">Аналітика</span>
+                            </a>
+
+                            <div class="page-layout__nav-sep"></div>
+
+                            <a href="#" class="page-layout__nav-item">
+                                <div class="page-layout__nav-icon">📦</div>
+                                <span class="page-layout__nav-label">Товари</span>
+                            </a>
+
+                            <div class="page-layout__nav-sep"></div>
+
+                            <a href="/dashboard" class="page-layout__nav-item" title="Панель">
+                                <div class="page-layout__nav-icon">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                    >
+                                        <rect x="3" y="3" width="7" height="7"></rect>
+                                        <rect x="14" y="3" width="7" height="7"></rect>
+                                        <rect x="14" y="14" width="7" height="7"></rect>
+                                        <rect x="3" y="14" width="7" height="7"></rect>
+                                    </svg>
+                                </div>
+                                <span class="page-layout__nav-label">Панель</span>
+                            </a>
+
+                            <a href="/schemas" class="page-layout__nav-item" title="Схеми">
+                                <div class="page-layout__nav-icon">
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                    >
+                                        <path
+                                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+                                        ></path>
+                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                    </svg>
+                                </div>
+                                <span class="page-layout__nav-label">Схеми</span>
+                            </a>
+
+                            <div class="page-layout__nav-sep"></div>
+                        </nav>
+
+                        <div class="page-layout__sidebar-footer">
+                            <a href="#" class="page-layout__nav-item">
+                                <div class="page-layout__nav-icon">❓</div>
+                                <span class="page-layout__nav-label">Допомога</span>
+                            </a>
+                        </div>
+                    </aside>
+
+                    <!-- CONTENT AREA -->
+                    <section class="page-layout__content">
+                        <div class="page-layout__content-inner">
+                            <div
+                                style="
+                                    height: 150vh;
+                                    background: linear-gradient(
+                                        180deg,
+                                        var(--accent) 0%,
+                                        transparent 100%
+                                    );
+                                    opacity: 0.05;
+                                "
+                            ></div>
+                        </div>
+
+                        <!-- BODY FOOTER (Optional) -->
+                        <footer class="page-layout__footer">
+                            <div class="page-layout__container">
+                                <span class="footer__copyright"
+                                    >© 2024 Enterprise Application Framework</span
+                                >
+                            </div>
+                        </footer>
+                    </section>
+
+                    <!-- RIGHT SIDEBAR (Optional) -->
+                    <aside
+                        class="page-layout__sidebar page-layout__sidebar--right is-hidden"
+                        id="sidebar-right"
+                    >
+                        <!-- Кнопка керування (завжди видима) -->
+                        <button class="sidebar-toggle-right">
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path
+                                    d="M4 21v-7m0-4V3m8 18v-9m0-4V3m8 18v-5m0-4V3M1 14h6m2-6h6m2 8h6"
+                                />
+                            </svg>
+                        </button>
+
+                        <div class="sidebar-right__inner">
+                            <div class="sidebar-right__header">
+                                <span class="sidebar-title">Інструменти</span>
+                            </div>
+
+                            <nav class="page-layout__nav">
+                                <!-- Багато елементів для тесту скролу -->
+                                <div class="page-layout__nav-item">Дія 1</div>
+                                <div class="page-layout__nav-item">Дія 2</div>
+                                <div class="page-layout__nav-sep"></div>
+                                <div class="page-layout__nav-item">Дія 3</div>
+                                <div class="page-layout__nav-item">Дія 4</div>
+                                <div class="page-layout__nav-item">Дія 5</div>
+                                <div class="page-layout__nav-item">Дія 6</div>
+                                <div class="page-layout__nav-item">Дія 7</div>
+                                <div class="page-layout__nav-item">Дія 8</div>
+                                <div class="page-layout__nav-item">Дія 9</div>
+                                <div class="page-layout__nav-item">Дія 10</div>
+                                <div class="page-layout__nav-item">Дія 11</div>
+                                <div class="page-layout__nav-item">Дія 12</div>
+                                <div class="page-layout__nav-item">Дія 13</div>
+                                <div class="page-layout__nav-item">Дія 14</div>
+                                <div class="page-layout__nav-item">Дія 15</div>
+                                <div class="page-layout__nav-item">Дія 16</div>
+                                <div class="page-layout__nav-item">Дія 17</div>
+                                <div class="page-layout__nav-item">Дія 18</div>
+                                <div class="page-layout__nav-item">Дія 19</div>
+                                <div class="page-layout__nav-item">Дія 20</div>
+                                <div class="page-layout__nav-item">Дія 21</div>
+                                <div class="page-layout__nav-item">Дія 22</div>
+                                <div class="page-layout__nav-item">Дія 23</div>
+                                <div class="page-layout__nav-item">Дія 24</div>
+                                <div class="page-layout__nav-item">Дія 25</div>
+                                <div class="page-layout__nav-item">Дія 26</div>
+                                <div class="page-layout__nav-item">Дія 27</div>
+                            </nav>
+
+                            <!-- <div class="page-layout__sidebar-footer">
+                                <button
+                                    class="page-layout__nav-item"
+                                    style="
+                                        width: 100%;
+                                        border: none;
+                                        background: transparent;
+                                        cursor: pointer;
+                                        color: #fb7185;
+                                    "
+                                    onclick="
+                                        document
+                                            .getElementById('sidebar-right')
+                                            .classList.add('is-hidden')
+                                    "
+                                >
+                                    <span class="page-layout__nav-label">Закрити панель</span>
+                                </button>
+                            </div> -->
+                        </div>
+                    </aside>
+                </div>
+            </main>
+
+            <!-- FOOTER (Optional) -->
+            <footer class="page-layout__footer">
+                <div class="page-layout__container">
+                    <span class="footer__copyright">© 2024 Enterprise Application Framework</span>
+                </div>
+            </footer>
+        </div>
+    </body>
+</html>

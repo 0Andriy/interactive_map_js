@@ -1,0 +1,578 @@
+/* --- Variables & Core --- */
+:root {
+    --bg-deep: #0f172a; /* Було #020617 (глибший синій замість майже чорного) */
+    --bg-dark: #1e293b; /* Було #0a1120 (світліший slate тон) */
+    --bg-sidebar: rgba(30, 41, 59, 0.5); /* Більш насичений фон панелі */
+    --border: rgba(255, 255, 255, 0.12); /* Було 0.08 (чіткіші лінії) */
+    --accent: #60a5fa; /* Було #3b82f6 (світліший блакитний) */
+    --text-main: #f8fafc; /* Було #f1f5f9 (майже білий) */
+    --text-secondary: #cbd5e1; /* Було #94a3b8 (світло-сірий замість тьмяного) */
+    --header-height: 64px;
+    --sidebar-left-width: 240px;
+    --sidebar-left-collapsed: 68px;
+}
+
+:root {
+    /* Основна палітра - тепер м'якша, ближче до Slate/Zinc 900 */
+    --bg-deep: #111114; /* Було #09090b (світліша база) */
+    --bg-dark: #1a1a1e; /* Було #121214 (світліші картки) */
+    --bg-sidebar: rgba(26, 26, 30, 0.8); /* Більш виражений фон сайдбару */
+
+    /* Тонкі деталі - зробили чіткішими */
+    --border: rgba(255, 255, 255, 0.1); /* Було 0.06 (краще видно межі) */
+    --border-bright: rgba(255, 255, 255, 0.18); /* Було 0.1 */
+
+    /* Акцент - зробили трохи насиченішим для кращого контрасту */
+    --accent: #22d3ee; /* Свіжий Cyan 400 */
+    --accent-gradient: linear-gradient(135deg, #38bdf8 0%, #2dd4bf 100%);
+
+    /* Типографіка */
+    --text-main: #ffffff; /* Максимально чистий білий */
+    --text-secondary: #cbd5e1; /* Було #a1a1aa (світліший текст опису) */
+
+    /* Розміри (залишаємо без змін) */
+    --header-height: 64px;
+    --sidebar-left-width: 240px;
+    --sidebar-left-collapsed: 72px;
+    --sidebar-right-width: 300px;
+    --sidebar-right-collapsed: 0px;
+
+    /* Додатково для стилю */
+    --radius: 12px;
+    --shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.45); /* Глибша тінь для об'єму */
+}
+
+/* --- Professional Scroll --- */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--bg-deep);
+    color: var(--text-main);
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* --- Layout Architecture --- */
+.page-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+
+    & .page-layout__header {
+        flex: 0 0 var(--header-height);
+        background: var(--bg-dark);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        z-index: 100;
+        position: relative;
+    }
+
+    & .page-layout__main {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+    }
+
+    & .page-layout__body {
+        display: grid;
+        width: 100%;
+        height: 100%;
+        grid-template-columns: [left] auto [main] minmax(0, 1fr) [right] auto;
+
+        /* display: flex;
+        width: 100%;
+        height: 100%; */
+    }
+
+    & .page-layout__sidebar {
+        height: 100%;
+        min-height: 0; /* Дозволяє елементу бути меншим за свій контент */
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background: var(--bg-sidebar);
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        flex-shrink: 0;
+        z-index: 10;
+        position: relative;
+
+        /* flex: 0 0 auto;  Не росте, не стискається, ширина по контенту */
+
+        &.page-layout__sidebar--left {
+            width: var(--sidebar-left-width);
+            border-right: 1px solid var(--border);
+            grid-column: left;
+            overflow: hidden;
+
+            &.is-collapsed {
+                width: var(--sidebar-left-collapsed);
+
+                & .page-layout__nav-label {
+                    width: 0;
+                    opacity: 0;
+                    pointer-events: none;
+                }
+
+                & .page-layout__nav-icon {
+                    margin-right: 0;
+                }
+            }
+        }
+
+        &.page-layout__sidebar--right {
+            width: var(--sidebar-right-width);
+            border-left: 1px solid var(--border);
+            grid-column: right;
+            overflow: visible;
+
+            .sidebar-right__header {
+                flex: 0 0 56px; /* Чітка висота хедера */
+                display: flex;
+                align-items: center; /* Центрування по вертикалі */
+                padding: 0 16px; /* Горизонтальні відступи */
+                border-bottom: 1px solid var(--border);
+                background: var(--bg-sidebar);
+            }
+
+            .sidebar-title {
+                font-size: 0.875rem; /* 14px */
+                font-weight: 600; /* Напівжирний */
+                color: var(--text-main); /* Основний колір тексту */
+                letter-spacing: 0.025em; /* Легкий міжлітерний відступ */
+                white-space: nowrap; /* Щоб текст не переносився при анімації */
+                overflow: hidden;
+                text-overflow: ellipsis; /* Три крапки, якщо текст раптом не влізе */
+            }
+
+            & .sidebar-right__inner {
+                width: var(--sidebar-right-width);
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                transition: opacity 0.2s;
+            }
+
+            &.is-hidden {
+                width: 0;
+                border-left: none;
+
+                & .sidebar-right__inner {
+                    width: 0;
+                    opacity: 0;
+                    pointer-events: none;
+                }
+            }
+        }
+
+        &:empty {
+            display: none;
+        }
+    }
+
+    & .page-layout__content {
+        grid-column: main;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-deep);
+        container-type: inline-size;
+
+        /* flex: 1 1 0; Росте, стискається, базова ширина 0
+        min-width: 0;  Обов'язково для запобігання переповненню */
+    }
+
+    & .page-layout__content-inner {
+        padding: 1rem; /*32px;*/
+        flex: 1;
+    }
+
+    & .page-layout__footer {
+        flex: 0 0 48px;
+        background: var(--bg-dark);
+        border-top: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+    }
+}
+
+.page-layout__container {
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+/* --- Sidebar Navigation --- */
+.page-layout__nav {
+    padding: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    min-height: 0;
+    scrollbar-gutter: stable;
+}
+
+.page-layout__nav-item {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 12px;
+    text-decoration: none;
+    color: var(--text-secondary, #999);
+    border-radius: 8px;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: #fff;
+    }
+
+    &.active {
+        background: rgba(59, 130, 246, 0.3);
+        color: var(--accent, #3b82f6);
+    }
+
+    /* .is-collapsed & {
+        align-items: center;
+        background-color: red;
+    } */
+}
+
+.page-layout__nav-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-right: 16px;
+    transition: margin 0.3s;
+    font-size: 18px;
+
+    svg {
+        width: 100%;
+        height: 100%;
+    }
+}
+
+.page-layout__nav-label {
+    font-size: 0.85rem;
+    transition:
+        opacity 0.2s,
+        visibility 0.2s;
+}
+
+.page-layout__nav-sep {
+    flex-shrink: 0;
+    height: 1px;
+    background: red; /*var(--border);*/
+    margin: 8px;
+    opacity: 0.5;
+}
+
+.page-layout__sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid var(--border, #333);
+}
+
+/* --- Toggle Button --- */
+.sidebar-toggle-right {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 100;
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: black;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* &::before {
+        content: '✕';
+        font-size: 14px;
+        font-weight: bold;
+    } */
+
+    /* .page-layout__sidebar--right.is-hidden &::before {
+        content: '⚙️';
+        font-size: 16px;
+    } */
+
+    .is-hidden & {
+        right: 12px;
+        color: white;
+        background: var(--bg-dark);
+        border-color: var(--accent);
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.08); /* Легке підсвічування фону */
+
+            & svg {
+                color: var(--accent); /* Лінії стають акцентними */
+            }
+        }
+    }
+}
+
+/* --- Header & Components --- */
+.header {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+
+    & .header__left,
+    & .header__user {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    & .header__burger {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px;
+        border-radius: 8px; /* Додаємо радіус для фону при ховері */
+        transition: all 0.2s ease; /* Плавність для всього */
+
+        & span {
+            width: 18px;
+            height: 2px;
+            background: var(--text-main);
+            transition:
+                background 0.2s ease,
+                transform 0.2s ease;
+        }
+
+        /* Ефект при наведенні */
+        &:hover {
+            background: rgba(255, 255, 255, 0.08); /* Легке підсвічування фону */
+
+            & span {
+                background: var(--accent); /* Лінії стають акцентними */
+            }
+        }
+
+        /* Ефект при натисканні (активному стані) */
+        &:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.12);
+        }
+    }
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: inherit;
+
+    & .logo__icon {
+        width: 32px;
+        height: 32px;
+        background: var(--accent);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden; /* Щоб картинка не вилазила за радіус */
+        flex-shrink: 0; /* Щоб логотип не стискався флексом */
+
+        & img {
+            /* Магія правильного відображення */
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Картинка впишеться в 32px, зберігаючи пропорції */
+
+            display: block;
+        }
+
+        /* Якщо це все ще SVG, але через тег img */
+        & .logo_svg,
+        & svg {
+            width: 18px;
+            height: 18px;
+            display: block;
+            color: var(--bg-deep); /* Працюватиме тільки для inline SVG */
+        }
+    }
+
+    & .logo__name {
+        font-weight: 700;
+        font-size: 18px;
+    }
+}
+
+.user {
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: 0.2s;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.05);
+    }
+
+    & .user__info {
+        text-align: right;
+    }
+
+    & .user__name {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    & .user__login {
+        font-size: 12px;
+        color: var(--text-secondary);
+    }
+}
+
+.avatar {
+    /* 1. Керуюча змінна */
+    --size: 36px;
+
+    width: var(--size);
+    height: var(--size);
+    border-radius: 50%;
+
+    /* Стиль */
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+
+    /* 2. Динамічний шрифт (завжди 35% від розміру аватара) */
+    color: var(--accent);
+    font-weight: bold;
+    font-size: calc(var(--size) * 0.35);
+    user-select: none;
+
+    /* Ініціали */
+    &::before {
+        content: attr(data-initials);
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Картинка */
+    & img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        z-index: 2;
+    }
+
+    /* Заглушка (якщо немає ініціалів та картинки) */
+    &:not([data-initials]):not(:has(img))::after {
+        content: '👤';
+        font-size: calc(var(--size) * 0.5);
+        opacity: 0.5;
+    }
+}
+
+.dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 200px;
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+    transition: 0.2s;
+    padding: 8px;
+    z-index: 1000;
+
+    &.dropdown--open {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+
+    & .dropdown__item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        color: var(--text-main);
+        text-decoration: none;
+        border-radius: 6px;
+        font-size: 14px;
+
+        & .dropdown_icon {
+            display: block;
+            width: 16px;
+            height: 16px;
+        }
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        &.dropdown__item--logout {
+            color: #fb7185;
+        }
+    }
+
+    & .dropdown__divider {
+        border: 0;
+        border-top: 1px solid var(--border);
+        margin: 8px 0;
+    }
+}
+
+.footer__copyright {
+    font-size: 12px;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+}
