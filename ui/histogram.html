@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perfect Contained Histograms</title>
+  <style>
+    /* --- СТИЛІ СЦЕНИ --- */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #0b0b0e;
+      font-family: system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+    }
+
+    .scena {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+
+      /* АБСОЛЮТНА НОДА НА СЦЕНІ */
+      .schema-node {
+        position: absolute;
+        
+        /* АВТОНОМНИЙ ВІДЖЕТ (Класичний border на самому контейнері) */
+        .histogram {
+          --border-thickness: 2px; /* Змінна для товщини рамки */
+          
+          position: relative;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          background-color: var(--bg-color, #1a1a24);
+          border: var(--border-thickness) solid var(--dynamic-color, #388e3c);
+          border-radius: 8px;
+          overflow: hidden; /* Обрізає заливку по радіусу кутів */
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+          transition: border-color 0.3s ease;
+          z-index: 1;
+
+          /* ЕЛЕМЕНТИ FLEXBOX ЗАЛИВКИ */
+          .fill {
+            flex-grow: var(--fill-level-pc, 0);
+            background-color: var(--dynamic-color, #4caf50);
+            transition: flex-grow 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease; 
+          }
+
+          .empty {
+            flex-grow: calc(100 - var(--fill-level-pc, 0));
+            transition: flex-grow 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+
+          /* СІТКА ПОДІЛОК (ШКАЛА) */
+          .ticks-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+
+            .tick {
+              background-color: rgba(255, 255, 255, 0.12);
+            }
+          }
+
+          /* ВНУТРІШНІ ЛІНІЇ ОБМЕЖЕНЬ ТА ПІДПИСИ */
+          .limit-wrapper {
+            position: absolute;
+            z-index: 3;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            .limit-line {
+              position: absolute;
+              background-color: var(--l-color, red);
+              box-shadow: 0 0 6px var(--l-color);
+            }
+
+            .limit-text {
+              position: absolute;
+              background: rgba(11, 11, 14, 0.9);
+              color: var(--l-color);
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-size: 0.7rem;
+              font-weight: bold;
+              white-space: nowrap;
+              border: 1px solid var(--l-color);
+              box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            }
+          }
+
+          /* ГОЛОВНИЙ ЦЕНТРАЛЬНИЙ ТЕКСТ */
+          .label {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: bold;
+            font-size: 1.1rem;
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.9);
+            z-index: 4;
+            pointer-events: none;
+          }
+
+          /* --- CSS NESTING: ПРИВ'ЯЗКА ЛІНІЙ З УРАХУВАННЯМ РАМКИ ЧЕРЕЗ CALC --- */
+
+          /* 1. Вертикальний нормальний (Знизу вгору) */
+          &.vertical {
+            flex-direction: column;
+            .ticks-layer { flex-direction: column-reverse; .tick { width: 100%; height: 1px; } }
+            
+            .limit-wrapper {
+              /* Вираховуємо позицію у відсотках між межами рамки */
+              bottom: calc(var(--l-pos) * (100% - var(--border-thickness) * 2) / 100);
+              left: 0; 
+              width: 100%; 
+              height: 0;
+
+              .limit-line { width: 100%; height: 3px; left: 0; }
+              .limit-text { right: 8px; }
+            }
+
+            /* 2. Вертикальний інвертований (Зверху вниз) */
+            &.inverted {
+              flex-direction: column-reverse;
+              .ticks-layer { flex-direction: column; }
+              
+              .limit-wrapper {
+                top: calc(var(--l-pos) * (100% - var(--border-thickness) * 2) / 100);
+                bottom: auto;
+                .limit-text { left: 8px; right: auto; }
+              }
+            }
+          }
+
+          /* 3. Горизонтальний нормальний (Зліва направо) */
+          &.horizontal {
+            flex-direction: row-reverse;
+            .ticks-layer { flex-direction: row; .tick { height: 100%; width: 1px; } }
+            
+            .limit-wrapper {
+              left: calc(var(--l-pos) * (100% - var(--border-thickness) * 2) / 100);
+              top: 0; 
+              height: 100%; 
+              width: 0;
+
+              .limit-line { height: 100%; width: 3px; top: 0; }
+              .limit-text { bottom: 8px; }
+            }
+
+            /* 4. Горизонтальний інвертований (Справа наліво) */
+            &.inverted {
+              flex-direction: row;
+              .ticks-layer { flex-direction: row-reverse; }
+              
+              .limit-wrapper {
+                right: calc(var(--l-pos) * (100% - var(--border-thickness) * 2) / 100);
+                left: auto;
+                .limit-text { top: 8px; bottom: auto; }
+              }
+            }
+          }
+
+        }
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <main class="scena">
+
+    <!-- Віджет 1: Вертикальний нормальний (0-100) з 5 поділками і 2 лімітами -->
+    <section class="schema-node" style="top: 10%; left: 5%; width: 150px; height: 320px;">
+      <div class="histogram vertical" 
+           data-min="0" 
+           data-max="100" 
+           data-ticks="5"
+           data-unit="%"
+           data-default-color="#2ecc71"
+           data-limits='[
+             {"value": 55, "color": "#f1c40f", "name": "WARN"}, 
+             {"value": 85, "color": "#e74c3c", "name": "ALARM"}
+           ]'>
+        <div class="empty"></div>
+        <div class="fill"></div>
+        <span class="label">0%</span>
+      </div>
+    </section>
+
+    <!-- Віджет 2: Вертикальний інвертований (-50...50) -->
+    <section class="schema-node" style="top: 10%; left: 25%; width: 150px; height: 320px;">
+      <div class="histogram vertical inverted" 
+           data-min="-50" 
+           data-max="50" 
+           data-ticks="4"
+           data-unit="°C"
+           data-default-color="#00e5ff"
+           data-limits='[
+             {"value": 0, "color": "#ffb74d", "name": "ZERO"},
+             {"value": 35, "color": "#ff3d00", "name": "HOT"}
+           ]'>
+        <div class="empty"></div>
+        <div class="fill"></div>
+        <span class="label">0°C</span>
+      </div>
+    </section>
+
+    <!-- Віджет 3: Горизонтальний нормальний (100-500) -->
+    <section class="schema-node" style="top: 60%; left: 5%; width: 520px; height: 120px;">
+      <div class="histogram horizontal" 
+           data-min="100" 
+           data-max="500" 
+           data-ticks="6"
+           data-unit=" kW"
+           data-default-color="#a855f7"
+           data-limits='[
+             {"value": 250, "color": "#ffeb3b", "name": "LOAD"},
+             {"value": 420, "color": "#f44336", "name": "OVER"}
+           ]'>
+        <div class="empty"></div>
+        <div class="fill"></div>
+        <span class="label">0 kW</span>
+      </div>
+    </section>
+
+     <!-- Віджет 3: Горизонтальний нормальний (100-500) -->
+    <section class="schema-node" style="top: 80%; left: 5%; width: 520px; height: 120px;">
+      <div class="histogram horizontal inverted" 
+           data-min="100" 
+           data-max="500" 
+           data-ticks="6"
+           data-unit=" kW"
+           data-default-color="#a855f7"
+           data-limits='[
+             {"value": 250, "color": "#ffeb3b", "name": "LOAD"},
+             {"value": 420, "color": "#f44336", "name": "OVER"}
+           ]'>
+        <div class="empty"></div>
+        <div class="fill"></div>
+        <span class="label">0 kW</span>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const histograms = document.querySelectorAll(".histogram");
+
+      // Масштабування фізичного значення у відсоток від 0 до 100
+      function valueToPercentage(value, min, max) {
+        if (max === min) return 0;
+        return Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
+      }
+
+      // 1. СТВОРЕННЯ ВНУТРblockІШНІХ ЕЛЕМЕНТІВ ВІДЖЕТА ЧЕРЕЗ JS
+      histograms.forEach(chart => {
+        const min = parseFloat(chart.dataset.min);
+        const max = parseFloat(chart.dataset.max);
+        const tickCount = parseInt(chart.dataset.ticks || "5", 10);
+        
+        // Генеруємо сітку поділок шкали всередині .histogram
+        const ticksLayer = document.createElement("div");
+        ticksLayer.classList.add("ticks-layer");
+        for (let i = 0; i <= tickCount; i++) {
+          const tick = document.createElement("div");
+          tick.classList.add("tick");
+          ticksLayer.appendChild(tick);
+        }
+        chart.appendChild(ticksLayer);
+
+        // Парсимо ліміти
+        let limits = [];
+        try {
+          limits = JSON.parse(chart.dataset.limits || "[]");
+        } catch (e) {
+          console.error("JSON parse error:", e);
+        }
+
+        limits.sort((a, b) => a.value - b.value);
+        chart.activeLimits = limits; 
+
+        // Створюємо лінії лімітів та підписи всередині .histogram
+        limits.forEach(limit => {
+          const wrapper = document.createElement("div");
+          wrapper.classList.add("limit-wrapper");
+          
+          const posPercent = valueToPercentage(limit.value, min, max);
+          wrapper.style.setProperty("--l-pos", posPercent); // Передаємо як чисте число
+          wrapper.style.setProperty("--l-color", limit.color);
+
+          const line = document.createElement("div");
+          line.classList.add("limit-line");
+          wrapper.appendChild(line);
+
+          const textNode = document.createElement("div");
+          textNode.classList.add("limit-text");
+          textNode.textContent = `${limit.name} (${limit.value})`;
+          wrapper.appendChild(textNode);
+          
+          chart.appendChild(wrapper);
+        });
+      });
+
+      // 2. ІМІТАЦІЯ РАУНДІВ ОНОВЛЕННЯ ДАТЧИКІВ
+      function updateSensors() {
+        histograms.forEach(chart => {
+          const min = parseFloat(chart.dataset.min);
+          const max = parseFloat(chart.dataset.max);
+          const unit = chart.dataset.unit || "";
+          const defaultColor = chart.dataset.defaultColor || "#4caf50";
+          const limits = chart.activeLimits || [];
+
+          // Випадкове нове значення датчика
+          const currentValue = Math.random() * (max - min) + min;
+          const currentPercent = valueToPercentage(currentValue, min, max);
+
+          // Рухаємо Flexbox-заливку
+          chart.style.setProperty("--fill-level-pc", currentPercent);
+
+          // Міняємо головну текстову мітку
+          const label = chart.querySelector(".label");
+          if (label) {
+            label.textContent = `${Math.round(currentValue)}${unit}`;
+          }
+
+          // Визначаємо поточний аварійний колір
+          let activeColor = defaultColor;
+          for (let i = 0; i < limits.length; i++) {
+            if (currentValue >= limits[i].value) {
+              activeColor = limits[i].color;
+            }
+          }
+
+          // Записуємо колір у динамічну змінну (зміниться border і fill разом)
+          chart.style.setProperty("--dynamic-color", activeColor);
+        });
+      }
+
+      updateSensors();
+      setInterval(updateSensors, 2000); // Оновлення кожні 2 секунди
+    });
+  </script>
+</body>
+</html>
