@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radial Sector Counter</title>
+    <style>
+        :root {
+            --bg-main: #111111;
+            --bg-card: #1e1e1e;
+            --text-primary: #ffffff;
+            --text-secondary: #aaaaaa;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 30px;
+        }
+
+        .charts-grid {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .chart-card {
+            background-color: var(--bg-card);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 320px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+
+        .canvas-target {
+            width: 280px;
+            height: 280px;
+            margin: 0 auto 15px auto;
+        }
+
+        .slider-wrapper {
+            margin-top: 15px;
+        }
+
+        .slider-input {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .value-badge {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 4px 12px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Радіальний секторний лічильник</h1>
+
+    <div class="charts-grid">
+        
+        <div class="chart-card">
+            <div class="card-title">Віджет 1 (String ID)</div>
+            <div id="chart-by-id" class="canvas-target"></div>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-id" min="-60" max="60" value="15" class="slider-input">
+            </div>
+            <div id="badge-id" class="value-badge">+15</div>
+        </div>
+
+        <div class="chart-card">
+            <div class="card-title">Віджет 2 (HTMLElement)</div>
+            <div class="js-dom-target canvas-target"></div>
+            <div class="slider-wrapper">
+                <input type="range" id="slider-dom" min="-60" max="60" value="-25" class="slider-input">
+            </div>
+            <div id="badge-dom" class="value-badge">-25</div>
+        </div>
+
+    </div>
+
+    <script>
+        const RadialChart = {
+            SETTINGS: {
+                TOTAL_SEGMENTS: 60,
+                STEP_INTERVAL: 5,
+                LINE_WIDTH_BORDER: 3,
+                LINE_WIDTH_AXIS: 2,
+                COLOR_BACKGROUND: '#4a4a4a',
+                COLOR_FOREGROUND: '#000000',
+                COLOR_TEXT: '#ffffff'
+            },
+
+            convertToRadians(value) {
+                const degreesPerUnit = 360 / this.SETTINGS.TOTAL_SEGMENTS;
+                return (value * degreesPerUnit * Math.PI) / 180 - Math.PI / 2;
+            },
+
+            render(container, value = 0, activeSectorColor = '#ff9800') {
+                const targetElement = typeof container === 'string' 
+                    ? document.getElementById(container) 
+                    : container;
+
+                if (!targetElement || !(targetElement instanceof HTMLElement)) {
+                    return;
+                }
+
+                targetElement.innerHTML = '';
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                const size = Math.min(targetElement.clientWidth, targetElement.clientHeight);
+                canvas.width = size;
+                canvas.height = size;
+                targetElement.appendChild(canvas);
+
+                const centerX = size / 2;
+                const centerY = size / 2;
+                
+                const maxRadius = size * 0.45;          
+                const innerCircleRadius = size * 0.35;  
+
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, maxRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = this.SETTINGS.COLOR_BACKGROUND;
+                ctx.fill();
+
+                if (value !== 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+
+                    const startAngle = this.convertToRadians(0);
+                    const endAngle = this.convertToRadians(value);
+                    const isCounterClockwise = value < 0;
+
+                    ctx.arc(centerX, centerY, innerCircleRadius, startAngle, endAngle, isCounterClockwise);
+                    ctx.closePath();
+                    ctx.fillStyle = activeSectorColor;
+                    ctx.fill();
+                }
+
+                ctx.font = `bold ${size * 0.045}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                for (let i = 0; i < this.SETTINGS.TOTAL_SEGMENTS; i += this.SETTINGS.STEP_INTERVAL) {
+                    const angle = this.convertToRadians(i);
+
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.lineTo(
+                        centerX + innerCircleRadius * Math.cos(angle), 
+                        centerY + innerCircleRadius * Math.sin(angle)
+                    );
+                    ctx.strokeStyle = this.SETTINGS.COLOR_FOREGROUND;
+                    ctx.lineWidth = this.SETTINGS.LINE_WIDTH_AXIS;
+                    ctx.stroke();
+
+                    const textRadius = (maxRadius + innerCircleRadius) / 2;
+                    const textX = centerX + textRadius * Math.cos(angle);
+                    const textY = centerY + textRadius * Math.sin(angle);
+                    
+                    ctx.fillStyle = this.SETTINGS.COLOR_TEXT;
+                    ctx.fillText(i.toString(), textX, textY);
+                }
+
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, innerCircleRadius, 0, 2 * Math.PI);
+                ctx.strokeStyle = this.SETTINGS.COLOR_FOREGROUND;
+                ctx.lineWidth = this.SETTINGS.LINE_WIDTH_BORDER;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, maxRadius, 0, 2 * Math.PI);
+                ctx.strokeStyle = this.SETTINGS.COLOR_FOREGROUND;
+                ctx.lineWidth = this.SETTINGS.LINE_WIDTH_BORDER;
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 6, 0, 2 * Math.PI);
+                ctx.fillStyle = this.SETTINGS.COLOR_FOREGROUND;
+                ctx.fill();
+            }
+        };
+
+        const sliderId = document.getElementById('slider-id');
+        const badgeId = document.getElementById('badge-id');
+
+        function updateWidgetId() {
+            const value = parseInt(sliderId.value, 10);
+            badgeId.innerText = value >= 0 ? `+${value}` : value;
+            const color = value >= 0 ? '#4CAF50' : '#F44336';
+            RadialChart.render('chart-by-id', value, color);
+        }
+        sliderId.addEventListener('input', updateWidgetId);
+
+        const sliderDom = document.getElementById('slider-dom');
+        const badgeDom = document.getElementById('badge-dom');
+        const targetDomElement = document.querySelector('.js-dom-target');
+
+        function updateWidgetDom() {
+            const value = parseInt(sliderDom.value, 10);
+            badgeDom.innerText = value >= 0 ? `+${value}` : value;
+            const color = value >= 0 ? '#00bcd4' : '#ff5722';
+            RadialChart.render(targetDomElement, value, color);
+        }
+        sliderDom.addEventListener('input', updateWidgetDom);
+
+        updateWidgetId();
+        updateWidgetDom();
+    </script>
+</body>
+</html>

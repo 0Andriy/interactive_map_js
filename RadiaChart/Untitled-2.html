@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Чиста Гексагональна Сітка</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f1f5f9;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      h1 {
+        color: #1e293b;
+        margin-bottom: 5px;
+      }
+      p {
+        color: #64748b;
+        margin-bottom: 25px;
+      }
+
+      /* Квадратна обгортка div */
+      .grid-wrapper {
+        width: 100%;
+        max-width: 650px;
+        aspect-ratio: 1 / 1;
+        background-color: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        border: 2px solid #e2e8f0;
+        padding: 10px;
+        box-sizing: border-box;
+        margin-bottom: 20px;
+      }
+
+      svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .hex {
+        transition:
+          fill 0.2s,
+          stroke-width 0.2s;
+        cursor: pointer;
+      }
+      .hex:hover {
+        stroke-width: 2.5px;
+        filter: brightness(0.95);
+      }
+      .hex-icon {
+        font-size: 26px;
+        font-weight: bold;
+        pointer-events: none;
+        user-select: none;
+      }
+      .axis-line {
+        stroke: #cbd5e1;
+        stroke-width: 1.2;
+        stroke-dasharray: 4 4;
+      }
+      .axis-text {
+        font-size: 16px;
+        fill: #0f172a;
+        font-family: "Courier New", Courier, monospace;
+        font-weight: 900;
+      }
+
+      /* Стилі для демо-кнопок */
+      .controls {
+        display: flex;
+        gap: 10px;
+      }
+      button {
+        padding: 10px 16px;
+        font-size: 14px;
+        font-weight: bold;
+        color: #ffffff;
+        background-color: #2563eb;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      button:hover {
+        background-color: #1d4ed8;
+      }
+      button.reset {
+        background-color: #64748b;
+      }
+      button.reset:hover {
+        background-color: #475569;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Гексагональна сітка в обгортці</h1>
+    <p>
+      Чиста геометрія без сегментів. Соти сірі за замовчуванням, іконки
+      центрувальні.
+    </p>
+
+    <!-- Батьківський div-блок. Карта згенерується всередині нього автоматично -->
+    <div class="grid-wrapper" id="hex-container"></div>
+
+    <!-- Кнопки для демонстрації оновлення -->
+    <div class="controls">
+      <button onclick="triggerDemoUpdate()">Пофарбувати випадкові соти</button>
+      <button class="reset" onclick="triggerReset()">Скинути до базових</button>
+    </div>
+
+    <script>
+      class HexGridManager {
+        constructor(containerOrId, serverData, options = {}) {
+          // Якщо передано рядок (string), шукаємо за ID, інакше вважаємо, що це вже готовий DOM-вузол
+          this.container =
+            typeof containerOrId === "string"
+              ? document.getElementById(containerOrId)
+              : containerOrId;
+
+          if (!this.container) {
+            console.error(
+              "HexGridManager: Контейнер для малювання сітки не знайдено.",
+            );
+            return;
+          }
+
+          // Запис вхідних JSON даних
+          this.serverData = serverData;
+
+          // Базові геометричні параметри
+          this.size = options.size || 30;
+          this.startX = options.startX || 16;
+          this.endX = options.endX || 42;
+          this.startY = options.startY || 1;
+          this.endY = options.endY || 15;
+          this.offsetX = options.offsetX || 110;
+          this.offsetY = options.offsetY || 100;
+          this.defaultFill = options.defaultFill || "#cbd5e1";
+
+          this.hexWidth = Math.sqrt(3) * this.size;
+          this.hexHeight = 2 * this.size;
+
+          // Внутрішній кеш елементів для швидкого оновлення
+          this.cellElements = {};
+          this.centers = {};
+
+          this.initStructure();
+          // this.generateBaseCoordinates();
+          this.generateCoordinatesAndMapData();
+          this.drawAxes();
+          this.renderInitialGrid();
+        }
+
+        // 1. Створення SVG полотна всередині div
+        initStructure() {
+          this.container.innerHTML = "";
+          this.svg = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "svg",
+          );
+          this.svg.setAttribute("viewBox", "0 0 950 950");
+          this.container.appendChild(this.svg);
+
+          // Шари для правильного накладання графіки (осі знизу, соти зверху)
+          this.axisLayer = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "g",
+          );
+          this.gridLayer = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "g",
+          );
+
+          this.svg.appendChild(this.axisLayer);
+          this.svg.appendChild(this.gridLayer);
+        }
+
+        // 2. Розрахунок бази координат за вашим ТЗ (крок X+2)
+        generateBaseCoordinates() {
+          const rawCoords = [];
+
+          for (let x = 24; x <= 34; x += 2) {
+            rawCoords.push({ x, y: 1 }, { x, y: 15 });
+          }
+
+          for (let x = 21; x <= 37; x += 2) {
+            rawCoords.push({ x, y: 2 }, { x, y: 14 });
+          }
+
+          for (let x = 20; x <= 38; x += 2) {
+            rawCoords.push({ x, y: 3 }, { x, y: 13 });
+          }
+
+          for (let x = 19; x <= 39; x += 2) {
+            rawCoords.push({ x, y: 4 }, { x, y: 12 });
+          }
+
+          for (let x = 18; x <= 40; x += 2) {
+            rawCoords.push({ x, y: 5 }, { x, y: 11 });
+          }
+
+          for (let x = 17; x <= 41; x += 2) {
+            rawCoords.push({ x, y: 6 }, { x, y: 10 });
+          }
+
+          for (let x = 16; x <= 42; x += 2) {
+            rawCoords.push({ x, y: 7 }, { x, y: 9 });
+          }
+
+          for (let x = 17; x <= 41; x += 2) {
+            rawCoords.push({ x, y: 8 });
+          }
+
+          this.activeCellsSet = new Set(rawCoords.map((c) => `${c.x}-${c.y}`));
+
+          for (let y = this.startY; y <= this.endY; y++) {
+            let rIndex = y - this.startY;
+
+            for (let x = this.startX; x <= this.endX; x++) {
+              let cx = (x - this.startX) * (this.hexWidth / 2) + this.offsetX;
+              let cy = rIndex * this.hexHeight * 0.75 + this.offsetY;
+              if (!this.centers[x]) this.centers[x] = {};
+              this.centers[x][y] = { x: cx, y: cy };
+            }
+          }
+        }
+
+        // Парсинг JSON та мапінг даних під координати сітки
+        generateCoordinatesAndMapData() {
+          this.activeCellsData = new Map();
+
+          // Перевіряємо наявність потрібних гілок у вашому JSON
+          if (
+            this.serverData &&
+            this.serverData.params &&
+            this.serverData.params.param
+          ) {
+            this.serverData.params.param.forEach((item) => {
+              // Ваші координати: nastr.i -> X, nastr.j -> Y
+              if (item.nastr && item.nastr.i && item.nastr.j) {
+                const x = parseInt(item.nastr.i, 10);
+                const y = parseInt(item.nastr.j, 10);
+                const key = `${x}-${y}`;
+
+                // Зберігаємо повний об'єкт соти під її унікальним ключем координат
+                this.activeCellsData.set(key, item);
+              }
+            });
+          }
+
+          // Розрахунок фізичних центрів для всього діапазону X та Y
+          for (let y = this.startY; y <= this.endY; y++) {
+            let rIndex = y - this.startY;
+            for (let x = this.startX; x <= this.endX; x++) {
+              let cx = (x - this.startX) * (this.hexWidth / 2) + this.offsetX;
+              let cy = rIndex * this.hexHeight * 0.75 + this.offsetY;
+              if (!this.centers[x]) this.centers[x] = {};
+              this.centers[x][y] = { x: cx, y: cy };
+            }
+          }
+        }
+
+        // 3. Побудова перпендикулярних осей
+        drawAxes() {
+          const minX_Px = this.centers[this.startX][this.startY].x;
+          const maxX_Px = this.centers[this.endX][this.startY].x;
+          const minY_Px = this.centers[this.startX][this.startY].y;
+          const maxY_Px = this.centers[this.startX][this.endY].y;
+
+          const lineTopY = minY_Px - 45;
+          const lineBottomY = maxY_Px + 45;
+          const lineLeftX = minX_Px - 55;
+          const lineRightX = maxX_Px + 55;
+
+          // Осі X (лише парні підписи)
+          for (let x = this.startX; x <= this.endX; x++) {
+            let fixedCx = this.centers[x][this.startY].x;
+            let line = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "line",
+            );
+            line.setAttribute("x1", fixedCx);
+            line.setAttribute("y1", lineTopY);
+            line.setAttribute("x2", fixedCx);
+            line.setAttribute("y2", lineBottomY);
+            line.setAttribute("class", "axis-line");
+            this.axisLayer.appendChild(line);
+
+            if (x % 2 === 0) {
+              let text = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "text",
+              );
+              text.setAttribute("x", fixedCx);
+              text.setAttribute("y", lineTopY - 15);
+              text.setAttribute("text-anchor", "middle");
+              text.setAttribute("class", "axis-text");
+              text.textContent = x;
+              this.axisLayer.appendChild(text);
+            }
+          }
+
+          // Осі Y (всі 1-15)
+          for (let y = this.startY; y <= this.endY; y++) {
+            let fixedCy = this.centers[this.startX][y].y;
+            let line = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "line",
+            );
+            line.setAttribute("x1", lineLeftX);
+            line.setAttribute("y1", fixedCy);
+            line.setAttribute("x2", lineRightX);
+            line.setAttribute("y2", fixedCy);
+            line.setAttribute("class", "axis-line");
+            this.axisLayer.appendChild(line);
+
+            let text = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "text",
+            );
+            text.setAttribute("x", lineLeftX - 30);
+            text.setAttribute("y", fixedCy + 5);
+            text.setAttribute("text-anchor", "start");
+            text.setAttribute("class", "axis-text");
+            text.textContent = `${y}`;
+            this.axisLayer.appendChild(text);
+          }
+        }
+
+        getHexPoints(cx, cy, r) {
+          let points = [];
+          for (let i = 0; i < 6; i++) {
+            let angle_deg = 60 * i - 30;
+            let angle_rad = (Math.PI / 180) * angle_deg;
+            points.push(
+              `${cx + r * Math.cos(angle_rad)},${cy + r * Math.sin(angle_rad)}`,
+            );
+          }
+          return points.join(" ");
+        }
+
+        // 4. Первинне малювання базового поля
+        renderInitialGrid() {
+          for (let y = this.startY; y <= this.endY; y++) {
+            for (let x = this.startX; x <= this.endX; x++) {
+              const key = `${x}-${y}`;
+
+              // if (!this.activeCellsSet.has(key)) continue;
+
+              // Малюємо соту лише якщо її координати i та j знайдені у вашому JSON
+              if (!this.activeCellsData.has(key)) continue;
+
+              const itemData = this.activeCellsData.get(key);
+              const { x: cx, y: cy } = this.centers[x][y];
+
+              // Беремо значення ідентифікатора для data-iden з поля 'nom'
+              const identifier = itemData.iden || "";
+
+              const polygon = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "polygon",
+              );
+
+              polygon.setAttribute(
+                "points",
+                this.getHexPoints(cx, cy, this.size),
+              );
+
+              polygon.setAttribute("fill", this.defaultFill);
+              polygon.setAttribute("stroke", "#94a3b8");
+              polygon.setAttribute("stroke-width", "1");
+              polygon.setAttribute("class", "hex");
+              polygon.setAttribute("data-iden", identifier);
+
+              polygon.addEventListener("click", () => {
+                alert(`Координати: X = ${x}, Y = ${y}`);
+              });
+
+              this.gridLayer.appendChild(polygon);
+
+              // Текстовий тег для майбутньої іконки (вирівняний чітко по центру)
+              const iconText = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "text",
+              );
+              iconText.setAttribute("x", cx);
+              iconText.setAttribute("y", cy);
+              iconText.setAttribute("text-anchor", "middle");
+              iconText.setAttribute("dominant-baseline", "central");
+              iconText.setAttribute("class", "hex-icon");
+              iconText.setAttribute("fill", "#0f172a");
+              this.gridLayer.appendChild(iconText);
+
+              // Зберігаємо посилання на DOM-вузли
+              this.cellElements[key] = { polygon: polygon, iconText: iconText };
+            }
+          }
+        }
+
+        // Швидка функція оновлення сот (приймає JSON об'єкт)
+        updateCells(newData) {
+          for (const key in newData) {
+            if (this.cellElements[key]) {
+              const cellData = newData[key];
+              const cellDOM = this.cellElements[key];
+              // Оновлення кольору
+              if (cellData.color) {
+                cellDOM.polygon.setAttribute("fill", cellData.color);
+              } else if (cellData.color === null) {
+                cellDOM.polygon.setAttribute("fill", this.defaultFill);
+              }
+              // Оновлення іконки
+              if (cellData.icon !== undefined) {
+                cellDOM.iconText.textContent = cellData.icon;
+              }
+            }
+          }
+        }
+      }
+
+      // --- ІНІЦІАЛІЗАЦІЯ ТА ДЕМО-ЛОГІКА ---
+      // Створюємо карту всередині div-блоку 'hex-container'
+      const myGrid = new HexGridManager("hex-container");
+
+      // Відразу підсвітимо центральну соту [29;8]
+      myGrid.updateCells({ "29-8": { color: "#fed7aa", icon: "👑" } }); // Функція для тестування динамічних оновлень кнопкою
+
+      function triggerDemoUpdate() {
+        const updates = {
+          "20-3": { color: "#ff8a80", icon: "⚠️" },
+          "34-3": { color: "#a7f3d0", icon: "✅" },
+          "25-14": { color: "#bae6fd", icon: "⚓" },
+          "38-11": { color: "#fef08a", icon: "⭐" },
+          "29-8": { color: "#ffd1a9", icon: "👑" },
+          // залишаємо центр
+        };
+        myGrid.updateCells(updates);
+      }
+
+      // Функція для повного очищення карти до базового сірого стану
+      function triggerReset() {
+        const resetPackage = {};
+        for (const key in myGrid.cellElements) {
+          resetPackage[key] = { color: null, icon: "" };
+        }
+        resetPackage["29-8"] = { color: "#fed7aa", icon: "👑" };
+        myGrid.updateCells(resetPackage);
+      }
+    </script>
+  </body>
+</html>

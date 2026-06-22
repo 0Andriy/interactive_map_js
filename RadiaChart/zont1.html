@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Тестування діаграми "ЗОНТ"</title>
+    <style>
+      body {
+        background-color: #1e1e1e;
+        color: #ffffff;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      h1 {
+        margin-bottom: 5px;
+        font-size: 24px;
+      }
+
+      p {
+        color: #aaa;
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 14px;
+      }
+
+      /* Батьківський контейнер, про який ви згадували */
+      .chart-frame {
+        width: 400px;
+        height: 400px;
+        background-color: #252526;
+        border: 2px solid #3e3e42;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        position: relative;
+        /* Можна змінювати розміри мишкою прямо в браузері для перевірки адаптивності */
+        resize: both;
+        overflow: hidden;
+        min-width: 250px;
+        min-height: 250px;
+      }
+
+      /* Панель керування для тестування */
+      .controls-panel {
+        margin-top: 25px;
+        background-color: #2d2d30;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 600px;
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #3e3e42;
+      }
+
+      .controls-title {
+        margin-top: 0;
+        margin-bottom: 15px;
+        font-size: 16px;
+        border-bottom: 1px solid #3e3e42;
+        padding-bottom: 5px;
+        color: #007acc;
+      }
+
+      .control-row {
+        display: grid;
+        grid-template-columns: 80px 1fr 120px;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 10px;
+        font-size: 13px;
+      }
+
+      .control-row:last-child {
+        margin-bottom: 0;
+      }
+
+      label {
+        font-weight: bold;
+      }
+
+      input[type="range"] {
+        width: 100%;
+        cursor: pointer;
+      }
+
+      select {
+        background-color: #3e3e42;
+        color: white;
+        border: 1px solid #555;
+        padding: 4px;
+        border-radius: 4px;
+        outline: none;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Компонент "RadarZontChart"</h1>
+    <p>
+      Спробуйте посмикати повзунки або змінити розмір рамки графіка (кут знизу
+      праворуч)
+    </p>
+
+    <!-- Батьківський DIV з певними розмірами -->
+    <div id="myZontContainer" class="chart-frame"></div>
+
+    <!-- Інтерфейс для зміни даних "на льоту" -->
+    <div class="controls-panel">
+      <h3 class="controls-title">Керування променями в реальному часі</h3>
+      <div id="controlsContainer"></div>
+    </div>
+
+    <script>
+      /**
+       * Клас для візуалізації пелюсткової діаграми "ЗОНТ" на HTML5 Canvas.
+       */
+      class RadarZontChart {
+        constructor(container) {
+          this.container =
+            typeof container === "string"
+              ? document.getElementById(container)
+              : container;
+          if (!this.container) {
+            throw new Error(`Container element not found`);
+          }
+
+          this.canvas = document.createElement("canvas");
+          this.ctx = this.canvas.getContext("2d");
+          this.container.appendChild(this.canvas);
+
+          this.canvas.style.width = "100%";
+          this.canvas.style.height = "100%";
+          this.canvas.style.display = "block";
+
+          // Палітра кольорів
+          this.colors = {
+            backgroundSector: "#8B4513", // caZontBrown
+            outlineAndSpokes: "#4169E1", // Fcolors_Color2
+            valuePolygon: "#2F4F4F", // caDirtyBlueZONT
+            invalidData: "#FF8C00", // caNed
+            forbiddenState: "#FF0000", // caZapret
+            emergencyLimit: "#00FFFF", // caAG
+            defaultOuterNotch: "#00FF00", // viscfrCanvasColor
+            defaultInnerNotch: "#000080", // clNavy
+          };
+
+          this.lineWidth = 2;
+          this.data = [];
+
+          this.resizeObserver = new ResizeObserver(() =>
+            this.updateDimensions(),
+          );
+          this.resizeObserver.observe(this.container);
+        }
+
+        updateDimensions() {
+          const rect = this.container.getBoundingClientRect();
+          const dpr = window.devicePixelRatio || 1;
+
+          this.canvas.width = rect.width * dpr;
+          this.canvas.height = rect.height * dpr;
+
+          this.ctx.scale(dpr, dpr);
+
+          if (this.data.length > 0) {
+            this.render();
+          }
+        }
+
+        getPointCoordinates(centerX, centerY, angle, radiusX, radiusY) {
+          return {
+            x: centerX + radiusX * Math.cos(angle),
+            y: centerY + radiusY * Math.sin(angle),
+          };
+        }
+
+        update(newData) {
+          if (!Array.isArray(newData) || newData.length === 0) return;
+          this.data = newData;
+          this.render();
+        }
+
+        render() {
+          const width = this.canvas.width / (window.devicePixelRatio || 1);
+          const height = this.canvas.height / (window.devicePixelRatio || 1);
+
+          const centerX = Math.floor(width / 2);
+          const centerY = Math.floor(height / 2);
+
+          const outerRadiusX = centerX - 2;
+          const outerRadiusY = centerY - 2;
+
+          const innerRadiusX = Math.floor(outerRadiusX / 10);
+          const innerRadiusY = Math.floor(outerRadiusY / 10);
+
+          const middleRadiusX = Math.floor((outerRadiusX + innerRadiusX) / 2);
+          const middleRadiusY = Math.floor((outerRadiusY + innerRadiusY) / 2);
+
+          const totalSectors = this.data.length;
+          const sectorAngle = (2 * Math.PI) / totalSectors;
+
+          let isAllDataInvalid = true;
+
+          const outerPoints = [];
+          const middlePoints = [];
+          const valuePoints = [];
+          const drawOuterNotchFlags = [];
+          const outerNotchColors = [];
+          const innerNotchColors = [];
+
+          for (let i = 0; i < totalSectors; i++) {
+            const currentAngle = 2 * Math.PI - sectorAngle * i;
+
+            outerPoints[i] = this.getPointCoordinates(
+              centerX,
+              centerY,
+              currentAngle,
+              outerRadiusX,
+              outerRadiusY,
+            );
+            middlePoints[i] = this.getPointCoordinates(
+              centerX,
+              centerY,
+              currentAngle,
+              middleRadiusX,
+              middleRadiusY,
+            );
+
+            const sectorData = this.data[i];
+            let valueFactor = 0;
+
+            if (sectorData) {
+              isAllDataInvalid = isAllDataInvalid && !sectorData.isSsmActive;
+              valueFactor = sectorData.value || 0;
+
+              drawOuterNotchFlags[i] =
+                sectorData.notDelivery === 1 ||
+                sectorData.notDelivery === 2 ||
+                sectorData.isForbidden !== 0 ||
+                sectorData.emergencyType === 5 ||
+                !sectorData.isSsmActive;
+
+              outerNotchColors[i] = this.colors.defaultOuterNotch;
+              innerNotchColors[i] = this.colors.defaultInnerNotch;
+
+              if (sectorData.isForbidden !== 0) {
+                outerNotchColors[i] = this.colors.forbiddenState;
+                innerNotchColors[i] = this.colors.forbiddenState;
+              } else if (
+                sectorData.notDelivery === 1 ||
+                sectorData.notDelivery === 2
+              ) {
+                outerNotchColors[i] = this.colors.invalidData;
+                innerNotchColors[i] = this.colors.invalidData;
+              } else if (sectorData.emergencyType === 5) {
+                outerNotchColors[i] = this.colors.emergencyLimit;
+              } else if (sectorData.emergencyType === 2) {
+                innerNotchColors[i] = this.colors.emergencyLimit;
+              }
+
+              if (!sectorData.isSsmActive) {
+                outerNotchColors[i] = this.colors.invalidData;
+                innerNotchColors[i] = this.colors.invalidData;
+              }
+            } else {
+              drawOuterNotchFlags[i] = true;
+            }
+
+            const dynamicRadiusX = Math.round(
+              middleRadiusX + (valueFactor * (outerRadiusX - innerRadiusX)) / 2,
+            );
+            const dynamicRadiusY = Math.round(
+              middleRadiusY + (valueFactor * (outerRadiusY - innerRadiusY)) / 2,
+            );
+
+            valuePoints[i] = this.getPointCoordinates(
+              centerX,
+              centerY,
+              currentAngle,
+              dynamicRadiusX,
+              dynamicRadiusY,
+            );
+          }
+
+          this.ctx.clearRect(0, 0, width, height);
+
+          // 1. Базовий фон (Зовнішній контур)
+          this.ctx.lineWidth = this.lineWidth;
+          this.ctx.strokeStyle = this.colors.outlineAndSpokes;
+          this.ctx.fillStyle = this.colors.backgroundSector;
+
+          this.ctx.beginPath();
+          this.ctx.moveTo(outerPoints[0].x, outerPoints[0].y);
+          for (let i = 1; i < totalSectors; i++)
+            this.ctx.lineTo(outerPoints[i].x, outerPoints[i].y);
+          this.ctx.closePath();
+          this.ctx.fill();
+          this.ctx.stroke();
+
+          // 2. Полігон значень
+          this.ctx.fillStyle = isAllDataInvalid
+            ? this.colors.invalidData
+            : this.colors.valuePolygon;
+
+          this.ctx.beginPath();
+          this.ctx.moveTo(valuePoints[0].x, valuePoints[0].y);
+          for (let i = 1; i < totalSectors; i++)
+            this.ctx.lineTo(valuePoints[i].x, valuePoints[i].y);
+          this.ctx.closePath();
+          this.ctx.fill();
+          this.ctx.stroke();
+
+          // 3. Серединний пунктир
+          this.ctx.lineWidth = 1;
+          this.ctx.strokeStyle = this.colors.outlineAndSpokes;
+          this.ctx.setLineDash([2, 4]);
+
+          this.ctx.beginPath();
+          this.ctx.moveTo(
+            middlePoints[totalSectors - 1].x,
+            middlePoints[totalSectors - 1].y,
+          );
+          for (let i = 0; i < totalSectors; i++)
+            this.ctx.lineTo(middlePoints[i].x, middlePoints[i].y);
+          this.ctx.stroke();
+          this.ctx.setLineDash([]);
+          // 4. Спиці та засічки
+          const outerNotchAngleWidth = sectorAngle / 10;
+          const innerNotchAngleWidth = sectorAngle / 3;
+          const extendedOuterRadiusX = Math.round(
+            outerRadiusX / Math.cos(outerNotchAngleWidth),
+          );
+          const extendedOuterRadiusY = Math.round(
+            outerRadiusY / Math.cos(outerNotchAngleWidth),
+          );
+          for (let i = 0; i < totalSectors; i++) {
+            const currentAngle = 2 * Math.PI - sectorAngle * i;
+            // Лінія-спиця
+            this.ctx.strokeStyle = this.colors.outlineAndSpokes;
+            this.ctx.lineWidth = this.lineWidth;
+            this.ctx.beginPath();
+            this.ctx.moveTo(centerX, centerY);
+            this.ctx.lineTo(outerPoints[i].x, outerPoints[i].y);
+            this.ctx.stroke();
+            // Зовнішня засічка
+            if (drawOuterNotchFlags[i]) {
+              const p1 = this.getPointCoordinates(
+                centerX,
+                centerY,
+                currentAngle - outerNotchAngleWidth,
+                extendedOuterRadiusX,
+                extendedOuterRadiusY,
+              );
+              const p2 = this.getPointCoordinates(
+                centerX,
+                centerY,
+                currentAngle + outerNotchAngleWidth,
+                extendedOuterRadiusX,
+                extendedOuterRadiusY,
+              );
+              this.ctx.lineWidth = this.lineWidth * 2;
+              this.ctx.strokeStyle = outerNotchColors[i];
+              this.ctx.beginPath();
+              this.ctx.moveTo(p1.x, p1.y);
+              this.ctx.lineTo(p2.x, p2.y);
+              this.ctx.stroke();
+            }
+            // Внутрішня засічка
+            const p1_in = this.getPointCoordinates(
+              centerX,
+              centerY,
+              currentAngle - innerNotchAngleWidth,
+              innerRadiusX,
+              innerRadiusY,
+            );
+            const p2_in = this.getPointCoordinates(
+              centerX,
+              centerY,
+              currentAngle + innerNotchAngleWidth,
+              innerRadiusX,
+              innerRadiusY,
+            );
+            this.ctx.lineWidth = this.lineWidth;
+            this.ctx.strokeStyle = innerNotchColors[i];
+            this.ctx.beginPath();
+            this.ctx.moveTo(p1_in.x, p1_in.y);
+            this.ctx.lineTo(p2_in.x, p2_in.y);
+            this.ctx.stroke();
+          }
+        }
+        destroy() {
+          this.resizeObserver.disconnect();
+          this.canvas.remove();
+        }
+      }
+      // --- Сценарій ініціалізації та тестування ---// Стартові тестові дані для 6 променів (FXI = 6)
+      const chartData = [
+        {
+          isSsmActive: true,
+          value: 0.8,
+          notDelivery: 0,
+          isForbidden: 0,
+          emergencyType: 0,
+        },
+        {
+          isSsmActive: true,
+          value: 0.2,
+          notDelivery: 0,
+          isForbidden: 0,
+          emergencyType: 0,
+        },
+        {
+          isSsmActive: true,
+          value: -0.5,
+          notDelivery: 0,
+          isForbidden: 0,
+          emergencyType: 0,
+        },
+        // Прогин всередину серединної лінії
+        {
+          isSsmActive: true,
+          value: 0.6,
+          notDelivery: 0,
+          isForbidden: 0,
+          emergencyType: 0,
+        },
+        {
+          isSsmActive: true,
+          value: 1.0,
+          notDelivery: 0,
+          isForbidden: 0,
+          emergencyType: 0,
+        },
+        {
+          isSsmActive: true,
+          value: 0.0,
+          notDelivery: 0,
+          isForbidden: 0,
+          emergencyType: 0,
+        },
+      ];
+      // Створюємо екземпляр класу, передаючи ID батьківського блокуconst
+      zontChart = new RadarZontChart("myZontContainer");
+      // Малюємо початковий стан
+      zontChart.update(chartData); // Динамічна генерація HTML-елементів керування для кожного променя
+      const controlsContainer = document.getElementById("controlsContainer");
+      chartData.forEach((ray, index) => {
+        const row = document.createElement("div");
+        row.className = "control-row";
+        // Назва променя
+        const label = document.createElement("label");
+        label.innerText = `Промінь ${index + 1}:`;
+        row.appendChild(label); // Слайдер для зміни значення (value / zn) від -1 до 1
+        const slider = document.createElement("input");
+        slider.type = "range";
+        slider.min = "-1";
+        slider.max = "1";
+        slider.step = "0.1";
+        slider.value = ray.value;
+        slider.addEventListener("input", (e) => {
+          chartData[index].value = parseFloat(e.target.value);
+          zontChart.update(chartData);
+          // Оновлення графіку
+        });
+        row.appendChild(slider);
+        // Селектор вибору стану/помилок
+        const select = document.createElement("select");
+        select.innerHTML = `<option value="normal">Норма (SSM)</option> <option value="invalid_ssm">Нема SSM (!SSM)</option> <option value="forbidden">Заборона (zp=1)</option> <option value="not_delivery">Недостовірні (nd=1)</option> <option value="emergency_5">Аварія зовн. (ot=5)</option> <option value="emergency_2">Аварія внутр. (ot=2)</option>`;
+        select.addEventListener("change", (e) => {
+          // Скидаємо прапорці перед установкою нових
+          chartData[index].isSsmActive = true;
+          chartData[index].notDelivery = 0;
+          chartData[index].isForbidden = 0;
+          chartData[index].emergencyType = 0;
+          switch (e.target.value) {
+            case "invalid_ssm":
+              chartData[index].isSsmActive = false;
+              break;
+            case "forbidden":
+              chartData[index].isForbidden = 1;
+              break;
+            case "not_delivery":
+              chartData[index].notDelivery = 1;
+              break;
+            case "emergency_5":
+              chartData[index].emergencyType = 5;
+              break;
+            case "emergency_2":
+              chartData[index].emergencyType = 2;
+              break;
+          }
+          zontChart.update(chartData); // Оновлення графіку
+        });
+        row.appendChild(select);
+        controlsContainer.appendChild(row);
+      });
+    </script>
+  </body>
+</html>

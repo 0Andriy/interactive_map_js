@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Адаптивна Гістограма</title>
+  <style>
+    /* Базові глобальні стилі для сторінки */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #0f0f14;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 30px;
+    }
+
+    /* ПАНЕЛЬ КЕРУВАННЯ (Для тестів) */
+    .controls {
+      background: #1e1e26;
+      padding: 15px 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      width: 400px;
+    }
+    .controls-row {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+    }
+    button {
+      background: #388e3c;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      flex: 1;
+      transition: background 0.2s;
+    }
+    button:hover { background: #45a049; }
+    button.active { background: #0288d1; }
+    input[type="range"] { flex: 1; cursor: pointer; }
+
+    /* СЦЕНА ТА БАТЬКІВСЬКА НОДА */
+    .scena {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 350px; /* Запас висоти для вертикального режиму */
+    }
+
+    .schema-node {
+      position: absolute;
+      width: 400px;  
+      height: 80px;  
+      padding: 20px; /* Цей padding автоматично зникне завдяки :has() */
+      background-color: #252530;
+      border-radius: 12px;
+      transition: width 0.4s ease, height 0.4s ease;
+
+      /* НА ТИВНИЙ CSS NESTING + :HAS() */
+      /* Якщо всередині ноди є .histogram, скидаємо її padding в 0 */
+      &:has(> .histogram) {
+        padding: 0;
+      }
+    }
+
+    /* ГОЛОВНИЙ КОМПОНЕНТ ГІСТОГРАМИ */
+    .histogram {
+      --border-thickness: 2px;
+      --bg-empty: #1a1a24; /* Колір порожнього стану (Логіка кольору №2) */
+      
+      /* Значення за замовчуванням */
+      --fill-level-pc: 65; 
+      --l-pos: 80;
+      --dynamic-color: #4caf50;
+      --l-color: #ff3d00;
+
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-empty);
+      border: var(--border-thickness) solid var(--dynamic-color);
+      border-radius: 8px;
+      overflow: hidden; /* Обрізає заливку по радіусу кутів */
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      transition: border-color 0.3s ease;
+      z-index: 1;
+
+      /* ШАР ЗАПОВНЕННЯ */
+      .fill {
+        position: absolute;
+        background-color: var(--dynamic-color);
+        transition: 
+          width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+          height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+          background-color 0.3s ease;
+      }
+
+      /* СІТКА ПОДІЛОК (Градієнт з ідеальним кроком 10%) */
+      .ticks-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      /* ЛІНІЇ ОБМЕЖЕНЬ ТА ПІДПИСИ */
+      .limit-wrapper {
+        position: absolute;
+        z-index: 3;
+        pointer-events: none;
+
+        .limit-line {
+          position: absolute;
+          background-color: var(--l-color);
+          box-shadow: 0 0 8px var(--l-color);
+        }
+
+        .limit-text {
+          position: absolute;
+          background: rgba(11, 11, 14, 0.95);
+          color: var(--l-color);
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 0.65rem;
+          font-weight: bold;
+          white-space: nowrap;
+          border: 1px solid var(--l-color);
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+        }
+      }
+
+      /* ГОЛОВНИЙ ЦЕНТРАЛЬНИЙ ТЕКСТ */
+      .label {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-weight: bold;
+        font-size: 1.1rem;
+        text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.9);
+        z-index: 4;
+        pointer-events: none;
+      }
+
+      /* ==========================================================================
+         ЛОГІКА НАПРЯМКІВ ТА ПРИВ'ЯЗКИ МЕЖ ЧЕРЕЗ CALC (З УРАХУВАННЯМ РАМКИ)
+         ========================================================================== */
+
+      /* 1. ГОРИЗОНТАЛЬНИЙ РЕЖИМ */
+      &.horizontal {
+        .fill {
+          top: 0;
+          bottom: 0;
+          width: calc(var(--fill-level-pc) * 1%);
+        }
+
+        .ticks-layer {
+          background: repeating-linear-gradient(
+            to right,
+            transparent,
+            transparent calc(10% - 1px),
+            rgba(255, 255, 255, 0.12) calc(10% - 1px),
+            rgba(255, 255, 255, 0.12) 10%
+          );
+        }
+
+        .limit-wrapper {
+          top: 0;
+          height: 100%;
+          width: 0;
+
+          .limit-line {
+            height: 100%;
+            width: 2px;
+            top: 0;
+          }
+          .limit-text {
+            bottom: 6px;
+            transform: translateX(-50%);
+          }
+        }
+
+        &:not(.inverted) {
+          .fill { left: 0; right: auto; }
+          .limit-wrapper {
+            left: calc(var(--l-pos) * (100% - var(--border-thickness) * 2) / 100);
+          }
+        }
+
+        &.inverted {
+          .fill { right: 0; left: auto; }
+          .ticks-layer { transform: scaleX(-1); }
+          .limit-wrapper {
+            right: calc(var(--l-pos) * (100% - var(--border-thickness) * 2) / 100);
+          }
+        }
+      }
+
+      /* 2. ВЕРТИКАЛЬНИЙ РЕЖИМ */
+      &.vertical {
+        .fill {
+          left: 0;
+          right: 0;
+          height: calc(var(--fill-level-pc) * 1%);
+        }
+
+        .ticks-layer {
+          background: repeating-linear-gradient(
+            to top,
+            transparent,
+            transparent calc(10% - 1px),
+            rgba(255, 255, 255, 0.12) calc(10% - 1px),
+            rgba(255, 255, 255, 0.12) 10%
+          );
+        }
+
+        .limit-wrapper {
+          left: 0;
+          width: 100%;
+          height: 0;
+
+          .limit-line {
+            width: 100%;
+            height: 2px;
+            left: 0;
+          }
+          .limit-text {
+            right: 6px;
+            transform: translateY(50%);
+          }
+        }
+
+        &:not(.inverted) {
+          .fill { bottom: 0; top: auto; }
+          .limit-wrapper {
+            bottom: calc(var(--l-pos) * (100% - var(--border-thickness) * 2) / 100);
+          }
+        }
+
+        &.inverted {
+          .fill { top: 0; bottom: auto; }
+          .ticks-layer { transform: scaleY(-1); }
+          .limit-wrapper {
+            top: calc(var(--l-pos) * (100% - var(--border-thickness) * 2) / 100);
+          }
+        }
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ІНТЕРФЕЙС КЕРУВАННЯ -->
+  <div class="controls">
+    <div class="controls-row">
+      <label>Рівень: <span id="level-val">65%</span></label>
+      <input type="range" id="level-slider" min="0" max="100" value="65">
+    </div>
+    <div class="controls-row">
+      <button id="btn-horiz" class="active">Horizontal</button>
+      <button id="btn-vert">Vertical</button>
+    </div>
+    <div class="controls-row">
+      <button id="btn-direct" class="active">Normal</button>
+      <button id="btn-invert">Inverted</button>
+    </div>
+  </div>
+
+  <!-- РОБОЧА СЦЕНА -->
+  <div class="scena">
+    <div class="schema-node" id="node-container">
+      
+      <!-- Віджет гістограми -->
+      <div class="histogram horizontal" id="my-histogram" style="--fill-level-pc: 65; --l-pos: 80;">
+        <div class="fill"></div>
+        <div class="ticks-layer"></div>
+        <div class="limit-wrapper">
+          <div class="limit-line"></div>
+          <div class="limit-text">LIMIT: 80%</div>
+        </div>
+        <div class="label" id="label-text">65%</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- СКРИПТ ДЛЯ ТЕСТУВАННЯ ДИНАМІКИ -->
+  <script>
+    const histogram = document.getElementById('my-histogram');
+    const nodeContainer = document.getElementById('node-container');
+    const slider = document.getElementById('level-slider');
+    const levelVal = document.getElementById('level-val');
+    const labelText = document.getElementById('label-text');
+
+    // 1. Оновлення значення повзунка
+    slider.addEventListener('input', (e) => {
+      const val = e.target.value;
+      levelVal.textContent = val + '%';
+      labelText.textContent = val + '%';
+      histogram.style.setProperty('--fill-level-pc', val);
+      
+      // Динамічна зміна кольору при перевищенні ліміту (80%)
+      if(val >= 80) {
+        histogram.style.setProperty('--dynamic-color', '#ff3d00'); // Червоний
+      } else {
+        histogram.style.setProperty('--dynamic-color', '#4caf50'); // Зелений
+      }
+    });
+
+    // 2. Перемикання орієнтації (Горизонтальна / Вертикальна)
+    document.getElementById('btn-horiz').addEventListener('click', function() {
+      this.classList.add('active');
+      document.getElementById('btn-vert').classList.remove('active');
+      histogram.classList.remove('vertical');
+      histogram.classList.add('horizontal');
+      // Повертаємо пропорції картки під рядок
+      nodeContainer.style.width = "400px";
+      nodeContainer.style.height = "80px";
+    });
+
+    document.getElementById('btn-vert').addEventListener('click', function() {
+      this.classList.add('active');
+      document.getElementById('btn-horiz').classList.remove('active');
+      histogram.classList.remove('horizontal');
+      histogram.classList.add('vertical');
+      // Змінюємо пропорції картки під колонку
+      nodeContainer.style.width = "80px";
+      nodeContainer.style.height = "300px";
+    });
+
+    // 3. Перемикання інверсії (Прямий рух / Реверс)
+    document.getElementById('btn-direct').addEventListener('click', function() {
+      this.classList.add('active');
+      document.getElementById('btn-invert').classList.remove('active');
+      histogram.classList.remove('inverted');
+    });
+
+    document.getElementById('btn-invert').addEventListener('click', function() {
+      this.classList.add('active');
+      document.getElementById('btn-direct').classList.remove('active');
+      histogram.classList.add('inverted');
+    });
+  </script>
+</body>
+</html>
