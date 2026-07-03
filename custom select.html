@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Select - Dark Cyan Theme</title>
+  <style>
+    /* === ВАШІ СИСТЕМНІ ТОКЕНИ ТА ПАЛІТРА === */
+    :root {
+      /* --- Основна палітра (Slate/Zinc 900) --- */
+      --bg-deep: #111114;
+      --bg-dark: #1a1a1e;
+      --bg-sidebar: rgba(26, 26, 30, 0.8);
+
+      /* --- Деталі та кордони --- */
+      --border: rgba(255, 255, 255, 0.1);
+      --border-bright: rgba(255, 255, 255, 0.18);
+
+      /* --- Акцент (Cyan 400) --- */
+      --accent: #22d3ee;
+      --accent-gradient: linear-gradient(135deg, #38bdf8 0%, #2dd4bf 100%);
+
+      /* --- Типографіка --- */
+      --text-main: #ffffff;
+      --text-secondary: #cbd5e1;
+
+      /* --- Статуси --- */
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.12);
+      --error: #f43f5e;
+      --error-bg: rgba(244, 63, 94, 0.15);
+      --waiting: #94a3b8;
+      --waiting-bg: rgba(148, 163, 184, 0.12);
+
+      /* --- Системні токени --- */
+      --radius: 12px;
+      --shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.45);
+      --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Базові стилі сторінки в темних тонах */
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 40px;
+      background-color: var(--bg-deep);
+      color: var(--text-main);
+    }
+
+    p {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .test-controls {
+      margin-top: 30px;
+      padding: 20px;
+      background: var(--bg-dark);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      max-width: 440px;
+
+      h4 { margin-top: 0; margin-bottom: 12px; color: var(--text-main); }
+    }
+
+    button {
+      padding: 8px 14px;
+      margin: 4px;
+      cursor: pointer;
+      background: #242429;
+      color: var(--text-main);
+      border: 1px solid var(--border-bright);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      transition: var(--transition-base);
+
+      &:hover {
+        background: #2d2d33;
+        border-color: var(--accent);
+      }
+    }
+
+    #log-panel {
+      margin-top: 20px;
+      padding: 12px;
+      background: #09090b;
+      color: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: monospace;
+      min-height: 60px;
+      max-width: 440px;
+      font-size: 13px;
+    }
+
+    /* === АДАПТОВАНИЙ NATIVE CSS NESTING ДЛЯ КОМПОНЕНТА === */
+    .advanced-select {
+      position: relative;
+      width: 100%;
+      max-width: 440px;
+      font-family: inherit;
+      box-sizing: border-box;
+
+      * { box-sizing: border-box; }
+
+      /* Зона кліку (адаптована під ваш .custom-select) */
+      .trigger {
+        background: #242429;
+        border: 1px solid var(--border-bright);
+        color: var(--text-main);
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: var(--transition-base);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        min-height: 40px;
+
+        &:hover {
+          background: #2d2d33;
+          border-color: var(--accent);
+        }
+
+        &:focus-within {
+          border-color: var(--accent);
+          background: #2d2d33;
+          box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.15);
+        }
+
+        /* Стилізація кастомних тегів у темній темі */
+        .selected-tag {
+          background: var(--bg-deep);
+          border: 1px solid var(--border-bright);
+          color: var(--text-main);
+          padding: 2px 10px;
+          border-radius: 4px;
+          font-size: 0.8rem;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: var(--transition-base);
+
+          &:hover {
+            border-color: var(--accent);
+          }
+
+          .remove-btn {
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--text-secondary);
+            transition: color 0.2s;
+            &:hover { color: var(--error); }
+          }
+        }
+
+        /* Інпут для пошуку */
+        .search-input {
+          border: none;
+          outline: none;
+          flex-grow: 1;
+          min-width: 60px;
+          padding: 2px 4px;
+          font-size: 0.85rem;
+          background: transparent;
+          color: var(--text-main);
+
+          &::placeholder {
+            color: var(--waiting);
+          }
+        }
+      }
+
+      /* Випадаюче вікно */
+      .dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        margin-top: 6px;
+        background: #242429;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: var(--shadow);
+        display: none;
+        padding: 6px 0;
+
+        &.open { display: block; }
+        .no-results { padding: 16px; color: var(--waiting); text-align: center; font-size: 0.85rem; }
+      }
+
+      /* Рядки елементів */
+      .item-row {
+        display: flex;
+        align-items: center;
+        padding: 10px 14px;
+        cursor: pointer;
+        user-select: none;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        transition: var(--transition-base);
+
+        &:hover { 
+          background: #2d2d33; 
+          color: var(--text-main);
+        }
+
+        /* Вибраний елемент (світіння акцентом) */
+        &.selected { 
+          background: rgba(34, 211, 238, 0.08); 
+          color: var(--accent);
+          font-weight: 500;
+          box-shadow: inset 3px 0 0 0 var(--accent);
+        }
+        
+        /* Елементи категорії, що не вибираються */
+        &.not-selectable {
+          color: var(--waiting);
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          &:hover { 
+            background: rgba(255, 255, 255, 0.02); 
+            color: var(--text-main);
+          }
+        }
+
+        /* Кастомна іконка стрілочки */
+        .toggle-icon {
+          width: 20px;
+          height: 20px;
+          margin-right: 6px;
+          font-size: 10px;
+          color: var(--waiting);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 4px;
+          transition: var(--transition-base);
+
+          &:hover { 
+            background: rgba(255, 255, 255, 0.1); 
+            color: var(--accent);
+          }
+        }
+
+        .item-icon { 
+          margin-right: 8px; 
+          font-size: 1.1rem;
+        }
+        
+        .item-label { flex-grow: 1; }
+      }
+
+      /* Зсув для дерева */
+      .children-container {
+        padding-left: 20px;
+        border-left: 1px dashed rgba(255, 255, 255, 0.05);
+        margin-left: 24px;
+        display: none;
+        
+        &.expanded { display: block; }
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Вибір обладнання (Dark Theme)</h2>
+  <p>Контекстне дерево з підтримкою Native CSS Nesting та індивідуальних налаштувань вибору.</p>
+  
+  <div id="equipment-select"></div>
+
+  <div class="test-controls">
+    <h4>Зовнішній API контроль</h4>
+    <button id="btn-set-params">Встановити: Параметри вузла</button>
+    <button id="btn-clear">Очистити вибір</button>
+  </div>
+
+  <div id="log-panel">Очікування взаємодії через CustomEvent...</div>
+
+  <script>
+    // === Клас компонента (Логіка без змін, повністю сумісна) ===
+    class AdvancedSelect {
+      constructor(containerElement, options = {}) {
+        this.container = containerElement;
+        this.options = {
+          multiple: false,
+          searchable: true,
+          data: [],
+          placeholder: 'Оберіть елементи...',
+          selectableParents: false,
+          onChange: (selectedIds) => {},
+          ...options
+        };
+
+        this.state = {
+          selected: new Set(),
+          isOpen: false,
+          searchQuery: '',
+          expandedNodes: new Set()
+        };
+
+        this.elements = {};
+        this.init();
+      }
+
+      init() {
+        this.container.classList.add('advanced-select');
+        this.renderBase();
+        this.bindEvents();
+      }
+
+      updateData(newData) {
+        this.options.data = newData;
+        this.state.selected.clear();
+        this.renderTags();
+        this.renderDropdown();
+      }
+
+      getFlatData(data = this.options.data, flatList = new Map()) {
+        for (const item of data) {
+          flatList.set(item.id, item);
+          if (item.children) {
+            this.getFlatData(item.children, flatList);
+          }
+        }
+        return flatList;
+      }
+
+      renderBase() {
+        this.container.innerHTML = `
+          <div class="trigger">
+            <div class="tags-container" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+            ${this.options.searchable ? `<input type="text" class="search-input" placeholder="${this.options.placeholder}">` : ''}
+          </div>
+          <div class="dropdown"></div>
+        `;
+        this.elements.trigger = this.container.querySelector('.trigger');
+        this.elements.tags = this.container.querySelector('.tags-container');
+        this.elements.input = this.container.querySelector('.search-input');
+        this.elements.dropdown = this.container.querySelector('.dropdown');
+      }
+
+      bindEvents() {
+        this.elements.trigger.addEventListener('click', (e) => {
+          if (e.target.classList.contains('remove-btn')) return;
+          this.toggleDropdown(true);
+          if (this.elements.input) this.elements.input.focus();
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!this.container.contains(e.target)) {
+            this.toggleDropdown(false);
+          }
+        });
+
+        if (this.elements.input) {
+          this.elements.input.addEventListener('input', (e) => {
+            this.state.searchQuery = e.target.value.toLowerCase();
+            this.renderDropdown();
+          });
+        }
+      }
+
+      toggleDropdown(forceOpen = null) {
+        this.state.isOpen = forceOpen !== null ? forceOpen : !this.state.isOpen;
+        this.elements.dropdown.classList.toggle('open', this.state.isOpen);
+        if (this.state.isOpen) this.renderDropdown();
+      }
+
+      toggleNode(id) {
+        if (this.state.expandedNodes.has(id)) {
+          this.state.expandedNodes.delete(id);
+        } else {
+          this.state.expandedNodes.add(id);
+        }
+        this.renderDropdown();
+      }
+
+      isNodeSelectable(node, hasChildren) {
+        if (typeof node.selectable !== 'undefined') {
+          return node.selectable;
+        }
+        if (hasChildren && !this.options.selectableParents) {
+          return false;
+        }
+        return true;
+      }
+
+      handleSelect(id) {
+        if (this.options.multiple) {
+          if (this.state.selected.has(id)) {
+            this.state.selected.delete(id);
+          } else {
+            this.state.selected.add(id);
+          }
+        } else {
+          // Якщо цей елемент ВЖЕ обраний, то при повторному кліку (або хрестику) ми його видаляємо
+            if (this.state.selected.has(id)) {
+                this.state.selected.clear()
+            } else {
+                // Інакше — очищуємо старе і додаємо новий елемент
+                this.state.selected.clear()
+                this.state.selected.add(id)
+            }
+          this.toggleDropdown(false);
+        }
+        
+        this.renderTags();
+        this.renderDropdown();
+        
+        if (this.elements.input) {
+          this.elements.input.value = '';
+          this.state.searchQuery = '';
+        }
+
+        this._emitChange();
+      }
+
+      setValue(ids, triggerChange = true) {
+        this.state.selected.clear();
+        const idsArray = Array.isArray(ids) ? ids : [ids];
+        idsArray.forEach(id => this.state.selected.add(id));
+        this.renderTags();
+        this.renderDropdown();
+        if (triggerChange) this._emitChange();
+      }
+
+      _emitChange() {
+        const selectedArray = Array.from(this.state.selected);
+        if (typeof this.options.onChange === 'function') {
+          this.options.onChange(selectedArray);
+        }
+        const event = new CustomEvent('advancedSelect:change', {
+          detail: { selectedIds: selectedArray, instance: this },
+          bubbles: true
+        });
+        this.container.dispatchEvent(event);
+      }
+
+      renderTags() {
+        const flatData = this.getFlatData();
+        this.elements.tags.innerHTML = '';
+
+        if (this.state.selected.size === 0 && this.elements.input) {
+          this.elements.input.placeholder = this.options.placeholder;
+          return;
+        }
+
+        if (this.elements.input) this.elements.input.placeholder = '';
+
+        this.state.selected.forEach(id => {
+          const item = flatData.get(id);
+          if (!item) return;
+
+          const tag = document.createElement('div');
+          tag.className = 'selected-tag';
+          tag.innerHTML = `
+            ${item.icon ? `<span class="tag-icon">${item.icon}</span>` : ''}
+            ${item.label}
+            <span class="remove-btn" data-id="${id}">×</span>
+          `;
+          tag.querySelector('.remove-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.handleSelect(id);
+          });
+          this.elements.tags.appendChild(tag);
+        });
+      }
+
+      renderDropdown() {
+        this.elements.dropdown.innerHTML = '';
+        const fragment = this.buildNodes(this.options.data);
+        
+        if (fragment.childNodes.length === 0) {
+          this.elements.dropdown.innerHTML = '<div class="no-results">Нічого не знайдено</div>';
+        } else {
+          this.elements.dropdown.appendChild(fragment);
+        }
+      }
+
+      buildNodes(nodes) {
+        const fragment = document.createDocumentFragment();
+
+        nodes.forEach(node => {
+          const hasChildren = node.children && node.children.length > 0;
+          const matchesSearch = node.label.toLowerCase().includes(this.state.searchQuery);
+          
+          let childFragment = null;
+          let childrenMatch = false;
+          
+          if (hasChildren) {
+            childFragment = this.buildNodes(node.children);
+            childrenMatch = childFragment.childNodes.length > 0;
+          }
+
+          if (!matchesSearch && !childrenMatch && this.state.searchQuery !== '') return;
+
+          const isSelectable = this.isNodeSelectable(node, hasChildren);
+
+          const itemDiv = document.createElement('div');
+          const rowDiv = document.createElement('div');
+          
+          rowDiv.className = `item-row ${this.state.selected.has(node.id) ? 'selected' : ''} ${!isSelectable ? 'not-selectable' : ''}`;
+          
+          const toggleIcon = hasChildren 
+            ? `<span class="toggle-icon">${this.state.expandedNodes.has(node.id) || this.state.searchQuery ? '▼' : '▶'}</span>` 
+            : '<span class="toggle-icon"></span>';
+
+          rowDiv.innerHTML = `
+            ${toggleIcon}
+            ${node.icon ? `<span class="item-icon">${node.icon}</span>` : ''}
+            <span class="item-label">${node.label}</span>
+          `;
+
+          if (hasChildren) {
+            const toggleBtn = rowDiv.querySelector('.toggle-icon');
+            toggleBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              this.toggleNode(node.id);
+            });
+          }
+
+          rowDiv.addEventListener('click', () => {
+            if (isSelectable) {
+              this.handleSelect(node.id);
+            } else if (hasChildren) {
+              this.toggleNode(node.id);
+            }
+          });
+
+          itemDiv.appendChild(rowDiv);
+
+          if (hasChildren && childFragment) {
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'children-container';
+            if (this.state.expandedNodes.has(node.id) || this.state.searchQuery) {
+              childrenContainer.classList.add('expanded');
+            }
+            childrenContainer.appendChild(childFragment);
+            itemDiv.appendChild(childrenContainer);
+          }
+
+          fragment.appendChild(itemDiv);
+        });
+
+        return fragment;
+      }
+    }
+
+    // === КОНФІГУРАЦІЯ ТЕСТОВИХ ДАНИХ ===
+    const technicalData = [
+      { 
+        id: 'unit-1', 
+        label: 'Енергоблок №1', 
+        icon: '🏭', 
+        children: [ 
+          { id: 'u1-turbine', label: 'Турбоагрегат', icon: '⚙️', children: [
+            { id: 'u1-t-params', label: 'Технічні параметри', icon: '📊' },
+            { id: 'u1-t-events', label: 'Критичні події вузла', icon: '📝' }
+          ]},
+          { id: 'u1-generator', label: 'Генератор', icon: '⚡' }
+        ]
+      },
+      { 
+        id: 'unit-2', 
+        label: 'Енергоблок №2 (Доступний повністю)', 
+        icon: '🏭', 
+        selectable: true, // Дозволено вибирати батьківський елемент
+        children: [
+          { id: 'u2-turbine', label: 'Система охолодження турбіни', icon: '💧' },
+          { id: 'u2-health', label: 'Діагностична карта', icon: '🩺' }
+        ]
+      }
+    ];
+
+    // Ініціалізація
+    const equipmentSelect = new AdvancedSelect(document.getElementById('equipment-select'), {
+      multiple: false,
+      searchable: true,
+      placeholder: 'Пошук обладнання...',
+      data: technicalData,
+      selectableParents: false
+    });
+
+    // Глобальний підпис на кастомну подію (Event Bus)
+    const logPanel = document.getElementById('log-panel');
+    document.addEventListener('advancedSelect:change', (event) => {
+      if (event.target.id === 'equipment-select') {
+        const { selectedIds } = event.detail;
+        const time = new Date().toLocaleTimeString();
+        logPanel.innerHTML = `[${time}] Спіймано CustomEvent:<br>Вибрані ID: [ ${selectedIds.map(id => `'${id}'`).join(', ')} ]`;
+      }
+    });
+
+    // Зовнішній контроль
+    document.getElementById('btn-set-params').addEventListener('click', () => {
+      equipmentSelect.setValue(['u1-t-params'], true);
+    });
+
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      equipmentSelect.setValue([], false);
+      logPanel.innerHTML = `Очищено програмно через API (тригер події вимкнено).`;
+    });
+  </script>
+</body>
+</html>

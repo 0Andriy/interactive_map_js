@@ -166,7 +166,7 @@ export class InMemoryAdapter extends BaseAdapter {
 
         // Видаляємо ID сокета з усіх кімнат, де він перебував
         if (socketRooms) {
-            for (const roomName of socketRooms) {
+            for (const roomName of [...socketRooms]) {
                 const roomSocketIds = this.rooms.get(roomName)
                 if (roomSocketIds) {
                     roomSocketIds.delete(socketId)

@@ -197,6 +197,22 @@ export class Socket {
     }
 
     /**
+     * Надсилає подію на сервер та асинхронно чекає на відповідь (ACK) через Promise.
+     * Аналог офіційного emitWithAck з socket.io-client.
+     * Має вбудований дефолтний таймаут та повну підтримку офлайн-буферизації.
+     *
+     * @async
+     * @param {string} event - Назва бізнес-події.
+     * @param {any} data - Корисне навантаження (payload).
+     * @param {number} [timeoutMs=10000] - Максимальний час очікування відповіді (за замовчуванням 10 секунд).
+     * @returns {Promise<any>} Результат підтвердження від сервера.
+     */
+    async emitWithAck(event, data, timeoutMs = 10000) {
+        // Просто перевикористовуємо наш надійний і протестований конвеєр timeout()
+        return this.timeout(timeoutMs).emit(event, data)
+    }
+
+    /**
      * Створює оператор розсилки (Broadcast) від імені цього сокета (виключаючи його самого).
      * @returns {BroadcastOperator}
      */
