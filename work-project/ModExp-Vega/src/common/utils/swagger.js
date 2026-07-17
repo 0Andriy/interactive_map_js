@@ -1,0 +1,165 @@
+import swaggerJsdoc from 'swagger-jsdoc'
+import swaggerUi from 'swagger-ui-express'
+// import { SwaggerTheme, SwaggerThemeNameEnum } from 'swagger-themes'
+
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+/**
+ * Отримує поточну назву файлу.
+ * @type {string}
+ */
+const __filename = fileURLToPath(import.meta.url)
+
+/**
+ * Отримує поточну назву директорії.
+ * @type {string}
+ */
+const __dirname = path.dirname(__filename)
+
+// Ініціалізуємо генератор тем
+// const theme = new SwaggerTheme()
+
+// Вибираємо гарну тему. Замість DRACULA можна спробувать ONE_DARK, NORD_DARK або MATERIAL
+// const uiOptions = theme.getDefaultConfig(SwaggerThemeNameEnum.GRUVBOX)
+
+/**
+ * Об'єкт конфігурації для swagger-jsdoc.
+ * Визначає основну інформацію про API, компоненти безпеки та шляхи до файлів, що містять JSDoc для генерації OpenAPI специфікації.
+ * @type {import('swagger-jsdoc').Options}
+ */
+const swaggerOptions = {
+    // Swagger definition
+    // You can set every attribute except paths and swagger
+    // https://github.com/swagger-api/swagger-spec/blob/master/versions/2.0.md
+
+    /**
+     * Основна інформація про API (обов'язкове поле).
+     * @type {import('swagger-jsdoc').SwaggerDefinition}
+     */
+    definition: {
+        openapi: '3.1.0',
+        info: {
+            title: 'REST API',
+            description: 'Example of CRUD API',
+            version: '1.0.0',
+        },
+        servers: [],
+        /**
+         * Компоненти безпеки API, наприклад, для JWT авторизації.
+         * @type {object}
+         */
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'Bearer',
+                    bearerFormat: 'JWT',
+                },
+            },
+        },
+        tags: [],
+    },
+
+    /**
+     * Шлях(и) до файлів, де описані роутери та API-документація у форматі JSDoc.
+     * Ці файли будуть прочитані і з них згенеруються paths для OpenAPI.
+     * @type {string[]}
+     */
+    apis: ['./src/**/*.{js,ts,yaml,yml}'], //[path.join(__dirname, '../**/**.js')], // Можна зробити більш конкретним, наприклад, '../routes/**/*.js'
+}
+
+/**
+ * Сгенерована специфікація Swagger на основі `swaggerOptions`.
+ * @type {object}
+ */
+export const swaggerSpec = swaggerJsdoc(swaggerOptions)
+
+/**
+ * Допоміжна функція для динамічного додавання серверу до специфікації Swagger.
+ * Це дозволяє Swagger UI автоматично визначати базовий URL API на основі поточного запиту.
+ * @param {object} spec - Об'єкт специфікації Swagger.
+ * @param {import('express').Request} req - Об'єкт запиту Express.
+ * @returns {object} Оновлений об'єкт специфікації Swagger з динамічно доданим сервером.
+ */
+const withDynamicServer = (spec, req) => {
+    // Визначаємо протокол (враховуємо reverse-proxy за наявності x-forwarded-proto)
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol
+    // Отримуємо поточний хост (DNS або IP-адресу разом із портом, якщо він є)
+    const host = req.get('host')
+
+    // Робимо копію об'єкта, щоб уникнути побічних ефектів при паралельних запитах
+    const dynamicSpec = JSON.parse(JSON.stringify(spec))
+
+    return {
+        ...spec,
+        servers: [
+            {
+                url: `${protocol}://${host}`,
+                description: 'Dynamic Auto-detected Server',
+            },
+        ],
+    }
+}
+
+/**
+ * Налаштовує Swagger UI та JSON-ендпоїнти для документації API.
+ * @param {import('express').Application} app - Екземпляр Express додатка.
+ * @param {number} [port=3000] - Порт, на якому працює сервер. Використовується для логування.
+ * @param {string} [host='localhost'] - Хост, на якому працює сервер. Використовується для логування.
+ * @param {string} [protocol='http'] - Протокол (http/https). Використовується для логування.
+ * @param {object} [logger] - Об'єкт логера з методами debug, info, warn, error.
+ * @param {function(...any): void} [logger.debug=console.debug] - Метод для дебаг-повідомлень.
+ * @param {function(...any): void} [logger.info=console.log] - Метод для інформаційних повідомлень.
+ * @param {function(...any): void} [logger.warn=console.log] - Метод для попереджень.
+ * @param {function(...any): void} [logger.error=console.error] - Метод для помилок.
+ * @returns {void}
+ */
+export function swaggerDocs(
+    app,
+    port = 3000,
+    host = 'localhost',
+    protocol = 'http',
+    logger = null,
+) {
+    const endpoint = 'api-docs'
+
+    // // Додаємо інформацію про сервер до специфікації Swagger
+    // // Це дозволить Swagger UI показувати коректні базові URL для запитів
+    // swaggerSpec.servers.push({
+    //     url: `${protocol}://${host}:${port}`,
+    //     description: `${protocol.toUpperCase()} Server`,
+    // })
+
+    // Опції інтерфейсу: ін'єкція CSS, яка реагує на системну тему користувача
+    const uiOptions = {
+        swaggerOptions: {
+            withCredentials: true, // Змушує Swagger UI передавати куки з браузера
+        },
+        // customCss: `
+        //     @media (prefers-color-scheme: dark) {
+        //         body { background-color: #1b1b1b; color: #fff; }
+        //         .swagger-ui { filter: invert(88%) hue-rotate(180deg); }
+        //         .swagger-ui .microlight, .swagger-ui .model-box-control { filter: invert(0); }
+        //         .swagger-ui .opblock-summary-path { color: #fff !important; }
+        //     }
+        // `,
+    }
+
+    // Swagger UI ендпоїнт
+    app.use(`/${endpoint}`, swaggerUi.serve, (req, res, next) =>
+        swaggerUi.setup(withDynamicServer(swaggerSpec, req), uiOptions)(req, res, next),
+    )
+
+    // JSON версія документації
+    app.get(`/${endpoint}.json`, (req, res) => {
+        res.setHeader('Content-Type', 'application/json')
+        res.send(withDynamicServer(swaggerSpec, req))
+    })
+
+    logger?.info?.(`✅ Swagger доступний за адресою: ${protocol}://${host}:${port}/${endpoint}`)
+}
+
+export default swaggerDocs
+
+export { swaggerUi }

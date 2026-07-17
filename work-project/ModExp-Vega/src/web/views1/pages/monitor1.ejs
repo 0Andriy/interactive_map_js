@@ -1,0 +1,36 @@
+<div id="monitor-wrapper" class="monitor-container">
+    <!-- Шапка контейнера -->
+    <div class="monitor-header">
+        <div class="header-controls">
+            <!-- Вибір Unit -->
+            <select id="select-unit" class="custom-select">
+                <option value="1">Об'єкт 1</option>
+                <option value="2">Об'єкт 2</option>
+                <option value="3">Об'єкт 3</option>
+            </select>
+            <!-- Вибір Файлу -->
+            <select id="select-file" class="custom-select">
+                <option value="main.png">Головна схема</option>
+                <option value="boiler.png">Котельня</option>
+                <option value="pump.png">Насосна</option>
+            </select>
+            <span class="update-info">Оновлено: <i id="update-time">--:--:--</i></span>
+        </div>
+        <button id="fullscreen-btn" class="btn-icon">⛶</button>
+    </div>
+
+    <!-- Робоча область -->
+    <div class="monitor-viewport">
+        <!-- Контейнер, який підлаштується під пропорції картинки -->
+        <div id="canvas-area" class="canvas-area">
+            <!-- Фонова картинка -->
+            <img id="bg-image" src="" alt="схема" class="bg-layer" />
+            <!-- Шар для (DOM Elements) -->
+            <div id="dynamic-layer" class="dynamic-layer"></div>
+            <!-- Шар для (SVG) -->
+            <svg id="svg-layer" class="svg-layer"></svg>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="/js/pages/monitor.js"></script>

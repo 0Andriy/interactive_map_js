@@ -1,0 +1,158 @@
+<!--  -->
+<link rel="stylesheet" href="/css/login.css" />
+<script src="/js/login.js" defer type="module"></script>
+
+<!--  -->
+<div class="page-layout">
+    <main class="page-layout__content login-page-center">
+        <div class="login-card">
+            <div class="login-card__header">
+                <div class="login-card__logo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                    </svg>
+                </div>
+                <h1 class="login-card__title">Вітаємо</h1>
+                <p class="login-card__subtitle">Введіть свої дані для входу в систему</p>
+            </div>
+
+            <!-- Загальна помилка від сервера -->
+            <div id="error-message" class="login-alert login-alert--error" hidden></div>
+
+            <form id="login-form" class="login-form" novalidate>
+                <!-- Поле Логін -->
+                <div class="login-form__group">
+                    <div class="input-container">
+                        <span class="input-icon">
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                        </span>
+                        <input
+                            type="text"
+                            id="username"
+                            class="login-form__input"
+                            placeholder=" "
+                            required
+                            autocomplete="username"
+                        />
+                        <label for="username" class="login-form__label">
+                            <span class="login-form__label-text">Логін</span>
+                        </label>
+                    </div>
+                    <!-- Блок для помилки поля логіну -->
+                    <span class="login-form__field-error" id="username-error" hidden></span>
+                </div>
+
+                <!-- Поле Паролю -->
+                <div class="login-form__group">
+                    <div class="input-container">
+                        <span class="input-icon">
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                        </span>
+                        <input
+                            type="password"
+                            id="password"
+                            class="login-form__input"
+                            placeholder=" "
+                            required
+                            autocomplete="current-password"
+                        />
+                        <label for="password" class="login-form__label">
+                            <span class="login-form__label-text">Пароль</span>
+                        </label>
+                        <!-- <button
+                            type="button"
+                            id="toggle-password"
+                            class="login-form__toggle-pass"
+                            aria-label="Показати пароль"
+                        >
+                            👁️
+                        </button> -->
+                        <button
+                            type="button"
+                            id="toggle-password"
+                            class="login-form__toggle-pass"
+                            aria-label="Показати/приховати пароль"
+                        >
+                            <!-- SVG для Іконки "Око" (Показати пароль) -->
+                            <svg
+                                id="icon-eye-open"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            >
+                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+
+                            <!-- SVG для Іконки "Перекреслене око" (Приховати пароль) -->
+                            <svg
+                                id="icon-eye-closed"
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                hidden
+                            >
+                                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
+                                <path
+                                    d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"
+                                ></path>
+                                <path
+                                    d="M6.61 6.61A13.52 13.52 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"
+                                ></path>
+                                <line x1="2" y1="2" x2="22" y2="22"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <!-- Блок для помилки поля пароля -->
+                    <span class="login-form__field-error" id="password-error" hidden></span>
+
+                    <!-- <div class="login-form__link-row">
+                        <a href="/forgot-password" class="login-form__link">Забули пароль?</a>
+                    </div> -->
+                </div>
+
+                <!-- Блок Чекбоксу (Назва та ID тепер синхронізовані — rememberMe) -->
+                <div class="login-form__checkbox-group">
+                    <input type="checkbox" id="rememberMe" class="login-form__checkbox" />
+                    <label for="rememberMe" class="login-form__checkbox-label"
+                        >Запам'ятати мене</label
+                    >
+                </div>
+
+                <!-- Кнопка сабміту -->
+                <button type="submit" id="submit-btn" class="login-form__submit">
+                    <span class="btn-text">Увійти</span>
+                    <span class="btn-loader" hidden></span>
+                </button>
+            </form>
+        </div>
+    </main>
+</div>

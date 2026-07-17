@@ -1,0 +1,44 @@
+<div id="monitor-wrapper" class="monitor-container">
+    <div class="monitor-header">
+        <div class="header-controls">
+            <div class="control-group">
+                <label>Об'єкт:</label>
+                <select id="select-unit" class="m-select">
+                    <option value="1">Вузол #1</option>
+                    <option value="2">Вузол #2</option>
+                    <option value="3">Вузол #3</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Схема:</label>
+                <select id="select-file" class="m-select">
+                    <option value="gvp.png">Живлення власних потреб</option>
+                    <!-- <option value="boiler.png">Котельня</option> -->
+                    <!-- <option value="pumps.png">Насосна станція</option> -->
+                </select>
+            </div>
+            <div class="status-group">
+                <span id="update-indicator" class="pulse-status"></span>
+                <small id="update-time">Очікування даних...</small>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button id="fs-toggle" class="btn-fullscreen">⛶ Повний екран</button>
+        </div>
+    </div>
+
+    <div id="viewport" class="monitor-viewport">
+        <!-- Аспект-контейнер для центрування без скролу -->
+        <div id="canvas-area" class="canvas-area">
+            <img id="bg-layer" src="" class="bg-layer" alt="" />
+            <div id="dynamic-layer" class="dynamic-layer"></div>
+            <svg id="svg-layer" class="svg-layer"></svg>
+        </div>
+    </div>
+
+    <!-- Глобальний тултіп -->
+    <div id="global-tooltip" class="custom-tooltip"></div>
+</div>
+
+<link rel="stylesheet" href="/css/monitor.css" />
+<script type="module" src="/js/pages/monitor.js"></script>

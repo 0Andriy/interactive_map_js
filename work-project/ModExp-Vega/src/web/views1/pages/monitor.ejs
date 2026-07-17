@@ -1,0 +1,53 @@
+<div id="monitor-wrapper" class="monitor-container">
+    <div class="monitor-header">
+        <div class="header-controls">
+            <div class="control-item">
+                <label>Об'єкт:</label>
+                <select id="select-unit" class="ios-select">
+                    <!-- Цей варіант буде видимим спочатку, але його не можна обрати повторно -->
+                    <option value="" disabled selected>Оберіть блок...</option>
+
+                    <!-- Значення -->
+                    <option value="1">Блок №1</option>
+                    <option value="2">Блок №2</option>
+                    <!-- <option value="3">Вузол #3</option> -->
+                </select>
+            </div>
+            <div class="control-item">
+                <label>Файл:</label>
+                <select id="select-file" class="ios-select">
+                    <!-- Цей варіант буде видимим спочатку, але його не можна обрати повторно -->
+                    <option value="" disabled selected>Оберіть фрагмент...</option>
+
+                    <!-- Значення -->
+                    <option value="gvp.png">Живлення власних потреб</option>
+                    <option value="vru.png">Відкрита розподільча установка 330кВ, 750кВ</option>
+                    <option value="h00n.png">Другий контур</option>
+                    <option value="то.png">Турбіне відділення</option>
+                    <option value="ро.png">Реакторне відділення</option>
+                </select>
+            </div>
+            <div class="monitor-status">
+                <span id="sync-indicator" class="status-dot"></span>
+                <span id="update-time" style="color: white">Очікування...</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button id="fs-toggle" class="btn-fs">⛶ Повний екран</button>
+        </div>
+    </div>
+
+    <div id="monitor-viewport" class="monitor-viewport">
+        <!-- Контейнер, що вписується в екран -->
+        <div id="canvas-area" class="canvas-area">
+            <img id="bg-layer" src="" class="bg-layer" alt="" />
+            <div id="dynamic-layer" class="dynamic-layer"></div>
+        </div>
+    </div>
+
+    <!-- Тултіп -->
+    <div id="global-tooltip" class="monitor-tooltip"></div>
+</div>
+
+<link rel="stylesheet" href="/css/monitor.css" />
+<script type="module" src="/js/pages/monitor.js"></script>

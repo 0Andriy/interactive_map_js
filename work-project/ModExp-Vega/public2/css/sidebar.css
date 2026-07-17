@@ -1,0 +1,17 @@
+.sidebar {
+    width: var(--side-w);
+    background: #1e293b;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1.5rem;
+}
+
+.sidebar-nav ul { list-style: none; }
+.sidebar-nav a {
+    display: flex; align-items: center; gap: 12px; padding: 12px;
+    color: #94a3b8; text-decoration: none; border-radius: 8px; transition: 0.2s; margin-bottom: 8px;
+}
+.sidebar-nav a:hover, .sidebar-nav a.active { background: var(--primary); color: white; }
+.sidebar-status { font-size: 0.75rem; color: #475569; padding-top: 1rem; border-top: 1px solid #334155; }

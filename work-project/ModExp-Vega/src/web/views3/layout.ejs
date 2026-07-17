@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title><%= title || "Advanced SCADA Dashboard" %></title>
+
+    <!-- CSS (Стилі краще групувати або мініфікувати) -->
+    <link rel="stylesheet" href="/css/reset.css">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="root-container">
+
+    <% if (locals.showHeader !== false) { %>
+        <%- include('partials/header') %>
+    <% } %>
+
+    <div class="app-body">
+
+        <% if (locals.showLeftSidebar !== false) { %>
+            <%- include('partials/sidebar-left') %>
+        <% } %>
+
+        <main class="main-content">
+            <%- body %>
+        </main>
+
+        <% if (locals.showRightSidebar !== false) { %>
+            <%- include('partials/sidebar-right') %>
+        <% } %>
+
+    </div>
+
+    <% if (locals.showFooter !== false) { %>
+        <%- include('partials/footer') %>
+    <% } %>
+
+    <script src="/js/main.js"></script>
+    <script src="/js/te.js"></script>
+</body>
+</html>

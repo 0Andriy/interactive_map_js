@@ -1,0 +1,65 @@
+<header class="app-header">
+    <nav class="navbar" aria-label="Головна навігація">
+
+        <!-- ЛІВА ЧАСТИНА: Керування + Брендинг -->
+        <div class="nav-section nav-left">
+            <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Меню">
+                <span class="material-symbols-rounded">menu_open</span>
+            </button>
+
+            <a href="/" class="brand">
+                <!-- <img src="" alt="" class="logo-img" width="32" height="32"> -->
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                </svg>
+                <span class="brand-name">DevFlow</span>
+            </a>
+        </div>
+
+        <!-- ЦЕНТРАЛЬНА ЧАСТИНА: Заготовка на майбутнє -->
+        <div class="nav-section nav-center">
+            <!-- Сюди можна буде вставити пошук або посилання -->
+        </div>
+
+        <!-- ПРАВА ЧАСТИНА: Дані -> Аватарка -->
+        <div class="nav-section nav-right">
+            <% if (locals.user) { %>
+                <details class="user-dropdown-container">
+                    <summary class="user-trigger">
+                        <!-- Порядок: Спочатку текст, потім аватар -->
+                        <div class="user-meta">
+                            <span class="user-display-name"><%= user.name %></span>
+                            <span class="material-symbols-rounded expand-icon">expand_more</span>
+                        </div>
+                        <div class="avatar-container">
+                            <img src="<%= user.avatar || '/img/default-avatar.png' %>" alt="Профіль">
+                        </div>
+                    </summary>
+
+                    <div class="dropdown-menu" role="menu">
+                        <div class="dropdown-header">
+                            <p class="user-info-name"><%= user.name %></p>
+                            <p class="user-info-email"><%= user.email %></p>
+                        </div>
+                        <hr class="dropdown-divider">
+                        <a href="/profile" class="dropdown-item" role="menuitem">
+                            <span class="material-symbols-rounded">person</span> Профіль
+                        </a>
+                        <a href="/settings" class="dropdown-item" role="menuitem">
+                            <span class="material-symbols-rounded">settings</span> Налаштування
+                        </a>
+                        <hr class="dropdown-divider">
+                        <form action="/logout" method="POST">
+                            <button type="submit" class="dropdown-item logout-btn" role="menuitem">
+                                <span class="material-symbols-rounded">logout</span> Вийти
+                            </button>
+                        </form>
+                    </div>
+                </details>
+            <% } else { %>
+                <a href="/login" class="login-link">Увійти</a>
+            <% } %>
+        </div>
+
+    </nav>
+</header>

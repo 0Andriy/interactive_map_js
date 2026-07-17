@@ -1,0 +1,1284 @@
+:root {
+    /* --- Основна палітра (Slate/Zinc 900) --- */
+    --bg-deep: #111114;
+    --bg-dark: #1a1a1e;
+    --bg-sidebar: rgba(26, 26, 30, 0.8);
+
+    /* --- Деталі та кордони --- */
+    --border: rgba(255, 255, 255, 0.1);
+    --border-bright: rgba(255, 255, 255, 0.18);
+
+    /* --- Акцент (Cyan 400) --- */
+    --accent: #22d3ee;
+    --accent-gradient: linear-gradient(135deg, #38bdf8 0%, #2dd4bf 100%);
+
+    /* --- Типографіка --- */
+    --text-main: #ffffff;
+    --text-secondary: #cbd5e1;
+
+    /* --- Статуси --- */
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.12);
+    --error: #f43f5e;
+    --error-bg: rgba(244, 63, 94, 0.15);
+    --waiting: #94a3b8;
+    --waiting-bg: rgba(148, 163, 184, 0.12);
+
+    /* --- Системні токени --- */
+    --radius: 12px;
+    --shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.45);
+    --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================
+    СТИЛІ ДЛЯ IFRAME (Native CSS Nesting)
+   ========================================== */
+
+.in-iframe {
+    /* 1. Ховаємо сусідні елементи на першому рівні (header та footer) */
+    .page-layout > *:not(.page-layout__main) {
+        display: none !important;
+    }
+
+    /* 2. Ховаємо сусідні елементи на другому рівні (sidebars) */
+    .page-layout__body > *:not(.page-layout__content) {
+        display: none !important;
+    }
+
+    /* 3. Переконуємося, що весь ланцюжок контейнерів розгортається на повну ширину */
+    .page-layout,
+    .page-layout__main,
+    .page-layout__body {
+        display: flex !important;
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* 4. Показуємо та стилізуємо сам контент */
+    .page-layout__content {
+        display: flex !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    /* Ховаємо фільтри */
+    .schema-header {
+        display: none !important;
+    }
+
+    /* ховаємо кнопки з фрагментів якщо вони є */
+    .schema-node {
+        &[data-group='knop'],
+        &[data-group='knop_kfb'] {
+            display: none !important;
+        }
+    }
+}
+
+/* --- 1. WIDGET STRUCTURE --- */
+.schema-widget {
+    height: 100%;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-dark);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow);
+
+    &:fullscreen {
+        border-radius: 0;
+        background: var(--bg-deep);
+    }
+
+    .schema-header {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding: 12px 20px;
+        background: rgba(17, 17, 20, 0.7);
+        border-bottom: 1px solid var(--border);
+        z-index: 100;
+
+        .info-blocks {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+
+            .data-info {
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 0.85rem;
+                background: rgba(0, 0, 0, 0.3);
+                padding: 6px 12px;
+                border-radius: calc(var(--radius) / 2);
+                color: var(--text-secondary);
+                border: 1px solid var(--border);
+                white-space: nowrap;
+
+                .period-tag {
+                    color: var(--accent);
+                    border-left: 1px solid var(--border-bright);
+                    padding-inline-start: 10px;
+                    margin-inline-start: 10px;
+                    font-weight: bold;
+                }
+
+                .ms {
+                    color: var(--accent);
+                    opacity: 0.8;
+                }
+            }
+        }
+    }
+
+    .status-block {
+        --status-color: var(--success);
+        --status-bg: var(--success-bg);
+        --ripple-display: block;
+
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--status-bg);
+        padding: 6px 14px;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        transition: var(--transition-base);
+
+        &.is-offline {
+            --status-color: var(--error);
+            --status-bg: var(--error-bg);
+        }
+
+        &.is-waiting {
+            --status-color: var(--waiting);
+            --status-bg: var(--waiting-bg);
+            --ripple-display: none;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--status-color);
+            border-radius: 50%;
+            position: relative;
+
+            &::after {
+                content: '';
+                position: absolute;
+                inset: -4px;
+                background: inherit;
+                border-radius: 50%;
+                opacity: 0.4;
+                display: var(--ripple-display);
+                animation: ripple 2s infinite ease-out;
+            }
+        }
+
+        .status-text {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--status-color);
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+    }
+}
+
+/* --- 2. CONTROLS --- */
+.custom-select {
+    background: #242429;
+    border: 1px solid var(--border-bright);
+    color: var(--text-main);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: var(--transition-base);
+
+    &:hover {
+        background: #2d2d33;
+        border-color: var(--accent);
+    }
+}
+
+.fullscreen-btn {
+    background: var(--accent-gradient);
+    border: none;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #000;
+
+    &:hover {
+        filter: brightness(1.1);
+        transform: translateY(-1px);
+    }
+
+    svg {
+        display: block;
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* --- 3. SCHEMA BODY & LAYERS --- */
+.schema-body {
+    contain: strict;
+    will-change: transform;
+
+    /*  */
+    flex: 1;
+    position: relative;
+    background: var(--bg-deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+
+    .schema-scene {
+        position: relative;
+        /* transition: var(--transition-base); */
+        transition: none;
+        container-type: size;
+
+        .layer {
+            position: absolute;
+            inset: 0;
+
+            &.layer-bg {
+                z-index: 1;
+                background-image: radial-gradient(rgba(34, 211, 238, 0.07) 1px, transparent 1px);
+                background-size: 40px 40px;
+                pointer-events: none;
+
+                .bg-img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: fill;
+                }
+            }
+
+            &.layer-svg {
+                z-index: 2;
+                pointer-events: none;
+
+                .schema-svg-layer {
+                    width: 100%;
+                    height: 100%;
+                }
+
+                .schema-line {
+                    stroke: var(--accent);
+                    stroke-width: 0.2cqmin;
+                    fill: none;
+                    vector-effect: non-scaling-stroke;
+                    stroke-dasharray: 0.8cqmin;
+                    animation: flow 20s linear infinite;
+                    opacity: 0.6;
+                }
+            }
+
+            &.layer-nodes {
+                z-index: 3;
+            }
+        }
+    }
+}
+
+/* --- 4. NODES, HISTOGRAMS & PLACEHOLDERS --- */
+.schema-node {
+    --overlayColor: transparent;
+    --border-color: var(--border-bright);
+    --background-color: rgba(26, 26, 30, 0.95);
+    --value-color: #50d344;
+
+    /* Змінні для анімації бордера (за замовчуванням вимкнено) */
+    --border-anim-color: transparent;
+    --border-anim-speed: 1s;
+    --border-style: solid;
+
+    position: absolute;
+    background: var(--background-color);
+    border: 0.15cqmin var(--border-style) var(--border-color);
+    /* padding: 0.3cqmin 0.7cqmin; */
+    border-radius: 0.5cqmin;
+    box-shadow: 0 0.5cqmin 1.5cqmin rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch; /*center;*/
+    justify-content: center;
+    cursor: help;
+    /* transition: all 0.2s ease; */
+
+    &[data-group='tablo'] {
+        border-width: 2px;
+        background: transparent;
+    }
+
+    /* Для всіх ІНШИХ сусідніх елементів такого ж типу повністю прибираємо фон та рамку */
+    &:not([data-group='tablo']):not([data-group='knop']):not([data-group='knop_kfb']) {
+        background: none;
+        border: none;
+    }
+
+    .node-label {
+        font-size: 0.85cqmin;
+        color: var(--text-secondary);
+        margin-bottom: 0.2cqmin;
+        white-space: nowrap;
+    }
+
+    &[data-group='dtext'] {
+        padding: 0.3cqmin 0.7cqmin;
+
+        /* Беремо змінну кольору та залишаємо від неї лише 50% яскравості (інші 50% — прозорість) */
+        /* background-color: color-mix(in srgb, var(--background-color) 80%, transparent); */
+        /* background: none; */
+        /* border: none; */
+
+        /* &:hover {
+            --border-color: var(--accent);
+            background: #242429;
+            z-index: 100;
+            transform: scale(1.05);
+
+            .node-popover {
+                opacity: 1;
+                visibility: visible;
+                transform: translateX(-50%) translateY(0);
+            }
+        } */
+    }
+
+    .node-value {
+        /* Створюємо динамічну змінну зі значенням за замовчуванням 'center' */
+        text-align: var(--text-align, center);
+        width: 100%; /* Розтягуємо на всю ширину для коректного вирівнювання тексту */
+
+        font-size: 1.6cqmin;
+        font-weight: 800;
+        color: var(--value-color);
+        white-space: nowrap;
+    }
+
+    &:has(.node-image, svg) {
+        padding: 0;
+        border: none;
+        border-radius: 0;
+        overflow: hidden;
+        background: none;
+    }
+
+    .node-image,
+    svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: fill; /*contain*/
+        filter: drop-shadow(0 0 2px var(--accent));
+    }
+
+    /* Модифікатори анімації */
+    &.is-alarm {
+        --border-color: #ff4757;
+        --border-style: dashed;
+        --border-anim-speed: 0.8s;
+
+        border: 0.4cqmin var(--border-style) var(--border-color);
+        animation: blink-border var(--border-anim-speed) infinite;
+    }
+
+    &.is-warning {
+        --border-color: orange;
+        --border-anim-speed: 1.5s;
+
+        border: 0.4cqmin var(--border-style) var(--border-color);
+        animation: blink-border var(--border-anim-speed) infinite;
+    }
+
+    /* Фарбування */
+    &.is-overlay-color {
+        .node-image {
+            filter: grayscale(1) brightness(2) contrast(1.5);
+        }
+
+        &::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-color: var(--overlayColor);
+            mix-blend-mode: multiply;
+            pointer-events: none;
+        }
+    }
+
+    /* АВТОНОМНИЙ ВІДЖЕТ - Histogram */
+    .histogram {
+        --border-thickness: 1px;
+        --bg-color: #1a1a24; /* Логіка кольору порожнечі */
+
+        /* ДЕФОЛТНІ ЗНАЧЕННЯ НА РІВНІ CSS (якщо параметри забули передати в HTML) */
+        --fill-level-pc: 0; /* За замовчуванням порожній бар */
+        --ticks-count: 0; /* За замовчуванням сітки немає */
+        --dynamic-color: #4caf50;
+        --l-pos: -100;
+        --l-color: #ff3d00;
+
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background-color: var(--bg-color, #1a1a24);
+        /* border: var(--border-thickness) solid var(--dynamic-color, #388e3c); */
+        /* border-radius: 8px; */
+        overflow: hidden; /* Обрізає заливку по радіусу кутів */
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        transition: border-color 0.3s ease;
+        z-index: 1;
+
+        /* Скидаємо padding будь-якого батька, який має цю гістограму */
+        .schema-node:has(&) {
+            padding: 0;
+        }
+
+        /* ШАР ЗАПОВНЕННЯ */
+        .fill {
+            position: absolute;
+            background-color: var(--dynamic-color, #4caf50);
+            width: calc(var(--fill-level-pc, 0) * 1%);
+            height: calc(var(--fill-level-pc, 0) * 1%);
+            transition:
+                width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 0.3s ease;
+        }
+
+        /* СІТКА ПОДІЛОК (Градієнт з ідеальним кроком 10%) */
+        .ticks-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            display: none;
+        }
+
+        &:has([style*='--ticks-count']),
+        &[style*='--ticks-count'] {
+            /* Додатковий захист від значень 0 або пустих рядків у атрибутах */
+            &:not([style*='--ticks-count: 0']),
+            &:not([style*='--ticks-count:0']) {
+                .ticks-layer {
+                    display: block;
+                }
+            }
+        }
+
+        /* ВНУТРІШНІ ЛІНІЇ ОБМЕЖЕНЬ ТА ПІДПИСИ */
+        .limit-wrapper {
+            position: absolute;
+            z-index: 3;
+            pointer-events: none;
+
+            .limit-line {
+                position: absolute;
+                background-color: var(--l-color);
+                box-shadow: 0 0 8px var(--l-color);
+            }
+
+            .limit-text {
+                position: absolute;
+                background: rgba(11, 11, 14, 0.95);
+                color: var(--l-color);
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 0.65rem;
+                font-weight: bold;
+                white-space: nowrap;
+                border: 1px solid var(--l-color);
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            }
+        }
+
+        /* ГОЛОВНИЙ ЦЕНТРАЛЬНИЙ ТЕКСТ */
+        .label {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 1.1rem;
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.9);
+            z-index: 4;
+            pointer-events: none;
+        }
+
+        /* 1. ГОРИЗОНТАЛЬНИЙ РЕЖИМ */
+        &.horizontal {
+            .fill {
+                top: 0;
+                bottom: 0;
+                height: 100%; /* Завжди на всю висоту, змінюється лише ширина */
+                width: calc(var(--fill-level-pc, 0) * 1%);
+            }
+
+            .ticks-layer {
+                background: repeating-linear-gradient(
+                    to right,
+                    transparent,
+                    transparent calc((100% / var(--ticks-count, 1)) - 1px),
+                    rgba(255, 255, 255, 0.12) calc((100% / var(--ticks-count, 1)) - 1px),
+                    rgba(255, 255, 255, 0.12) calc(100% / var(--ticks-count, 1))
+                );
+            }
+
+            .limit-wrapper {
+                top: 0;
+                height: 100%;
+                width: 0;
+
+                .limit-line {
+                    height: 100%;
+                    width: 2px;
+                    top: 0;
+                }
+
+                .limit-text {
+                    bottom: 6px;
+                    transform: translateX(-50%);
+                }
+            }
+
+            /* Нормальний (Зліва направо) */
+            &:not(.inverted) {
+                .fill {
+                    left: 0;
+                    right: auto;
+                }
+
+                .limit-wrapper {
+                    left: calc(var(--l-pos, 0) * (100% - var(--border-thickness) * 2) / 100);
+                }
+            }
+
+            /* Інвертований (Справа наліво) */
+            &.inverted {
+                .fill {
+                    right: 0;
+                    left: auto;
+                }
+
+                .ticks-layer {
+                    transform: scaleX(-1);
+                }
+
+                .limit-wrapper {
+                    right: calc(var(--l-pos, 0) * (100% - var(--border-thickness) * 2) / 100);
+                }
+            }
+
+            /* Специфічний хардкод під фрейм напрямку 'L', якщо шкала НЕ інвертована по name,
+               але фізично розгорнута вліво через dir */
+            &[data-dir='L'] {
+                /* Напрямок вліво, шкала НЕ інвертована по name */
+                &:not(.inverted) {
+                    .fill {
+                        right: 0;
+                        left: auto;
+                    }
+                    .ticks-layer {
+                        transform: scaleX(-1);
+                    }
+                    .limit-wrapper {
+                        right: calc(var(--l-pos, 0) * (100% - var(--border-thickness) * 2) / 100);
+                        left: auto;
+                    }
+                }
+
+                /* Напрямок вліво + шкала inverted (компенсація -> стає зліва направо) */
+                &.inverted {
+                    .fill {
+                        left: 0;
+                        right: auto;
+                    }
+                    .ticks-layer {
+                        transform: none;
+                    }
+                    .limit-wrapper {
+                        left: calc(var(--l-pos, 0) * (100% - var(--border-thickness) * 2) / 100);
+                        right: auto;
+                    }
+                }
+            }
+        }
+
+        /* 2. ВЕРТИКАЛЬНИЙ РЕЖИМ */
+        &.vertical {
+            .fill {
+                left: 0;
+                right: 0;
+                width: 100%; /* Завжди на всю ширину, змінюється лише висота */
+                height: calc(var(--fill-level-pc, 0) * 1%);
+            }
+
+            /* Динамічний розрахунок кроку градієнта по вертикалі */
+            .ticks-layer {
+                background: repeating-linear-gradient(
+                    to top,
+                    transparent,
+                    transparent calc((100% / var(--ticks-count, 1)) - 1px),
+                    rgba(255, 255, 255, 0.12) calc((100% / var(--ticks-count, 1)) - 1px),
+                    rgba(255, 255, 255, 0.12) calc(100% / var(--ticks-count, 1))
+                );
+            }
+
+            .limit-wrapper {
+                left: 0;
+                width: 100%;
+                height: 0;
+
+                .limit-line {
+                    width: 100%;
+                    height: 2px;
+                    left: 0;
+                }
+
+                .limit-text {
+                    right: 6px;
+                    transform: translateY(50%);
+                }
+            }
+
+            /* Нормальний (Знизу вгору) */
+            &:not(.inverted) {
+                .fill {
+                    bottom: 0;
+                    top: auto;
+                }
+
+                .limit-wrapper {
+                    bottom: calc(var(--l-pos, 0) * (100% - var(--border-thickness) * 2) / 100);
+                }
+            }
+
+            /* Інвертований (Зверху вниз) */
+            &.inverted {
+                .fill {
+                    top: 0;
+                    bottom: auto;
+                }
+
+                .ticks-layer {
+                    transform: scaleY(-1);
+                }
+
+                .limit-wrapper {
+                    top: calc(var(--l-pos, 0) * (100% - var(--border-thickness) * 2) / 100);
+                }
+            }
+
+            &[data-dir='N'] {
+                /* Напрямок вниз, шкала НЕ інвертована по name */
+                &:not(.inverted) {
+                    .fill {
+                        top: 0;
+                        bottom: auto;
+                    }
+                    .ticks-layer {
+                        transform: scaleY(-1);
+                    }
+                    .limit-wrapper {
+                        top: calc(var(--l-pos, 0) * (100% - var(--border-thickness) * 2) / 100);
+                        bottom: auto;
+                    }
+                    .limit-text {
+                        top: 6px;
+                        bottom: auto;
+                        transform: translateY(-50%);
+                    }
+                }
+
+                /* Напрямок вниз + шкала inverted (компенсація -> стає знизу вгору) */
+                &.inverted {
+                    .fill {
+                        bottom: 0;
+                        top: auto;
+                    }
+                    .ticks-layer {
+                        transform: none;
+                    }
+                    .limit-wrapper {
+                        bottom: calc(var(--l-pos, 0) * (100% - var(--border-thickness) * 2) / 100);
+                        top: auto;
+                    }
+                    .limit-text {
+                        bottom: 6px;
+                        top: auto;
+                        transform: translateY(50%);
+                    }
+                }
+            }
+        }
+    }
+
+    /* RadialCharts - clock */
+    .charts-grid {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: flex-end;
+
+        & .chart-card {
+            background-color: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+
+            & .card-title {
+                font-size: 14px;
+                color: var(--text-secondary);
+                margin-bottom: 15px;
+            }
+
+            & .canvas-target {
+                margin: 0 auto 15px auto;
+            }
+
+            & .slider-wrapper {
+                margin-top: 15px;
+
+                & .slider-input {
+                    width: 100%;
+                    cursor: pointer;
+                }
+            }
+
+            & .value-badge {
+                display: inline-block;
+                margin-top: 10px;
+                padding: 2px 10px;
+                background-color: rgba(255, 255, 255, 0.1);
+                border-radius: 20px;
+                font-weight: bold;
+                font-size: 14px;
+            }
+
+            &.size-large {
+                width: 300px;
+                & .canvas-target {
+                    width: 260px;
+                    height: 260px;
+                }
+            }
+
+            &.size-medium {
+                width: 200px;
+                & .canvas-target {
+                    width: 160px;
+                    height: 160px;
+                }
+            }
+
+            &.size-small {
+                width: 120px;
+                & .canvas-target {
+                    width: 90px;
+                    height: 90px;
+                }
+            }
+        }
+    }
+
+    /*  */
+    /* Шукаємо саме ті ноди, які ініціалізовані під 2D-графік */
+    &:has(.graph-2d-canvas) {
+        container-type: inline-size;
+        background-color: transparent !important;
+        --background-color: transparent !important;
+    }
+
+    /* Контейнер 2D-полотна */
+    .graph-2d-canvas {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        background: rgba(30, 30, 30, 0.4);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-sizing: border-box;
+
+        /* Фонова сітка (тепер 5cqw рахується від ширини самого віджета) */
+        .graph-grid-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background-size: 5cqw 5cqw;
+            background-image:
+                linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        }
+
+        /* Рухомий маркер-приціл */
+        .graph-pointer {
+            position: absolute;
+            z-index: 10;
+            transform: translate(-50%, -50%);
+
+            /* Координати з JS */
+            left: var(--x-pos, 0%);
+            top: var(--y-pos, 0%);
+
+            /* Зменшуємо відносний розмір: тепер точка займає 2.5% від ширини графіка,
+               обмежена жорсткими рамками від 6px до 14px, щоб не ставала гігантською */
+            width: clamp(10px, 5cqw, 16px);
+            height: clamp(10px, 5cqw, 16px);
+            border: max(1px, 0.4cqw) solid #ffffff;
+            border-radius: 50%;
+
+            background-color: var(--pointer-dynamic-color, var(--pointer-color, #00ff66));
+            box-shadow: 0 0 1cqw var(--pointer-dynamic-color, var(--pointer-color, #00ff66));
+
+            transition:
+                left 0.25s ease-out,
+                top 0.25s ease-out;
+
+            /* Лінії перехрестя */
+            .axis-line {
+                position: absolute;
+                background-color: rgba(255, 255, 255, 0.2);
+                pointer-events: none;
+
+                &.axis-x {
+                    width: 4000px;
+                    height: 1px; /* Робимо лінії завжди чіткими в 1 піксель */
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                }
+
+                &.axis-y {
+                    width: 1px;
+                    height: 4000px;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                }
+            }
+
+            &:hover {
+                transform: translate(-50%, -50%) scale(1.15);
+                cursor: crosshair;
+            }
+        }
+    }
+
+    /* Hex */
+    .hex {
+        transition:
+            fill 0.2s,
+            stroke-width 0.2s;
+        cursor: pointer;
+
+        &:hover {
+            stroke-width: 2.5px;
+            /* filter: brightness(0.95); */
+        }
+    }
+
+    .axis-line {
+        stroke: #cbd5e1;
+        stroke-width: 1.2;
+        stroke-dasharray: 4 4;
+    }
+
+    .axis-text {
+        font-size: 22px;
+        fill: #cbd5e1;
+        font-family: 'Courier New', Courier, monospace;
+        font-weight: 900;
+    }
+
+    .hex-text {
+        font-size: 12px;
+        font-weight: bold;
+        fill: #cbd5e1;
+        pointer-events: none;
+        user-select: none;
+    }
+
+    /* Placeholder */
+    &.node-placeholder {
+        border: 2px dashed #ff4757;
+        background: rgba(255, 71, 87, 0.15);
+        color: #ff4757;
+        font-weight: bold;
+
+        .placeholder-box {
+            font-size: 1.2em;
+            animation: blink 1s infinite;
+        }
+    }
+}
+
+/* --- 5. TOOLTIPS & POPOVERS --- */
+.global-tooltip {
+    position: absolute;
+    z-index: 9999;
+    display: none;
+    background: var(--bg-deep);
+    border: 1px solid var(--accent);
+    padding: 10px 14px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    color: var(--text-main);
+    font-size: 1.4cqmin;
+    pointer-events: all;
+    min-width: 180px;
+    max-width: 280px;
+
+    .tooltip-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 8px;
+
+        .tab-btn {
+            flex: 0 0 auto;
+            font-size: 11px;
+            padding: 2px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.15);
+            }
+
+            &.active {
+                background: var(--accent, #3b82f6);
+                color: #000;
+                border-color: var(--accent, #3b82f6);
+                font-weight: bold;
+            }
+        }
+    }
+
+    /* Стилі для Select (коли ID забагато) */
+    .tooltip-header-select {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+        label {
+            font-size: 10px;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .tab-select {
+            flex: 1;
+            background: #242429;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 4px;
+            font-size: 11px;
+            padding: 2px 4px;
+            outline: none;
+            cursor: pointer;
+
+            &:focus {
+                border-color: var(--accent);
+            }
+            option {
+                background: #1a1a1e;
+            }
+        }
+    }
+
+    .tooltip-line {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        gap: 12px;
+
+        /* Сховає весь рядок, якщо .live-value всередині нього буде порожнім */
+        &:has(.tooltip-val:empty) {
+            display: none;
+        }
+
+        .tooltip-key {
+            color: var(--text-secondary);
+        }
+
+        .tooltip-val {
+            color: var(--accent, #3b82f6);
+            font-family: monospace;
+
+            &.live-value {
+                color: var(--success);
+                font-weight: bold;
+            }
+        }
+    }
+
+    /* .tooltip-line {
+        display: block;
+        margin-bottom: 2px;
+
+        .tooltip-key {
+            color: var(--text-secondary);
+            margin-inline-end: 8px;
+        }
+
+        .tooltip-val {
+            color: var(--accent);
+            font-family: monospace;
+
+            &.live-value {
+                color: var(--success);
+                font-weight: bold;
+            }
+        }
+    } */
+}
+
+/* --- 6. ANIMATIONS --- */
+@keyframes ripple {
+    0% {
+        transform: scale(1);
+        opacity: 0.4;
+    }
+    100% {
+        transform: scale(3);
+        opacity: 0;
+    }
+}
+
+@keyframes flow {
+    to {
+        stroke-dashoffset: -100;
+    }
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0.3;
+    }
+}
+
+@keyframes blink-border {
+    50% {
+        border-color: var(--border-anim-color);
+    }
+}
+
+/*  */
+/* === АДАПТОВАНИЙ NATIVE CSS NESTING ДЛЯ КОМПОНЕНТА === */
+.advanced-select {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    font-family: inherit;
+    box-sizing: border-box;
+
+    * {
+        box-sizing: border-box;
+    }
+
+    /* Зона кліку (адаптована під ваш .custom-select) */
+    .trigger {
+        background: #242429;
+        border: 1px solid var(--border-bright);
+        color: var(--text-main);
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: var(--transition-base);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        min-height: 40px;
+
+        &:hover {
+            background: #2d2d33;
+            border-color: var(--accent);
+        }
+
+        &:focus-within {
+            border-color: var(--accent);
+            background: #2d2d33;
+            box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.15);
+        }
+
+        /* Стилізація кастомних тегів у темній темі */
+        .selected-tag {
+            background: var(--bg-deep);
+            border: 1px solid var(--border-bright);
+            color: var(--text-main);
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition-base);
+
+            &:hover {
+                border-color: var(--accent);
+            }
+
+            .remove-btn {
+                cursor: pointer;
+                font-weight: bold;
+                color: var(--text-secondary);
+                transition: color 0.2s;
+                &:hover {
+                    color: var(--error);
+                }
+            }
+        }
+
+        /* Інпут для пошуку */
+        .search-input {
+            border: none;
+            outline: none;
+            flex-basis: 40px;
+            flex-grow: 1;
+            min-width: 20px;
+            padding: 2px 4px;
+            font-size: 0.85rem;
+            background: transparent;
+            color: var(--text-main);
+
+            &::placeholder {
+                color: var(--waiting);
+            }
+        }
+    }
+
+    /* Випадаюче вікно */
+    .advanced-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        margin-top: 6px;
+        background: #242429;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: var(--shadow);
+        display: none;
+        padding: 6px 0;
+
+        &.open {
+            display: block;
+        }
+
+        .no-results {
+            padding: 16px;
+            color: var(--waiting);
+            text-align: center;
+            font-size: 0.85rem;
+        }
+    }
+
+    /* Рядки елементів */
+    .item-row {
+        display: flex;
+        align-items: center;
+        padding: 10px 14px;
+        cursor: pointer;
+        user-select: none;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        transition: var(--transition-base);
+
+        &:hover {
+            background: #2d2d33;
+            color: var(--text-main);
+        }
+
+        /* Вибраний елемент (світіння акцентом) */
+        &.selected {
+            background: rgba(34, 211, 238, 0.08);
+            color: var(--accent);
+            font-weight: 500;
+            box-shadow: inset 3px 0 0 0 var(--accent);
+        }
+
+        /* Елементи категорії, що не вибираються */
+        &.not-selectable {
+            color: var(--waiting);
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            &:hover {
+                background: rgba(255, 255, 255, 0.02);
+                color: var(--text-main);
+            }
+        }
+
+        /* Кастомна іконка стрілочки */
+        .toggle-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 6px;
+            font-size: 10px;
+            color: var(--waiting);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: var(--transition-base);
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: var(--accent);
+            }
+        }
+
+        .item-icon {
+            margin-right: 8px;
+            font-size: 1.1rem;
+        }
+
+        .item-label {
+            flex-grow: 1;
+        }
+    }
+
+    /* Зсув для дерева */
+    .children-container {
+        padding-left: 20px;
+        border-left: 1px dashed rgba(255, 255, 255, 0.05);
+        margin-left: 24px;
+        display: none;
+
+        &.expanded {
+            display: block;
+        }
+    }
+}

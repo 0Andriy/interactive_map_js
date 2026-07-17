@@ -1,0 +1,31 @@
+<div class="error-container">
+    <div class="error-visual">
+        <span class="error-code"><%= statusCode %></span>
+    </div>
+    <h1>Упс! Щось пішло не так</h1>
+    <p class="error-message"><%= message %></p>
+
+    <% if (process.env.NODE_ENV === 'development' && typeof stack !== 'undefined') { %>
+        <details class="error-stack">
+            <summary>Технічні деталі (тільки для розробки)</summary>
+            <pre><%= stack %></pre>
+        </details>
+    <% } %>
+
+    <div class="error-actions">
+        <a href="/" class="btn-primary">Повернутися на головну</a>
+        <button onclick="location.reload()" class="btn-secondary">Спробувати ще раз</button>
+    </div>
+</div>
+
+<style>
+    .error-container { text-align: center; padding: 3rem 1rem; max-width: 600px; margin: 0 auto; }
+    .error-code { font-size: 8rem; font-weight: 800; color: #e2e8f0; line-height: 1; }
+    .error-visual { margin-bottom: 1.5rem; }
+    h1 { color: #1e293b; margin-bottom: 1rem; }
+    .error-message { color: #64748b; font-size: 1.2rem; margin-bottom: 2rem; }
+    .error-stack { text-align: left; background: #f1f5f9; padding: 1rem; border-radius: 8px; margin-bottom: 2rem; font-size: 0.8rem; }
+    .error-actions { display: flex; gap: 1rem; justify-content: center; }
+    .btn-primary { background: #3b82f6; color: white; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; font-weight: 600; }
+    .btn-secondary { background: #e2e8f0; color: #475569; padding: 0.75rem 1.5rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; }
+</style>

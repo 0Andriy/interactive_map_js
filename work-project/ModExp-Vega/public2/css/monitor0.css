@@ -1,0 +1,91 @@
+.monitor-container {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    height: 100%; /* Займає все місце в main */
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+/* Fullscreen режим */
+.monitor-container:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+}
+
+.monitor-header {
+    padding: 1rem 1.5rem;
+    background: #1e293b;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.last-update {
+    margin-left: 20px;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.monitor-viewport {
+    flex: 1;
+    position: relative;
+    background: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.map-layer {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    /* Важливо: зберігаємо пропорції картинки */
+}
+
+.bg-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Картинка завжди вписується, не розтягуючись криво */
+    display: block;
+}
+
+.svg-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Щоб не заважала клікати на датчики */
+}
+
+/* Точки з даними */
+.sensor-point {
+    position: absolute;
+    transform: translate(-50%, -50%); /* Центруємо точку */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.sensor-value {
+    background: rgba(30, 41, 59, 0.8);
+    color: #3b82f6;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    border: 1px solid #3b82f6;
+    backdrop-filter: blur(4px);
+}
+
+.sensor-label {
+    font-size: 0.7rem;
+    color: #cbd5e1;
+    margin-top: 2px;
+    text-shadow: 1px 1px 2px #000;
+}

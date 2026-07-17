@@ -1,4 +1,7 @@
 export class AppNotifier {
+  // Зберігаємо посилання на ОСТАННЄ активне сповіщення
+  static activeNotification = null;
+
   /**
    * Запитує дозвіл на сповіщення, якщо додаток запущено у звичайному браузері
    * (В Electron зазвичай права надаються автоматично "granted").
@@ -10,6 +13,11 @@ export class AppNotifier {
     }
 
     if (Notification.permission === "granted") return true;
+
+    if (Notification.permission === "denied") {
+      console.warn("Сповіщення заблоковані.");
+      return false
+    }
 
     if (Notification.permission !== "denied") {
       const permission = await Notification.requestPermission();
@@ -34,7 +42,7 @@ export class AppNotifier {
     title,
     body,
     tag = "app-alert-tag",
-    icon = "https://flaticon.com", // Стандартна іконка за замовчуванням
+    icon = "",
     requireInteraction = true,
     silent = false,
     onClick = null,
@@ -58,6 +66,9 @@ export class AppNotifier {
     // 3. Створення нативного сповіщення
     const notification = new Notification(title, notificationOptions);
 
+    // Запам'ятовуємо його як активне
+    this.activeNotification = notification;
+
     // 4. Стандартна поведінка при кліку (Вивід вікна на передній план)
     notification.onclick = (event) => {
       event.preventDefault();
@@ -69,11 +80,16 @@ export class AppNotifier {
       if (typeof onClick === "function") {
         onClick(event);
       }
+      
+      notification.close();
     };
 
     // Обробка помилок (наприклад, якщо ОС відхилила банер)
     notification.onerror = (err) => {
       console.error("Помилка відображення сповіщення:", err);
+      try {
+        notification.close(); // Очищаємо ресурси при помилці
+      } catch(err) {}
     };
 
     return notification;

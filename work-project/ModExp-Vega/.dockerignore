@@ -1,0 +1,9 @@
+# та будь-які інші файли/папки, які не потрібні для запуску застосунку в продакшені
+node_modules/
+certs/
+bin/
+.git
+.gitignore
+.env
+Dockerfile
+README.md

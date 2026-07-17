@@ -1,0 +1,22 @@
+{
+    // Список рекомендованих розширень для цього проєкту.
+    // VS Code запропонує встановити ці розширення, коли хтось відкриє цей проєкт.
+    "recommendations": [
+        "esbenp.prettier-vscode", // **Prettier:** Форматування коду для JavaScript, TypeScript, HTML, CSS та інших мов. Допомагає підтримувати єдиний стиль кодування.
+        "beardedbear.beardedtheme", // **Bearded Theme:** Тема оформлення, яка надає приємний вигляд редактору коду.
+        "dbaeumer.vscode-eslint", // **ESLint:** Якщо ви використовуєте ESLint для лінтингу JavaScript/TypeScript.
+        "ms-python.python", // **Python:** Якщо ваш проєкт включає Python (для форматування, лінтингу та інших функцій).
+        "pkief.material-icon-theme", // **Material Icon Theme:** Додає красиві іконки для файлів та папок, що робить навігацію по проєкту більш зручною.
+        "formulahendry.auto-rename-tag", // **Auto Rename Tag:** Автоматично перейменовує парний HTML/XML тег.
+        "CoenraadS.bracket-pair-colorizer-2", // **Bracket Pair Colorizer 2:** Допомагає візуально розрізняти парні дужки за допомогою кольорової індикації. (Зауважте: нові версії VS Code мають схожу функціональність вбудовано).
+        "yzhang.markdown-all-in-one", // **Markdown All in One:** Якщо ви активно працюєте з Markdown файлами (наприклад, README.md), це розширення додає багато зручних функцій.
+        "aaron-bond.better-comments", // **Better Comments:** Покращує читабельність коментарів у коді, дозволяючи використовувати різні кольори та стилі для різних типів коментарів.
+        "adpyke.codesnap", // **CodeSnap:** Дозволяє швидко створювати знімки коду з вашого редактора.
+        "github.vscode-pull-request-github", // **GitHub Pull Requests:** Дозволяє переглядати та керувати pull request'ами GitHub прямо з VS Code.
+        "eamodio.gitlens", // **GitLens:** Покращує вбудовану підтримку
+        "mhutchie.git-graph", // **Git Graph:** Дозволяє візуалізувати історію Git у вигляді графа, що полегшує розуміння структури комітів.
+        "visualstudioexptteam.vscodeintellicode", // **IntelliCode:** Додає інтелектуальні підказки коду на основі машинного навчання, що може покращити продуктивність при написанні коду.
+        "visualstudioexptteam.intellicode-api-usage-examples", // **IntelliCode API Usage Examples:** Додає приклади використання API, що може бути корисним для швидкого ознайомлення з новими бібліотеками чи фреймворками.
+        "christian-kohler.path-intellisense" // **Path Intellisense:** Автоматичне доповнення шляхів до файлів, що спрощує навігацію та імпорт файлів у вашому проєкті.
+    ]
+}

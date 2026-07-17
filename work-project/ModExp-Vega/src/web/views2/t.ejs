@@ -1,0 +1,29 @@
+<div class="app-container">
+    <!-- 2. Вставляємо Sidebar -->
+    <%- include('partials/sidebar') %>
+
+    <!-- 3. Основний контент -->
+    <main class="main-content"><%- body %></main>
+</div>
+
+<!-- Підключаємо JS -->
+<script type="module" src="/js/main.js"></script>
+
+<!-- 222222222222222 -->
+
+<!DOCTYPE html>
+<html lang="uk">
+    <head>
+        ...
+    </head>
+    <body>
+        <%- include('partials/navbar') %>
+
+        <main>
+            <!-- Динамічно підключаємо файл, який передали в render -->
+            <%- include(page) %>
+        </main>
+
+        <script src="/js/main.js"></script>
+    </body>
+</html>

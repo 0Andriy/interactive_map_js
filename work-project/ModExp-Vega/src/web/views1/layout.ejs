@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title><%= title %> | DataStream Admin</title>
+        <link rel="stylesheet" href="/css/main.css" />
+        <link rel="stylesheet" href="/css/navbar.css" />
+        <link rel="stylesheet" href="/css/sidebar.css" />
+        <link rel="stylesheet" href="/css/monitor.css" />
+        <link href="https://googleapis.com" rel="stylesheet" />
+    </head>
+    <body>
+        <!-- 1. Вставляємо Navbar -->
+        <!-- <%- include('partials/navbar') %> -->
+
+        <div class="app-container">
+            <!-- 2. Вставляємо Sidebar -->
+            <!-- <%- include('partials/sidebar') %> -->
+
+            <!-- 3. Основний контент -->
+            <main class="main-content"><%- body %></main>
+        </div>
+
+        <!-- Підключаємо JS -->
+        <script type="module" src="/js/main.js"></script>
+    </body>
+</html>

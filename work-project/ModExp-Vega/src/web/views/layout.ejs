@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta http-equiv="Content-Security-Policy" content="img-src 'self' data: blob:;">
+
+
+        <title><%= title || "Vega" %></title>
+
+        <!-- Динамічний тег <base>, який змушує відносні шляхи вести на ваш сервер -->
+        <!-- <script>
+            (function() {
+                // Витягуємо URL, з якого завантажився цей HTML-документ (тобто ваш сервер)
+                const currentUrl = new URL(window.location.href);
+
+                // Створюємо тег <base> із протоколом та хостом вашого сервера
+                const baseTag = document.createElement('base');
+                baseTag.href = currentUrl.origin + '/';
+                document.head.appendChild(baseTag);
+            })();
+        </script> -->
+
+        <!-- Серверний тег <base>: залізобетонно вказує браузеру на ваш сервер -->
+        <% if (typeof myServerUrl !== 'undefined') { %>
+            <base href="<%= myServerUrl %>/">
+        <% } %>
+
+        <!-- Основна іконка SVG для сучасних браузерів (Favicon) -->
+        <link rel="icon" type="image/svg+xml" href="/img/favicon.svg">
+
+        <!-- CSS (Стилі краще групувати або мініфікувати) -->
+        <!-- styles -->
+        <link rel="stylesheet" href="/css/reset.css" />
+        <link rel="stylesheet" href="/css/styles.css" />
+
+        <!-- js -->
+        <!-- Скрипт завантажиться відразу, але чекатиме повної побудови сторінки -->
+        <script src="/js/scripts.js" defer type="module" ></script>
+        <script src="/js/apiClient/index.js" defer type="module" ></script>
+        <script src="/js/WebSocketClient.js" defer type="module" ></script>
+
+    </head>
+    <body>
+        <div class="page-layout">
+            <% if (typeof showHeader === 'undefined' || showHeader !== false) { %>
+                <%- include('partials/header') %>
+            <% } %>
+
+            <main class="page-layout__main">
+                <div class="page-layout__body">
+
+                    <% if (typeof showLeftSidebar === 'undefined' || showLeftSidebar !== false) { %>
+                        <%- include('partials/sidebar-left') %>
+                    <% } %>
+
+                    <!-- CONTENT AREA -->
+                    <section class="page-layout__content">
+                        <div class="page-layout__content-inner">
+                            <%- body %>
+                        </div>
+                    </section>
+
+                    <% if (typeof showRightSidebar === 'undefined' || showRightSidebar !== false) { %>
+                        <%- include('partials/sidebar-right') %>
+                    <% } %>
+                </div>
+            </main>
+
+            <% if (typeof showFooter === 'undefined' || showFooter !== false) { %>
+                <%- include('partials/footer') %>
+            <% } %>
+        </div>
+    </body>
+</html>

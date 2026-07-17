@@ -1,0 +1,930 @@
+:root {
+    --bg-main: #0b1121;
+    --bg-panel: rgba(30, 41, 59, 0.7);
+    --accent: #3b82f6;
+    --success: #10b981;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --border: rgba(255, 255, 255, 0.1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* BASE */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    background: var(--bg-main);
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+}
+
+.root-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* *---------------------------------------------------------- */
+/* HEADER BASE */
+.main-header {
+    position: relative;
+    z-index: 1000;
+    background: rgba(11, 17, 33, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    height: 64px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+}
+
+.header-container {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* LOGO - ОПТИЧНЕ ВИРІВНЮВАННЯ */
+.logo-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    user-select: none;
+    /* Оптичне коригування висоти тексту відносно іконки */
+    transform: translateY(-0.5px);
+}
+
+.logo-symbol {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--accent) 0%, #1d4ed8 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+}
+
+.logo-svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+.brand-name {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+    line-height: normal;
+    display: flex;
+    align-items: center;
+}
+
+/* USER DROPDOWN WRAPPER */
+.user-dropdown-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 64px;
+}
+
+/* TRIGGER AREA */
+.profile-info-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    transition: background 0.2s ease;
+    cursor: default;
+    user-select: text;
+}
+
+.user-dropdown-container:hover .profile-info-trigger {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.user-meta {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+    margin-right: 4px;
+}
+
+.display-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.handle {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    line-height: 1;
+}
+
+/* AVATAR BOX */
+.avatar-box {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.avatar-box img,
+.avatar-initials {
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #1e293b;
+
+    /* ВИПРАВЛЕННЯ ЦЕНТРИРУВАННЯ: */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+
+    /* Важливо: прибираємо вплив висоти рядка, щоб вона не штовхала текст вниз */
+    line-height: 0;
+
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.85rem;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* Додаткове мікро-коригування для шрифту */
+.avatar-initials {
+    padding-top: 1px; /* Часто шрифти мають важкий "низ", 1px вгору візуально вирівнює */
+    letter-spacing: -0.02em;
+}
+
+.status-badge-online {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 10px;
+    height: 10px;
+    background: var(--success);
+    border: 2px solid #0b1121;
+    border-radius: 50%;
+}
+
+/* КОМПАКТНЕ ВИПАДАЮЧЕ МЕНЮ */
+.modern-dropdown {
+    position: absolute;
+    top: calc(100% - 10px);
+    right: 0;
+    width: 210px;
+    background: #111827;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+/* .user-dropdown-container:hover .modern-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+} */
+
+.modern-dropdown.is-active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* DROPDOWN CONTENT */
+.dropdown-header-compact {
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.015);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.u-email-small {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    opacity: 0.7;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: text;
+}
+
+.dropdown-links {
+    padding: 6px;
+}
+
+.d-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+}
+
+.d-link:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.d-icon {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.d-link svg {
+    opacity: 0.5;
+    transition: color 0.2s;
+}
+
+.d-link:hover svg {
+    opacity: 1;
+    color: var(--accent);
+}
+
+.d-sep {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.05);
+    margin: 4px 10px;
+}
+
+.d-logout {
+    color: #f87171 !important;
+}
+
+.d-logout:hover {
+    background: rgba(248, 113, 113, 0.08) !important;
+}
+
+.d-logout svg {
+    color: inherit !important;
+}
+
+/* SELECTION COLOR */
+::selection {
+    background: rgba(59, 130, 246, 0.35);
+    color: #fff;
+}
+
+/* *------------------------------------------------------------- */
+
+/* ================= MAIN LAYOUT ================= */
+.app-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+/* *-------------------------------------------------------------- */
+/* SIDEBAR */
+.sidebar {
+    height: 100%;
+    background: rgba(15, 23, 42, 0.4);
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    z-index: 10;
+}
+.sidebar--left {
+    width: 240px;
+    border-right: 1px solid var(--border);
+}
+.sidebar--left.is-collapsed {
+    width: 68px;
+}
+
+.sidebar__nav {
+    flex: 1;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-x: hidden;
+}
+.sidebar__item {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 12px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    border-radius: 8px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.sidebar__item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: #fff;
+}
+.sidebar__item.active {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent);
+}
+.sidebar__icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-right: 16px;
+}
+.sidebar__label {
+    font-size: 0.85rem;
+    opacity: 1;
+    transition: opacity 0.2s;
+}
+.is-collapsed .sidebar__label {
+    opacity: 0;
+    pointer-events: none;
+}
+.sidebar__sep {
+    height: 1px;
+    background: var(--border);
+    margin: 8px;
+    opacity: 0.5;
+}
+
+.sidebar__footer {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+}
+.sidebar__toggle {
+    width: 100%;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.sidebar__toggle-icon {
+    transition: transform 0.4s;
+}
+.sidebar--left.is-collapsed .sidebar__toggle-icon {
+    transform: rotate(180deg);
+}
+
+/* ================= MAIN CONTENT ================= */
+/* MAIN CONTENT (SCHEMA AREA) */
+.main-content {
+    flex: 1;
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: #050a15;
+    padding: 0.6rem;
+    /* Дозволяємо вертикальний скрол, якщо контент більший за екран */
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #050a15;
+}
+
+/* Стилізація скролбару для .main-content */
+.main-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.main-content::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.main-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+    background-color: var(--accent);
+}
+
+/* ------------------------- SHEMA (Fragment) ---------------------------- */
+.schema-widget {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-panel);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+}
+
+.schema-widget:fullscreen {
+    border-radius: 0;
+    background: var(--bg-main);
+}
+
+/* HEADER */
+.schema-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 10px 20px;
+    background: #0f172a;
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+}
+
+.status-block {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(16, 185, 129, 0.1);
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--success);
+    border-radius: 50%;
+    position: relative;
+}
+
+.status-dot::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: var(--success);
+    border-radius: 50%;
+    top: -4px;
+    left: -4px;
+    opacity: 0.4;
+    animation: ripple 2s infinite;
+}
+
+.status-block.is-offline {
+    background: rgba(239, 68, 68, 0.1); /* Червоний фон */
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.status-block.is-offline .status-dot {
+    background: #ef4444; /* Червона точка */
+}
+
+.status-block.is-offline .status-dot::after {
+    background: #ef4444; /* Червона пульсація */
+    animation: ripple 2s infinite;
+}
+
+.status-block.is-offline .status-text {
+    color: #ef4444; /* Червоний текст */
+}
+
+.status-block.is-waiting {
+    background: rgba(148, 163, 184, 0.1); /* Сіруватий фон */
+    border-color: rgba(148, 163, 184, 0.2);
+}
+
+.status-block.is-waiting .status-dot {
+    background: #94a3b8; /* Сіра крапка */
+}
+
+.status-block.is-waiting .status-dot::after {
+    display: none; /* Вимикаємо анімацію пульсації */
+}
+
+.status-block.is-waiting .status-text {
+    color: #94a3b8;
+}
+
+.status-text {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--success);
+}
+
+.custom-select {
+    background: #1e293b;
+    border: 1px solid var(--border);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.info-blocks {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.data-info {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 6px 12px;
+    border-radius: 6px;
+    color: var(--text-secondary);
+}
+
+.period-tag {
+    color: var(--accent);
+    border-left: 1px solid var(--border);
+    padding-left: 10px;
+    margin-left: 10px;
+    font-weight: bold;
+}
+
+.ms {
+    color: var(--accent);
+    opacity: 0.7;
+}
+
+.fullscreen-btn {
+    background: var(--accent);
+    border: none;
+    color: white;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+}
+
+/* SCHEMA BODY & SCENE */
+.schema-body {
+    flex: 1;
+    position: relative;
+    background: #050a15;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* СЦЕНА: Головний контейнер для адаптивності */
+.schema-scene {
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #050a15;
+
+    /* КЛЮЧ ДО АДАПТИВНОСТІ ТЕКСТУ: */
+    container-type: size;
+
+    /* Важливо для режиму Original: */
+    flex-shrink: 0;
+}
+
+.layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Шар 1: Фон (Сітка або статичне обладнання) */
+.layer-bg {
+    z-index: 1;
+    background-image: radial-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px);
+    background-size: 40px 40px;
+    /* opacity: 0.5; */
+    pointer-events: none;
+}
+
+.bg-img {
+    width: 100%;
+    height: 100%;
+    object-fit: fill; /* Слідує за розміром сцени */
+    display: block;
+    /* opacity: 0.7; */
+}
+
+/* Шар 2: SVG Зв'язки */
+.layer-svg {
+    z-index: 2;
+    pointer-events: none;
+}
+
+.schema-svg-layer {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.schema-line {
+    stroke: var(--accent);
+    stroke-width: 0.2cqmin;
+    fill: none;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 0.8cqmin;
+    animation: flow 20s linear infinite;
+}
+
+/* Шар 3: Вузли (Інтерактив) */
+.layer-nodes {
+    z-index: 3;
+}
+
+.schema-node {
+    position: absolute;
+    /* transform: translate(-50%, -50%); */
+    background: rgba(15, 23, 42, 0.9);
+    border: 0.15cqmin solid var(--accent);
+    padding: 0.2cqmin 0.6cqmin;
+    border-radius: 0.5cqmin;
+    box-shadow: 0 0.5cqmin 1.5cqmin rgba(0, 0, 0, 0.6);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* white-space: nowrap; */
+    cursor: help;
+    transition:
+        background 0.2s,
+        border-color 0.2s;
+    --overlayColor: #ffffff00;
+}
+
+.schema-node:hover {
+    border-color: #afaaaa;
+    z-index: 100;
+}
+
+.schema-node[data-group='tablo'] {
+    background: none;
+    background-color: transparent;
+}
+
+.node-label {
+    display: block;
+    font-size: 0.85cqmin;
+    color: var(--text-secondary);
+    margin-bottom: 0.2cqmin;
+    /* text-transform: uppercase; */
+    letter-spacing: 0.05cqmin;
+    white-space: nowrap;
+}
+
+.node-value {
+    display: block;
+    font-size: 1.6cqmin;
+    font-weight: 800;
+    color: #50d344;
+    white-space: nowrap;
+}
+
+/* ЛОГІКА ДЛЯ КАРТИНКИ: Прибираємо padding, якщо всередині є .node-image */
+.schema-node:has(.node-image) {
+    padding: 0;
+    border: none;
+    overflow: hidden;
+}
+
+/* Новий клас для картинки замість node-value */
+.node-image {
+    display: block;
+    width: 100%; /* Адаптивна ширина 4cqmin*/
+    height: 100%; /* Адаптивна висота 4cqmin */
+    object-fit: contain; /*contain; cover*/
+    /* margin: 0.2cqmin 0; */
+    /* Фільтр, якщо потрібно підсвітити іконку під колір акценту */
+    filter: drop-shadow(0 0 2px var(--accent));
+}
+
+/* Якщо змінна кольору встановлена (не прозора),
+   трохи приглушуємо яскравість картинки для насиченості */
+.schema-node.is-overlay-color .node-image {
+    /* filter: grayscale(1) brightness(0.5) contrast(1); */
+    filter: grayscale(1) brightness(2) contrast(1.5);
+}
+
+/* накладка для фарбування */
+.schema-node.is-overlay-color::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    /* Ваш колір */
+    background-color: var(--overlayColor);
+
+    /* Режим змішування, який зберігає деталі під низом */
+    mix-blend-mode: multiply;
+
+    pointer-events: none; /* щоб кліки проходили крізь шар */
+}
+
+/* РОЗШИРЕНА ПІДКАЗКА (POPOVER) */
+.node-popover {
+    position: absolute;
+    bottom: 130%;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    width: 25cqmin;
+    background: #1e293b;
+    border: 1px solid var(--accent);
+    border-radius: 0.8cqmin;
+    padding: 1cqmin;
+    box-shadow: 0 1cqmin 3cqmin rgba(0, 0, 0, 0.8);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    z-index: 100;
+}
+
+.schema-node:hover .node-popover {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+.popover-header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5cqmin;
+    margin-bottom: 0.5cqmin;
+    font-size: 1cqmin;
+    font-weight: bold;
+    color: var(--accent);
+}
+.popover-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5cqmin;
+}
+.popover-item {
+    display: flex;
+    flex-direction: column;
+}
+.popover-key {
+    font-size: 0.8cqmin;
+    color: var(--text-secondary);
+}
+.popover-val {
+    font-size: 0.9cqmin;
+    color: #fff;
+    font-family: monospace;
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(1);
+        opacity: 0.4;
+    }
+    100% {
+        transform: scale(3);
+        opacity: 0;
+    }
+}
+@keyframes flow {
+    to {
+        stroke-dashoffset: -100;
+    }
+}
+
+/*  */
+/* Контейнер шкали */
+.schema-node.hist-node {
+    background: rgba(29, 138, 43);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-sizing: border-box;
+    display: flex;
+    overflow: hidden;
+    padding: 0;
+}
+
+/* Для вертикальної: притискаємо заповнення до низу */
+.hist-node.vertical {
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.hist-node.vertical .fill-level {
+    width: 100%;
+    height: var(--p, 0%);
+    background: #141614;
+    transition: height 0.3s ease;
+}
+
+/* Для горизонтальної: притискаємо до лівого краю */
+.hist-node.horizontal {
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.hist-node.horizontal .fill-level {
+    height: 100%;
+    width: var(--p, 0%);
+    background: #4caf50;
+    transition: width 0.3s ease;
+}
+
+/*  */
+.node-placeholder {
+    border: 2px dashed #ff4757; /* Червоний пунктир */
+    background: rgba(255, 71, 87, 0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #ff4757;
+    font-weight: bold;
+    overflow: hidden;
+    pointer-events: auto; /* Щоб mousemove спрацював на них і ви побачили консоль */
+}
+
+.placeholder-box {
+    font-size: 1.2em;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* sssss */
+
+/* Глобальний тултіп всередині сцени */
+.global-tooltip {
+    position: absolute;
+    display: none;
+    background: rgba(15, 23, 42, 0.98);
+    border: 1px solid var(--accent);
+    padding: 8px 12px;
+    border-radius: 6px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    color: white;
+    font-size: 1.4cqmin; /* Використовуємо cqmin для адаптивності тексту */
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.tooltip-line {
+    display: block;
+    margin-bottom: 2px;
+}
+.tooltip-key {
+    color: var(--text-secondary);
+    margin-right: 5px;
+}
+.tooltip-val {
+    color: var(--accent);
+    font-family: monospace;
+}
+.tooltip-val.live-value {
+    color: var(--success);
+    font-weight: bold;
+}
+
+/* ------------------------- SHEMA (Fragment) ---------------------------- */

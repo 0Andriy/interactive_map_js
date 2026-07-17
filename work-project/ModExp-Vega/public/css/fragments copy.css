@@ -1,0 +1,257 @@
+:root {
+    /* Кольори статусів (Modern Pallete) */
+    --success: #10b981; /* Смарагдовий (Online) */
+    --success-bg: rgba(16, 185, 129, 0.12);
+
+    --error: #f43f5e; /* М'який червоний (Offline) */
+    --error-bg: rgba(244, 63, 94, 0.15);
+
+    --waiting: #94a3b8; /* Slate сірий (Waiting) */
+    --waiting-bg: rgba(148, 163, 184, 0.12);
+
+    --warning: #f59e0b; /* Бурштиновий (якщо знадобиться) */
+    --warning-bg: rgba(245, 158, 11, 0.12);
+}
+
+/* --- 1. WIDGET STRUCTURE --- */
+.schema-widget {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-dark);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+}
+
+.schema-widget:fullscreen {
+    border-radius: 0;
+    background: var(--bg-deep);
+}
+
+.schema-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 12px 20px;
+    background: rgba(15, 23, 42, 0.6);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+}
+
+/* --- 2. STATUS BLOCK (Refactored) --- */
+.status-block {
+    --status-color: var(--success);
+    --status-bg: rgba(16, 185, 129, 0.1);
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--status-bg);
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.status-block.is-offline {
+    --status-color: var(--error);
+    --status-bg: rgba(239, 68, 68, 0.1);
+}
+
+.status-block.is-waiting {
+    --status-color: var(--waiting);
+    --status-bg: rgba(148, 163, 184, 0.1);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--status-color);
+    border-radius: 50%;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.status-dot::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    background: inherit;
+    border-radius: 50%;
+    opacity: 0.4;
+    animation: ripple 2s infinite;
+}
+
+.status-block.is-waiting .status-dot::after {
+    display: none;
+}
+
+.status-text {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--status-color);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+/* --- 3. CONTROLS --- */
+.custom-select {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.custom-select:hover {
+    border-color: var(--border-bright);
+}
+
+.info-blocks {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.data-info {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.period-tag {
+    color: var(--accent);
+    border-left: 1px solid var(--border);
+    padding-left: 12px;
+    font-weight: bold;
+}
+
+.fullscreen-btn {
+    background: var(--accent);
+    border: none;
+    color: var(--bg-deep);
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition:
+        transform 0.2s,
+        filter 0.2s;
+
+    & svg {
+        display: block;
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.fullscreen-btn:hover {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+
+/* --- 4. SCHEMA SCENE --- */
+.schema-body {
+    flex: 1;
+    position: relative;
+    background: #05070a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.schema-scene {
+    position: relative;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    container-type: size;
+}
+
+.layer-bg {
+    z-index: 1;
+    background-image: radial-gradient(var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+
+.schema-line {
+    stroke: var(--accent);
+    stroke-width: 0.2cqmin;
+    fill: none;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 0.8cqmin;
+    animation: flow 20s linear infinite;
+    filter: drop-shadow(0 0 2px var(--accent));
+}
+
+/* --- 5. NODES --- */
+.schema-node {
+    position: absolute;
+    background: rgba(15, 23, 42, 0.85);
+    border: 0.15cqmin solid var(--border);
+    padding: 0.4cqmin 0.8cqmin;
+    border-radius: 0.5cqmin;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(4px);
+    transition: all 0.2s;
+}
+
+.schema-node:hover {
+    border-color: var(--accent);
+    background: rgba(15, 23, 42, 1);
+    z-index: 100;
+}
+
+.node-label {
+    display: block;
+    font-size: 0.85cqmin;
+    color: var(--text-secondary);
+    margin-bottom: 0.2cqmin;
+}
+
+.node-value {
+    display: block;
+    font-size: 1.6cqmin;
+    font-weight: 800;
+    color: var(--success);
+}
+
+/* --- 6. HISTOGRAMS --- */
+.hist-node {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid var(--border) !important;
+}
+
+.fill-level {
+    background: var(--accent-gradient);
+    box-shadow: 0 0 10px var(--accent);
+}
+
+/* --- 7. ANIMATIONS --- */
+@keyframes ripple {
+    0% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(3);
+        opacity: 0;
+    }
+}
+
+@keyframes flow {
+    to {
+        stroke-dashoffset: -100;
+    }
+}

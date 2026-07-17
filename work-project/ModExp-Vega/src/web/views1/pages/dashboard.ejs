@@ -1,0 +1,28 @@
+<div class="page-header">
+    <h1>Оперативний моніторинг</h1>
+    <p>Дані зі стороннього API оновлюються автоматично</p>
+</div>
+
+<div class="dashboard-grid">
+    <div class="data-card">
+        <span class="card-label">Ціна BTC/USD</span>
+        <div class="card-value-wrapper">
+            <h2 id="live-price">$<%= initialData.price %></h2>
+            <span class="trend up">▲ 2.4%</span>
+        </div>
+    </div>
+
+    <div class="data-card">
+        <span class="card-label">Статус з'єднання</span>
+        <h2 id="connection-status" class="status-active">Active</h2>
+    </div>
+
+    <div class="data-card full-width">
+        <span class="card-label">Лог останніх подій</span>
+        <div id="event-log" class="log-container">
+            <div class="log-entry">Система ініціалізована...</div>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="/js/pages/dashboard.js"></script>

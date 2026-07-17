@@ -1,0 +1,364 @@
+/* --- Скасування відступів лейауту при рендерингу сторінки логіну --- */
+.page-layout__content-inner:has(.login-page-center) {
+    padding: 0;
+}
+
+/* --- Глобальний контейнер та картка (Залишаються без змін) --- */
+.login-page-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%; /* Замість min-height: 100dvh */
+    min-height: 0;
+    padding: 24px;
+    background: var(--bg-deep);
+}
+
+.login-card {
+    width: 100%;
+    max-width: 412px;
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 12px);
+    padding: 40px;
+    box-shadow: var(--shadow);
+}
+
+.login-card__header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+.login-card__logo {
+    width: 44px;
+    height: 44px;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-gradient);
+    border-radius: 10px;
+    color: var(--bg-deep);
+}
+.login-card__logo svg {
+    width: 22px;
+    height: 22px;
+}
+.login-card__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+}
+.login-card__subtitle {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* --- Форма та Інпути --- */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.login-form__group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.login-form__link-row {
+    display: flex;
+    justify-content: flex-end;
+}
+.login-form__link {
+    font-size: 0.8rem;
+    color: var(--accent);
+    text-decoration: none;
+}
+.login-form__link:hover {
+    text-decoration: underline;
+}
+
+.input-container {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    pointer-events: none;
+    transition:
+        color 0.2s,
+        opacity 0.2s;
+    z-index: 2;
+}
+.input-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.login-form__input {
+    width: 100%;
+    height: 48px;
+    padding: 0 40px 0 44px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.95rem;
+    transition:
+        border-color 0.2s,
+        box-shadow 0.2s;
+    z-index: 1;
+}
+
+/* --- Виправлення білого фону при автозаповненні браузером --- */
+.login-form__input:-webkit-autofill,
+.login-form__input:-webkit-autofill:hover,
+.login-form__input:-webkit-autofill:focus,
+.login-form__input:-webkit-autofill:active {
+    /* Зберігаємо колір тексту головної теми */
+    -webkit-text-fill-color: var(--text-main) !important;
+
+    /* Робимо фон прозорим, а замість нього використовуємо внутрішню тінь кольору вашої картки */
+    transition: background-color 5000s ease-in-out 0s;
+    box-shadow: inset 0 0 0 1000px var(--bg-deep) !important;
+}
+
+/* Якщо поле автозаповнене і має помилку, зберігаємо червону рамку */
+.login-form__input.is-invalid:-webkit-autofill {
+    border-color: #ef4444 !important;
+}
+
+.login-form__input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.15);
+}
+
+.login-form__input:focus ~ .input-icon {
+    color: var(--accent);
+    opacity: 1;
+}
+
+/* --- Стан помилки для Інпуту (.is-invalid) --- */
+.login-form__input.is-invalid {
+    border-color: #ef4444; /* Світло-червоний колір */
+}
+
+.login-form__input.is-invalid:focus {
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15);
+}
+
+.login-form__input.is-invalid ~ .input-icon {
+    color: #f87171;
+    opacity: 0.8;
+}
+
+/* --- Текст індивідуальної помилки під полем --- */
+.login-form__field-error {
+    font-size: 0.75rem;
+    color: #f87171;
+    margin-top: 2px;
+    padding-left: 4px;
+    display: block;
+    animation: fadeIn 0.2s ease-out;
+}
+
+/* --- Плаваючий Label --- */
+.login-form__label {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 44px;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.login-form__label-text {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    transition:
+        transform 0.15s ease-out,
+        font-size 0.15s ease-out,
+        color 0.15s ease-out,
+        opacity 0.15s ease-out;
+    background-color: transparent;
+}
+
+.login-form__input:focus + .login-form__label .login-form__label-text,
+.login-form__input:not(:placeholder-shown) + .login-form__label .login-form__label-text {
+    font-size: 0.75rem;
+    transform: translate(-30px, -24px);
+    background-color: var(--bg-dark);
+    padding: 0 6px;
+    opacity: 1;
+}
+
+/* Зміна кольору піднятого лейблу у фокусі за звичайних умов */
+.login-form__input:focus + .login-form__label .login-form__label-text {
+    color: var(--accent);
+}
+
+/* Зміна кольору піднятого лейблу, якщо поле має помилку */
+.login-form__input.is-invalid + .login-form__label .login-form__label-text {
+    color: #f87171;
+}
+
+/* Елементи керування (Око, Чекбокс, Кнопка, Спінер) */
+.login-form__toggle-pass {
+    position: absolute;
+    right: 14px;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+    transition:
+        opacity 0.2s,
+        color 0.2s;
+    z-index: 3;
+}
+.login-form__toggle-pass:hover {
+    opacity: 1;
+    color: var(--text-main);
+}
+.login-form__toggle-pass svg {
+    color: currentColor;
+    display: block;
+}
+/* Переконуємося, що браузер ховає SVG-іконки ока, якщо у них стоїть атрибут hidden */
+.login-form__toggle-pass svg[hidden] {
+    display: none !important;
+}
+
+/* Якщо інпут у фокусі, підсвічуємо іконку ока акцентним кольором */
+.login-form__input:focus ~ .login-form__toggle-pass {
+    color: var(--accent);
+    opacity: 0.8;
+}
+
+/* Якщо інпут має помилку, підсвічуємо іконку ока червоним кольором */
+.login-form__input.is-invalid ~ .login-form__toggle-pass {
+    color: #f87171;
+    opacity: 0.8;
+}
+
+.login-form__checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+.login-form__checkbox {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--border-bright);
+    border-radius: 4px;
+    background: var(--bg-deep);
+    cursor: pointer;
+    position: relative;
+}
+.login-form__checkbox:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+.login-form__checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    color: var(--bg-deep);
+    font-size: 10px;
+    font-weight: 900;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+.login-form__checkbox-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.login-form__submit {
+    height: 44px;
+    background: var(--accent-gradient);
+    border: none;
+    border-radius: 8px;
+    color: var(--bg-deep);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+        opacity 0.2s,
+        transform 0.1s;
+    margin-top: 10px;
+}
+.login-form__submit:hover {
+    opacity: 0.95;
+}
+.login-form__submit:active {
+    transform: scale(0.99);
+}
+.login-form__submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.login-alert {
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    margin-bottom: 20px;
+    line-height: 1.4;
+}
+.login-alert--error {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+.btn-loader {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-top-color: var(--bg-deep);
+    border-radius: 50%;
+    animation: loginSpin 0.8s linear infinite;
+}
+
+@keyframes loginSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

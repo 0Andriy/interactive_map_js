@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="uk">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>WSAdapter Ultimate Test Suite 2026</title>
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: #f4f7f9;
+                margin: 20px;
+                color: #333;
+            }
+            .container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+            .card {
+                background: white;
+                padding: 20px;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            h2 {
+                margin-top: 0;
+                color: #2c3e50;
+                border-bottom: 2px solid #eee;
+                padding-bottom: 10px;
+            }
+
+            .status-panel {
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                margin-bottom: 20px;
+            }
+            .indicator {
+                width: 15px;
+                height: 15px;
+                border-radius: 50%;
+                background: #ccc;
+                transition: 0.3s;
+            }
+            .status-OPEN {
+                background: #27ae60;
+                box-shadow: 0 0 8px #27ae60;
+            }
+            .status-CONNECTING {
+                background: #f39c12;
+                animation: blink 1s infinite;
+            }
+            .status-CLOSED {
+                background: #e74c3c;
+            }
+
+            @keyframes blink {
+                50% {
+                    opacity: 0.3;
+                }
+            }
+
+            .controls {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            button {
+                padding: 10px 15px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: bold;
+                transition: 0.2s;
+            }
+            .btn-connect {
+                background: #3498db;
+                color: white;
+            }
+            .btn-disconnect {
+                background: #95a5a6;
+                color: white;
+            }
+            .btn-send {
+                background: #2ecc71;
+                color: white;
+            }
+            .btn-request {
+                background: #9b59b6;
+                color: white;
+            }
+            button:hover {
+                opacity: 0.8;
+            }
+            button:disabled {
+                background: #ddd;
+                cursor: not-allowed;
+            }
+
+            #log {
+                background: #2c3e50;
+                color: #ecf0f1;
+                height: 400px;
+                overflow-y: auto;
+                padding: 15px;
+                border-radius: 8px;
+                font-family: monospace;
+                font-size: 12px;
+                line-height: 1.5;
+            }
+            .log-entry {
+                margin-bottom: 5px;
+                border-left: 3px solid #34495e;
+                padding-left: 8px;
+            }
+            .log-info {
+                border-color: #3498db;
+            }
+            .log-warn {
+                border-color: #f39c12;
+                color: #f39c12;
+            }
+            .log-error {
+                border-color: #e74c3c;
+                color: #e74c3c;
+            }
+            .log-success {
+                border-color: #27ae60;
+                color: #2ecc71;
+            }
+
+            .stats {
+                margin-top: 15px;
+                font-size: 14px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            .stat-box {
+                background: #edf2f7;
+                padding: 10px;
+                border-radius: 6px;
+                text-align: center;
+            }
+            .stat-val {
+                display: block;
+                font-size: 18px;
+                font-weight: bold;
+                color: #2c3e50;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <!-- Ліва панель: Управління -->
+            <div class="card">
+                <h2>Керування WSAdapter</h2>
+                <div class="status-panel">
+                    <div id="statusIndicator" class="indicator"></div>
+                    <strong id="statusText">CLOSED</strong>
+                </div>
+
+                <div class="controls">
+                    <input
+                        type="text"
+                        id="wsUrl"
+                        value="wss://echo.websocket.org"
+                        style="padding: 10px; border: 1px solid #ccc; border-radius: 6px"
+                    />
+                    <div style="display: flex; gap: 10px">
+                        <button id="connectBtn" class="btn-connect">Підключитись</button>
+                        <button id="disconnectBtn" class="btn-disconnect">Відключитись</button>
+                    </div>
+                    <hr style="width: 100%; border: 0; border-top: 1px solid #eee" />
+                    <input
+                        type="text"
+                        id="msgInput"
+                        placeholder="Текст повідомлення..."
+                        style="padding: 10px; border: 1px solid #ccc; border-radius: 6px"
+                    />
+                    <button id="sendBtn" class="btn-send">Надіслати (з TTL 5с)</button>
+                    <button id="requestBtn" class="btn-request">
+                        Запит-Відповідь (Request-Response)
+                    </button>
+                    <button id="floodBtn" style="background: #e67e22; color: white">
+                        Тест Backpressure (1000 msg)
+                    </button>
+                </div>
+
+                <div class="stats">
+                    <div class="stat-box">Черга<span id="queueSize" class="stat-val">0</span></div>
+                    <div class="stat-box">
+                        Спроби реконнекту<span id="retries" class="stat-val">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Права панель: Логи -->
+            <div class="card">
+                <h2>Консоль подій</h2>
+                <div id="log"></div>
+                <button
+                    id="clearLog"
+                    style="margin-top: 10px; background: none; border: 1px solid #ccc; color: #666"
+                >
+                    Очистити лог
+                </button>
+            </div>
+        </div>
+
+        <script type="module">
+            // --- ВСТАВКА ВАШОГО КЛАСУ ---
+            // (Я копіюю його сюди, щоб HTML працював автономно)
+
+            class WSAdapter {
+                #ws = null
+                #reconnectTimer = null
+                #pingTimer = null
+                #pongTimeoutTimer = null
+                #events = new Map()
+                #pendingRequests = new Map()
+                #instanceId
+                #bufferedAmountLimit = 1024 * 1024
+
+                constructor(url, options = {}, logger = console) {
+                    this.url = url
+                    this.logger = logger
+                    this.#instanceId = Math.random().toString(36).substring(2, 7).toUpperCase()
+                    this.options = {
+                        reconnect: true,
+                        maxRetries: 20,
+                        baseDelay: 1000,
+                        maxDelay: 30000,
+                        pingInterval: 10000,
+                        pongTimeout: 5000,
+                        rateLimitDelay: 50,
+                        autoJson: true,
+                        maxQueueSize: 200,
+                        ...options,
+                    }
+                    this.retries = 0
+                    this.messageQueue = []
+                    this.isManualClose = false
+                    this.currentStatus = 'CLOSED'
+                    if (typeof window !== 'undefined') {
+                        window.addEventListener(
+                            'online',
+                            () => !this.isConnected && !this.isManualClose && this.connect(),
+                        )
+                    }
+                }
+                get status() {
+                    return this.currentStatus
+                }
+                get isConnected() {
+                    return this.#ws?.readyState === 1
+                }
+
+                async connect() {
+                    if (this.isConnected || this.currentStatus === 'CONNECTING') return
+                    this.#clearTimers()
+                    this.isManualClose = false
+                    this.#updateStatus('CONNECTING')
+                    try {
+                        this.#ws = new WebSocket(this.url)
+                        this.#registerNativeListeners()
+                    } catch (e) {
+                        this.#handleReconnect()
+                    }
+                }
+
+                send(data, ttl = 0) {
+                    const payload =
+                        this.options.autoJson && typeof data === 'object'
+                            ? JSON.stringify(data)
+                            : data
+                    if (this.isConnected && this.#ws.bufferedAmount < this.#bufferedAmountLimit) {
+                        this.#ws.send(payload)
+                    } else {
+                        if (this.messageQueue.length >= this.options.maxQueueSize)
+                            this.messageQueue.shift()
+                        this.messageQueue.push({
+                            payload,
+                            expiry: ttl > 0 ? Date.now() + ttl : null,
+                        })
+                    }
+                }
+
+                async request(data, timeout = 5000) {
+                    const requestId = Math.random().toString(36).substring(2, 7)
+                    return new Promise((resolve, reject) => {
+                        const timer = setTimeout(() => {
+                            this.#pendingRequests.delete(requestId)
+                            reject(new Error('Timeout'))
+                        }, timeout)
+                        this.#pendingRequests.set(requestId, (res) => {
+                            clearTimeout(timer)
+                            resolve(res)
+                        })
+                        this.send({ ...data, requestId })
+                    })
+                }
+
+                disconnect() {
+                    this.isManualClose = true
+                    this.#clearTimers()
+                    if (this.#ws) this.#ws.close(1000)
+                    this.#updateStatus('CLOSED')
+                    this.messageQueue = []
+                    this.#pendingRequests.clear()
+                }
+
+                on(event, cb) {
+                    if (!this.#events.has(event)) this.#events.set(event, new Set())
+                    this.#events.get(event).add(cb)
+                    return () => this.#events.get(event).delete(cb)
+                }
+
+                #updateStatus(s) {
+                    this.currentStatus = s
+                    this.#emit('statusChange', s)
+                }
+
+                #registerNativeListeners() {
+                    this.#ws.onopen = () => {
+                        this.#updateStatus('OPEN')
+                        this.retries = 0
+                        this.#emit('connected')
+                        this.#startHeartbeat()
+                        this.#flushQueue()
+                    }
+                    this.#ws.onmessage = (e) => {
+                        this.#resetPongTimeout()
+                        let data = e.data
+                        try {
+                            const parsed = JSON.parse(data)
+                            if (parsed.requestId && this.#pendingRequests.has(parsed.requestId)) {
+                                this.#pendingRequests.get(parsed.requestId)(parsed)
+                                this.#pendingRequests.delete(parsed.requestId)
+                                return
+                            }
+                            data = parsed
+                        } catch (e) {}
+                        this.#emit('data', data)
+                    }
+                    this.#ws.onclose = () => {
+                        this.#updateStatus('CLOSED')
+                        this.#stopHeartbeat()
+                        !this.isManualClose && this.#handleReconnect()
+                    }
+                    this.#ws.onerror = (e) => this.#emit('error', e)
+                }
+
+                async #flushQueue() {
+                    while (this.messageQueue.length > 0 && this.isConnected) {
+                        if (this.#ws.bufferedAmount > this.#bufferedAmountLimit) {
+                            await new Promise((r) => setTimeout(r, 100))
+                            continue
+                        }
+                        const item = this.messageQueue.shift()
+                        if (!(item.expiry && Date.now() > item.expiry)) this.#ws.send(item.payload)
+                        this.#emit('queueUpdate', this.messageQueue.length)
+                        if (this.options.rateLimitDelay > 0)
+                            await new Promise((r) => setTimeout(r, this.options.rateLimitDelay))
+                    }
+                }
+
+                #handleReconnect() {
+                    if (this.#reconnectTimer || this.isManualClose) return
+                    const delay = Math.min(
+                        this.options.maxDelay,
+                        this.options.baseDelay * Math.pow(2, this.retries),
+                    )
+                    this.#reconnectTimer = setTimeout(() => {
+                        this.#reconnectTimer = null
+                        this.retries++
+                        this.#emit('retry', this.retries)
+                        this.connect()
+                    }, delay)
+                }
+
+                #startHeartbeat() {
+                    this.#pingTimer = setInterval(() => {
+                        if (this.isConnected) {
+                            this.#ws.send(JSON.stringify({ type: 'ping' }))
+                            this.#pongTimeoutTimer = setTimeout(
+                                () => this.#ws.close(),
+                                this.options.pongTimeout,
+                            )
+                        }
+                    }, this.options.pingInterval)
+                }
+
+                #resetPongTimeout() {
+                    clearTimeout(this.#pongTimeoutTimer)
+                    this.#pongTimeoutTimer = null
+                }
+                #stopHeartbeat() {
+                    clearInterval(this.#pingTimer)
+                    this.#resetPongTimeout()
+                }
+                #clearTimers() {
+                    clearTimeout(this.#reconnectTimer)
+                    this.#reconnectTimer = null
+                    this.#stopHeartbeat()
+                }
+                #emit(event, data) {
+                    const listeners = this.#events.get(event)
+                    if (listeners) queueMicrotask(() => listeners.forEach((cb) => cb(data)))
+                }
+            }
+
+            // --- ЛОГІКА ТЕСТОВОЇ СТОРІНКИ ---
+
+            const logEl = document.getElementById('log')
+            const statusInd = document.getElementById('statusIndicator')
+            const statusTxt = document.getElementById('statusText')
+            const queueEl = document.getElementById('queueSize')
+            const retryEl = document.getElementById('retries')
+
+            function log(msg, type = 'info') {
+                const entry = document.createElement('div')
+                entry.className = `log-entry log-${type}`
+                entry.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`
+                logEl.appendChild(entry)
+                logEl.scrollTop = logEl.scrollHeight
+            }
+
+            // Ініціалізація адаптера
+            let ws = new WSAdapter(document.getElementById('wsUrl').value, {
+                rateLimitDelay: 100,
+                pingInterval: 5000, // Швидкий пінг для тесту
+            })
+
+            // Підписки
+            ws.on('statusChange', (s) => {
+                statusInd.className = `indicator status-${s}`
+                statusTxt.innerText = s
+                log(`Статус змінився на: ${s}`, 'info')
+            })
+
+            ws.on('connected', () => log('З’єднання встановлено!', 'success'))
+            ws.on('data', (data) => log(`Отримано: ${JSON.stringify(data)}`, 'info'))
+            ws.on('error', (e) => log(`Помилка WebSocket`, 'error'))
+            ws.on('retry', (count) => {
+                retryEl.innerText = count
+                log(`Спроба реконнекту #${count}...`, 'warn')
+            })
+            ws.on('queueUpdate', (size) => (queueEl.innerText = size))
+
+            // Кнопки
+            document.getElementById('connectBtn').onclick = () => {
+                ws.url = document.getElementById('wsUrl').value
+                ws.connect()
+            }
+
+            document.getElementById('disconnectBtn').onclick = () => ws.disconnect()
+
+            document.getElementById('sendBtn').onclick = () => {
+                const val = document.getElementById('msgInput').value || 'Привіт!'
+                ws.send({ text: val, ts: Date.now() }, 5000) // TTL 5 секунд
+                log(`Надіслано/Додано в чергу: ${val}`)
+                queueEl.innerText = ws.messageQueue.length
+            }
+
+            document.getElementById('requestBtn').onclick = async () => {
+                log('Відправка запиту (очікування відповіді 5с)...', 'warn')
+                try {
+                    const res = await ws.request({ action: 'test_request' })
+                    log(`Відповідь отримана: ${JSON.stringify(res)}`, 'success')
+                } catch (e) {
+                    log(`Запит провалено: ${e.message}`, 'error')
+                }
+            }
+
+            document.getElementById('floodBtn').onclick = () => {
+                log('Запуск флуду 1000 повідомлень для тесту Backpressure...', 'warn')
+                for (let i = 0; i < 1000; i++) {
+                    ws.send({ flood: i })
+                }
+                queueEl.innerText = ws.messageQueue.length
+            }
+
+            document.getElementById('clearLog').onclick = () => (logEl.innerHTML = '')
+        </script>
+    </body>
+</html>

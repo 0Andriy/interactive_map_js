@@ -1,0 +1,128 @@
+<div class="schema-widget" id="mainWidget">
+    <header class="schema-header">
+        <div class="status-block">
+            <div class="status-dot"></div>
+            <span class="status-text">Online</span>
+        </div>
+
+        <!-- Вибір Unit -->
+        <select class="custom-select" id="select-unit">
+            <!-- Цей варіант буде видимим спочатку, але його не можна обрати повторно -->
+            <option value="" disabled selected>Оберіть блок...</option>
+
+            <!-- Значення -->
+            <option value="1">Блок №1</option>
+            <option value="2">Блок №2</option>
+        </select>
+
+        <!-- Вибір Фрагменту -->
+        <select class="custom-select" id="select-fragment">
+            <!-- Цей варіант буде видимим спочатку, але його не можна обрати повторно -->
+            <option value="" disabled selected>Оберіть фрагмент...</option>
+
+            <!-- Значення -->
+            <option value="gvp.png">Живлення власних потреб</option>
+            <option value="vru.png">Відкрита розподільча установка 330кВ, 750кВ</option>
+            <option value="h00n.png">Другий контур</option>
+            <option value="то.png">Турбіне відділення</option>
+            <option value="ро.png">Реакторне відділення</option>
+            <option value="ya00m.png">Петлі</option>
+            <option value="пд_уд.png">Вузький діапазон</option>
+            <option value="кфб_з.png">Охолодження активної зони</option>
+        </select>
+
+        <!-- Режим відображення -->
+        <select class="custom-select" id="modeSelect">
+            <option value="auto">Авто (Fit)</option>
+            <option value="stretch">Розтягнути</option>
+            <option value="original">Оригінальний</option>
+        </select>
+
+        <div class="info-blocks">
+            <div class="data-info">
+                <span id="clock">0000.00.00 00:00:00<span class="ms">.000</span></span>
+                <span class="period-tag">10с</span>
+            </div>
+        </div>
+
+        <button
+            class="fullscreen-btn"
+            id="toggleFullscreenSchema"
+            title="На весь екран"
+            onclick="toggleFullscreen()"
+        >
+            <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+            >
+                <path
+                    d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"
+                />
+            </svg>
+        </button>
+    </header>
+
+    <div class="schema-body" id="bodyShemaContainer">
+        <div class="schema-scene" id="scene">
+            <!-- LAYER 1: Background Grid -->
+            <div class="layer layer-bg" id="layer-bg-fragment"></div>
+
+            <!-- LAYER 2: SVG Connections -->
+            <div class="layer layer-svg">
+                <!-- <svg class="schema-svg-layer" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+                                <path d="M 200 300 L 500 300 L 500 700 L 800 700" class="schema-line" />
+                                <path d="M 500 300 L 800 300" class="schema-line" style="stroke: var(--success); opacity: 0.5;" />
+                            </svg> -->
+            </div>
+
+            <!-- LAYER 3: Nodes -->
+            <div class="layer layer-nodes">
+                <div class="schema-node" style="left: 20%; top: 30%">
+                    <span class="node-label">ВХІДНИЙ ТИСК</span>
+                    <span class="node-value">12.4 Bar</span>
+
+                    <!-- Розширена розмірка підказки -->
+                    <!-- <div class="node-popover">
+                                    <div class="popover-header">Детальна статистика</div>
+                                    <div class="popover-grid">
+                                        <div class="popover-item"><span class="popover-key">Тиск</span><span class="popover-val">4.2 Bar</span></div>
+                                        <div class="popover-item"><span class="popover-key">Темп.</span><span class="popover-val">24.5°C</span></div>
+                                        <div class="popover-item"><span class="popover-key">Потік</span><span class="popover-val">120 L/m</span></div>
+                                        <div class="popover-item"><span class="popover-key">Навантаж.</span><span class="popover-val">68%</span></div>
+                                    </div>
+                                </div> -->
+                </div>
+
+                <div class="schema-node" style="left: 50%; top: 50%">
+                    <span class="node-label">КОНТРОЛЕР</span>
+                    <span class="node-value">NORMAL</span>
+                </div>
+
+                <div class="schema-node" style="left: 80%; top: 70%">
+                    <span class="node-label">ТЕМПЕРАТУРА</span>
+                    <span class="node-value">84.2 °C</span>
+
+                    <!-- Розширена розмірка підказки -->
+                    <!-- <div class="node-popover">
+                                    <div class="popover-header">Детальна статистика</div>
+                                    <div class="popover-grid">
+                                        <div class="popover-item"><span class="popover-key">Тиск</span><span class="popover-val">0 Bar</span></div>
+                                        <div class="popover-item"><span class="popover-key">Темп.</span><span class="popover-val">0°C</span></div>
+                                        <div class="popover-item"><span class="popover-key">Потік</span><span class="popover-val">0 L/m</span></div>
+                                        <div class="popover-item"><span class="popover-key">Навантаж.</span><span class="popover-val">0%</span></div>
+                                    </div>
+                                </div> -->
+                </div>
+
+                <div class="schema-node" style="left: 80%; top: 30%">
+                    <span class="node-label">РЕЗЕРВ</span>
+                    <span class="node-value">0.0%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,73 @@
+:root {
+    --nav-h: 70px;
+    --side-w: 260px;
+    --bg: #f8fafc;
+    --primary: #3b82f6;
+    --text: #1e293b;
+    --border: #e2e8f0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    height: calc(100vh - var(--nav-h));
+    margin-top: var(--nav-h);
+}
+
+.main-content {
+    flex: 1;
+    padding: 0.8rem;
+    overflow-y: auto;
+}
+
+/* UI Components */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+.data-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+.full-width {
+    grid-column: span 2;
+}
+.card-label {
+    font-size: 0.875rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+.log-container {
+    margin-top: 1rem;
+    font-family: monospace;
+    font-size: 0.85rem;
+    height: 100px;
+    overflow-y: auto;
+    color: #475569;
+}
+
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    .full-width {
+        grid-column: span 1;
+    }
+}

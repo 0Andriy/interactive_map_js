@@ -1,0 +1,99 @@
+import cron from 'node-cron' // Імпортуємо планувальник
+import logger from '../../../common/logger/logger.js'
+import config from '../../../config/config.js'
+
+/**
+ * БІЗНЕС-ЛОГІКА 1
+ */
+async function executeCleanupJob(sessionRepository, tenantNames) {
+    for (const dbName of tenantNames) {
+        logger?.info?.(`🧹 Початок очищення бази: [${dbName}]`)
+        try {
+            const rowsDeleted = await sessionRepository.deleteExpiredSessions(7, dbName)
+            logger?.info?.(`✅ Базу [${dbName}] очищено. Видалено ${rowsDeleted} рядків.`)
+        } catch (error) {
+            logger?.error?.(`❌ Помилка очищення бази [${dbName}]:`, error)
+        }
+    }
+}
+
+/**
+ * БІЗНЕС-ЛОГІКА 2
+ */
+async function executeAnalyticsJob(dbManager) {
+    logger?.info?.('📊 Початок збору добової аналітики...')
+    // Логіка аналітики...
+    logger?.info?.('✅ Збір аналітики завершено успішно.')
+}
+
+export class SessionCronWorker {
+    /**
+     * Залежності передаються через DI
+     */
+    constructor(sessionRepository, dbManager) {
+        this.sessionRepository = sessionRepository
+        this.dbManager = dbManager
+        this.scheduledTasks = [] // Масив для зберігання активних завдань
+    }
+
+    /**
+     * Ініціалізація всіх завдань
+     */
+    init() {
+        logger?.info?.('⏱️ Node-Cron Worker initialized via DI.')
+
+        // Спільні налаштування для всіх завдань
+        const cronOptions = {
+            scheduled: true,
+            timezone: "Europe/Kyiv" // Чітко фіксуємо часовий пояс українського офісу
+        }
+
+        // --- ЗАДАЧА 1: Очищення сесій щодня о 03:00 ---
+        // Вираз '0 3 * * *' означає: 0 хвилина, 3 година, кожен день місяця, кожен місяць, кожен день тижня
+        const cleanupTask = cron.schedule('0 3 * * *', async () => {
+            try {
+                logger?.info?.('⏰ Starting daily database session cleanup...')
+                const primaryDb = config?.oracleDB?.primaryDatabaseName
+                const tenantNames = primaryDb ? [primaryDb] : []
+
+                await executeCleanupJob(this.sessionRepository, tenantNames)
+                logger?.info?.('🎉 Session cleanup finished.')
+            } catch (err) {
+                logger?.error?.('🚨 Critical error during cleanup task:', err)
+            }
+        }, cronOptions)
+
+
+        // --- ЗАДАЧА 2: Збір аналітики щодня о 04:30 ---
+        // Вираз '30 4 * * *' означає: 30 хвилина, 4 година...
+        const analyticsTask = cron.schedule('30 4 * * *', async () => {
+            try {
+                await executeAnalyticsJob(this.dbManager)
+            } catch (err) {
+                logger?.error?.('🚨 Critical error during analytics task:', err)
+            }
+        }, cronOptions)
+
+
+        // --- ЗАДАЧА 3: Перевірка ліцензій щогодини (для прикладу) ---
+        // Вираз '0 * * * *' означає: 0 хвилина кожної години
+        const hourlyCheckTask = cron.schedule('0 * * * *', () => {
+            logger?.info?.('🔄 Hourly system check running...')
+        }, cronOptions)
+
+
+        // Зберігаємо завдання у масив, щоб мати можливість їх зупинити
+        this.scheduledTasks.push(cleanupTask, analyticsTask, hourlyCheckTask)
+    }
+
+    /**
+     * Зупинка всіх завдань при вимкненні додатку
+     */
+    stop() {
+        if (this.scheduledTasks.length > 0) {
+            this.scheduledTasks.forEach(task => task.stop())
+            this.scheduledTasks = []
+            logger?.info?.('🛑 All Node-Cron tasks stopped.')
+        }
+    }
+}

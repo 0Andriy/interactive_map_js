@@ -1,0 +1,119 @@
+:root {
+    --monitor-bg: #020617;
+    --header-bg: #1e293b;
+    --accent: #3b82f6;
+}
+
+.monitor-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 100px); /* Висота під ваш layout */
+    background: var(--monitor-bg);
+    overflow: hidden;
+    position: relative;
+}
+
+.monitor-header {
+    background: var(--header-bg);
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 50;
+    border-bottom: 1px solid #334155;
+}
+
+.monitor-viewport {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    overflow: hidden; /* ЗАБОРОНА СКРОЛУ */
+}
+
+/* Контейнер, розмір якого вираховує JS */
+.canvas-area {
+    position: relative;
+    background: #000;
+    container-type: size; /* Дозволяє адаптувати шрифт під розмір контейнера */
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+}
+
+.bg-layer {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.dynamic-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+}
+
+/* Датчик */
+.sensor-node {
+    position: absolute;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid var(--accent);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: crosshair;
+    transition: background 0.2s;
+    overflow: hidden;
+}
+
+.sensor-node:hover {
+    background: rgba(59, 130, 246, 0.4);
+    border-color: #fff;
+}
+
+/* Адаптивний шрифт через cqw (container width units) */
+.s-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: bold;
+    font-size: 3cqw; /* Шрифт завжди пропорційний ширині схеми */
+    pointer-events: none;
+}
+
+/* Tooltip */
+.custom-tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: #1e293b;
+    color: #f8fafc;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    border: 1px solid #3b82f6;
+    z-index: 9999;
+    display: none;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+
+/* Controls */
+.header-controls {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+.m-select {
+    background: #0f172a;
+    color: #fff;
+    border: 1px solid #475569;
+    padding: 4px;
+    border-radius: 4px;
+}
+.pulse-status {
+    width: 10px;
+    height: 10px;
+    background: #10b981;
+    border-radius: 50%;
+    display: inline-block;
+}

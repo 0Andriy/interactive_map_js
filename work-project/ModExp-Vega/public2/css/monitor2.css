@@ -1,0 +1,119 @@
+.monitor-container {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 120px);
+    background: #0f172a;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+}
+
+.monitor-header {
+    background: #1e293b;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #334155;
+    z-index: 10;
+}
+
+.header-controls {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.m-select {
+    background: #0f172a;
+    color: #f8fafc;
+    border: 1px solid #475569;
+    padding: 5px 10px;
+    border-radius: 6px;
+    outline: none;
+}
+
+/* Контейнер в'юпорту */
+.monitor-viewport {
+    flex: 1;
+    position: relative;
+    overflow: auto; /* Дозволяє скрол, якщо схема дуже велика */
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+}
+
+/* Масштабована область (Canvas) */
+.canvas-area {
+    position: relative;
+    width: 100%;
+    /* Висота розраховується в JS через padding-bottom або aspect-ratio */
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+    background: #1e293b;
+}
+
+.bg-layer {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    object-fit: fill;
+}
+
+.dynamic-layer {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: 5;
+}
+
+/* Стиль датчика */
+.sensor-node {
+    position: absolute;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid #3b82f6;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    font-family: monospace;
+    backdrop-filter: blur(2px);
+    transition: transform 0.2s;
+}
+
+.sensor-node:hover {
+    transform: scale(1.1);
+    z-index: 100;
+    border-color: #60a5fa;
+}
+.s-value {
+    font-weight: bold;
+    color: #60a5fa;
+    font-size: 0.9em;
+}
+.s-unit {
+    font-size: 0.6em;
+    color: #94a3b8;
+}
+
+.svg-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
