@@ -1,18 +1,16 @@
 export class AckManager {
-    static attach(socket) {
+    static attach(socket, opts = {}) {
         let ackCounter = 0
         const pendingAcks = new Map()
-
-        // Створюємо враппер навколо стандартного emit для підтримки ack на сервері
-        const originalEmit = socket.emit.bind(socket)
+        const timeoutMs = opts.timeout || 10000
 
         socket.emitWithAck = (event, ...args) => {
             return new Promise((resolve, reject) => {
                 const id = ackCounter++
                 const timeout = setTimeout(() => {
                     pendingAcks.delete(id)
-                    reject(new Error('Ack timeout'))
-                }, 10000)
+                    reject(new Error(`Ack timeout for event: ${event}`))
+                }, timeoutMs)
 
                 pendingAcks.set(id, (...replyArgs) => {
                     clearTimeout(timeout)
